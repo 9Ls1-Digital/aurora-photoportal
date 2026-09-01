@@ -1,3 +1,9 @@
+<style class="aurora-hide-thirdparty-notices">
+body.toplevel_page_nls1-fotoportal .notice:not(.aurora-own-notice),
+body[class*="nls1-fotoportal"] .notice:not(.aurora-own-notice),
+.nls1-fotoportal-admin > .notice:not(.aurora-own-notice),
+.nls1-fotoportal-admin .aurora-external-notices { display:none !important; }
+</style>
 <?php if (!defined('ABSPATH')) exit; ?>
 <div class="wrap nls1-fotoportal-admin">
     <div class="aurora-external-notices" aria-live="polite"></div>
@@ -789,28 +795,4 @@ jQuery(function($){
 });
 </script>
 
-<script>
-(function(){
-    function relocateAuroraAdminNotices(){
-        var wrap = document.querySelector('.nls1-fotoportal-admin');
-        if (!wrap) return;
-        var target = wrap.querySelector('.aurora-external-notices');
-        var header = wrap.querySelector('.aurora-module-header');
-        if (!target || !header) return;
 
-        header.querySelectorAll('.notice, .updated, .error, .update-nag').forEach(function(notice){
-            target.appendChild(notice);
-        });
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', relocateAuroraAdminNotices);
-    } else {
-        relocateAuroraAdminNotices();
-    }
-
-    var observer = new MutationObserver(relocateAuroraAdminNotices);
-    observer.observe(document.body, { childList: true, subtree: true });
-    window.setTimeout(function(){ observer.disconnect(); }, 5000);
-})();
-</script>

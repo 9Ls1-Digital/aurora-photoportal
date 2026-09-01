@@ -68,7 +68,7 @@ $branding = NLS1_Aurora_Account_Platform::platform_branding();
 
         <div class="aurora-platform-note">
             <strong>Administratorgrense:</strong> denne siden viser plattform-/fotografdata, ikke fotografens kunder, prosjekter eller bilder.
-            <a href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url()); ?>">Åpne fotografvisning i utviklingsmodus →</a>
+            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('dashboard')); ?>">Åpne Photographer Workspace →</a>
         </div>
 
     <?php elseif ($section === 'accounts') : ?>
@@ -211,8 +211,8 @@ $branding = NLS1_Aurora_Account_Platform::platform_branding();
             </section>
             <section class="aurora-platform-card">
                 <span class="aurora-kicker">SUPPORTMODUS</span><h2>Fotografvisning</h2>
-                <p>Normal Aurora Admin viser ikke sluttkundedata. Under utvikling kan du eksplisitt åpne den eksisterende fotografvisningen for testing.</p>
-                <p><a class="button" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url()); ?>">Åpne fotografvisning</a></p>
+                <p>Normal Aurora Admin viser ikke sluttkundedata. Åpne fotografens egen Aurora Workspace for testing og administrasjon.</p>
+                <p><a class="button" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('dashboard')); ?>">Åpne fotografvisning</a></p>
             </section>
         </div>
     <?php endif; ?>

@@ -41,6 +41,7 @@ class NLS1_Fotoportal_Admin {
     ];
 
     public function __construct() {
+        add_action('current_screen', [$this, 'prepare_legacy_fotoportal_screen']);
         add_action('admin_menu', [$this, 'register_menu'], 1);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_post_9ls1_fotoportal_save_client_project', [$this, 'handle_save_client_project']);
@@ -77,6 +78,13 @@ class NLS1_Fotoportal_Admin {
             'nls1-fotoportal',
             [$this, 'render_fotoportal_entry']
         );
+    }
+
+    public function prepare_legacy_fotoportal_screen($screen) {
+        if (!$screen || strpos((string)$screen->id, 'nls1-fotoportal') === false) return;
+        remove_all_actions('admin_notices');
+        remove_all_actions('all_admin_notices');
+        remove_all_actions('network_admin_notices');
     }
 
     public function enqueue_assets($hook) {
@@ -117,6 +125,7 @@ class NLS1_Fotoportal_Admin {
         return add_query_arg(array_merge([
             'page' => 'nls1-fotoportal',
             'tab' => sanitize_key($tab),
+            'aurora_legacy' => '1',
         ], $args), admin_url('admin.php'));
     }
 
@@ -135,6 +144,12 @@ class NLS1_Fotoportal_Admin {
     public static function table($name) {
         global $wpdb;
         return $wpdb->prefix . '9ls1_fotoportal_' . $name;
+    }
+
+    public static function tenant_account_id() {
+        return class_exists('NLS1_Aurora_Tenant_Context')
+            ? NLS1_Aurora_Tenant_Context::current_account_id()
+            : 0;
     }
 
     public static function count_rows($table, $where = '1=1') {
@@ -178,8 +193,8 @@ class NLS1_Fotoportal_Admin {
     public static function get_clients($include_test = false, $search = '', $group = '', $type = '') {
         global $wpdb;
         $clients = self::table('clients');
-        $where = [];
-        $params = [];
+        $where = ['account_id = %d'];
+        $params = [self::tenant_account_id()];
         if (!$include_test) $where[] = 'is_test = 0';
         if ($search) { $where[] = '(client_name LIKE %s OR email LIKE %s OR phone LIKE %s)'; $like = '%' . $wpdb->esc_like($search) . '%'; $params = array_merge($params, [$like, $like, $like]); }
         if ($group) { $where[] = 'client_group = %s'; $params[] = $group; }
@@ -194,8 +209,8 @@ class NLS1_Fotoportal_Admin {
         global $wpdb;
         $projects = self::table('projects');
         $clients = self::table('clients');
-        $where = [];
-        $params = [];
+        $where = ['p.account_id = %d'];
+        $params = [self::tenant_account_id()];
         if (!$include_test) $where[] = 'p.is_test = 0';
         if ($search) { $where[] = '(p.project_name LIKE %s OR p.project_number LIKE %s OR c.client_name LIKE %s)'; $like = '%' . $wpdb->esc_like($search) . '%'; $params = array_merge($params, [$like, $like, $like]); }
         if ($project_type) { $where[] = 'p.project_type = %s'; $params[] = $project_type; }
@@ -208,36 +223,53 @@ class NLS1_Fotoportal_Admin {
 
     public static function get_client($client_id) {
         global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM " . self::table('clients') . " WHERE id = %d", $client_id));
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::table('clients') . " WHERE id=%d AND account_id=%d",
+            (int)$client_id, self::tenant_account_id()
+        ));
     }
 
     public static function get_project($project_id) {
         global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT p.*, c.client_name FROM " . self::table('projects') . " p LEFT JOIN " . self::table('clients') . " c ON c.id = p.client_id WHERE p.id = %d", $project_id));
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT p.*, c.client_name FROM " . self::table('projects') . " p
+             LEFT JOIN " . self::table('clients') . " c ON c.id=p.client_id AND c.account_id=p.account_id
+             WHERE p.id=%d AND p.account_id=%d",
+            $project_id, self::tenant_account_id()
+        ));
     }
 
     public static function get_primary_contact($client_id) {
         global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM " . self::table('contacts') . " WHERE client_id = %d AND is_primary = 1 ORDER BY id ASC LIMIT 1", $client_id));
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::table('contacts') . " WHERE client_id=%d AND account_id=%d AND is_primary=1 ORDER BY id ASC LIMIT 1",
+            $client_id, self::tenant_account_id()
+        ));
     }
 
     public static function get_contacts($client_id) {
         global $wpdb;
-        return $wpdb->get_results($wpdb->prepare("SELECT * FROM " . self::table('contacts') . " WHERE client_id = %d ORDER BY is_primary DESC, id ASC", $client_id));
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM " . self::table('contacts') . " WHERE client_id=%d AND account_id=%d ORDER BY is_primary DESC,id ASC",
+            $client_id, self::tenant_account_id()
+        ));
     }
 
     public static function get_client_projects($client_id) {
         global $wpdb;
-        return $wpdb->get_results($wpdb->prepare("SELECT * FROM " . self::table('projects') . " WHERE client_id = %d ORDER BY created_at DESC", $client_id));
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM " . self::table('projects') . " WHERE client_id=%d AND account_id=%d ORDER BY created_at DESC",
+            $client_id, self::tenant_account_id()
+        ));
     }
 
     public static function get_logs($client_id = 0, $project_id = 0) {
         global $wpdb;
         $logs = self::table('logs');
         if ($project_id) {
-            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $logs WHERE project_id = %d ORDER BY created_at DESC LIMIT 100", $project_id));
+            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $logs WHERE project_id = %d AND account_id = %d ORDER BY created_at DESC LIMIT 100", $project_id, self::tenant_account_id()));
         }
-        return $wpdb->get_results($wpdb->prepare("SELECT * FROM $logs WHERE client_id = %d ORDER BY created_at DESC LIMIT 100", $client_id));
+        return $wpdb->get_results($wpdb->prepare("SELECT * FROM $logs WHERE client_id = %d AND account_id = %d ORDER BY created_at DESC LIMIT 100", $client_id, self::tenant_account_id()));
     }
 
     public static function format_contact_name($contact) {
@@ -265,6 +297,7 @@ class NLS1_Fotoportal_Admin {
     private function log($client_id, $project_id, $type, $message, $is_test = 0) {
         global $wpdb;
         $wpdb->insert(self::table('logs'), [
+            'account_id' => self::tenant_account_id(),
             'client_id' => $client_id ?: null,
             'project_id' => $project_id ?: null,
             'log_type' => $type,
@@ -297,13 +330,28 @@ class NLS1_Fotoportal_Admin {
         $is_test = !empty($_POST['is_test']) ? 1 : 0;
 
         if (!$client_name || !$client_group || !$first_name || !$email || !$project_name || !$project_type) {
-            wp_safe_redirect(self::fotoportal_url('wizard', ['message' => 'missing_fields']));
-            exit;
+            if (!empty($project_id)) {
+            wp_safe_redirect(self::fotoportal_url('project_profile', [
+                'project_id' => (int)$project_id,
+                'aurora_legacy' => '1',
+            ]));
+        } elseif (!empty($client_id)) {
+            wp_safe_redirect(self::fotoportal_url('client_profile', [
+                'client_id' => (int)$client_id,
+                'aurora_legacy' => '1',
+            ]));
+        } else {
+            wp_safe_redirect(self::fotoportal_url('clients', [
+                'aurora_legacy' => '1',
+            ]));
+        }
+        exit;
         }
 
         $customer_number = self::generate_customer_number();
 
         $wpdb->insert(self::table('clients'), [
+            'account_id' => self::tenant_account_id(),
             'customer_number' => $customer_number,
             'client_name' => $client_name,
             'client_group' => $client_group,
@@ -318,6 +366,7 @@ class NLS1_Fotoportal_Admin {
         $client_id = (int)$wpdb->insert_id;
 
         $wpdb->insert(self::table('contacts'), [
+            'account_id' => self::tenant_account_id(),
             'client_id' => $client_id,
             'first_name' => $first_name,
             'last_name' => $last_name,
@@ -331,6 +380,7 @@ class NLS1_Fotoportal_Admin {
 
         $project_number = self::generate_project_number($project_type);
         $wpdb->insert(self::table('projects'), [
+            'account_id' => self::tenant_account_id(),
             'client_id' => $client_id,
             'project_number' => $project_number,
             'project_name' => $project_name,
@@ -358,7 +408,7 @@ class NLS1_Fotoportal_Admin {
         $status = sanitize_key($_POST['status'] ?? 'created');
         $project = self::get_project($project_id);
         if ($project && isset(self::$project_statuses[$status])) {
-            $wpdb->update(self::table('projects'), ['status' => $status, 'updated_at' => current_time('mysql')], ['id' => $project_id]);
+            $wpdb->update(self::table('projects'), ['status' => $status, 'updated_at' => current_time('mysql')], ['id' => $project_id, 'account_id' => self::tenant_account_id()]);
             $this->log((int)$project->client_id, $project_id, 'status', 'Prosjektstatus endret til: ' . self::status_label($status), (int)$project->is_test);
         }
         wp_safe_redirect(self::project_url($project_id));
@@ -373,6 +423,7 @@ class NLS1_Fotoportal_Admin {
         $client = self::get_client($client_id);
         if ($client) {
             $wpdb->insert(self::table('contacts'), [
+            'account_id' => self::tenant_account_id(),
                 'client_id' => $client_id,
                 'first_name' => sanitize_text_field($_POST['first_name'] ?? ''),
                 'last_name' => sanitize_text_field($_POST['last_name'] ?? ''),
@@ -410,7 +461,7 @@ class NLS1_Fotoportal_Admin {
         $contracts = self::table('contracts');
         $projects = self::table('projects');
         $clients = self::table('clients');
-        $where = $include_test ? '1=1' : 'ct.is_test = 0';
+        $where = $wpdb->prepare('ct.account_id = %d', self::tenant_account_id()) . ($include_test ? '' : ' AND ct.is_test = 0');
         return $wpdb->get_results("
             SELECT ct.*, p.project_name, p.project_number, p.project_type, c.client_name
             FROM $contracts ct
@@ -423,25 +474,31 @@ class NLS1_Fotoportal_Admin {
     }
 
     public static function get_project_contracts($project_id) {
-        global $wpdb;
-        $contracts = self::table('contracts');
-        return $wpdb->get_results($wpdb->prepare("SELECT * FROM $contracts WHERE project_id = %d ORDER BY created_at DESC", $project_id));
+        global $wpdb; $contracts=self::table('contracts');
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $contracts WHERE project_id=%d AND account_id=%d ORDER BY created_at DESC",
+            $project_id,self::tenant_account_id()
+        ));
     }
 
     public static function has_signed_contract($project_id) {
         global $wpdb;
         $contracts = self::table('contracts');
         $count = (int)$wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $contracts WHERE project_id = %d AND status = %s",
+            "SELECT COUNT(*) FROM $contracts WHERE project_id = %d AND status = %s AND account_id = %d",
             (int)$project_id,
-            'signed'
+            'signed',
+            self::tenant_account_id()
         ));
         return $count > 0;
     }
 
     public static function get_contract($contract_id) {
         global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM " . self::table('contracts') . " WHERE id = %d", $contract_id));
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::table('contracts') . " WHERE id=%d AND account_id=%d",
+            $contract_id,self::tenant_account_id()
+        ));
     }
 
     public static function get_contract_by_token($token) {
@@ -464,7 +521,7 @@ class NLS1_Fotoportal_Admin {
         global $wpdb;
         $token = wp_generate_password(40, false, false);
         $hash = hash('sha256', $token);
-        $wpdb->update(self::table('contracts'), ['token_hash' => $hash], ['id' => (int)$contract_id]);
+        $wpdb->update(self::table('contracts'), ['token_hash' => $hash], ['id' => (int)$contract_id, 'account_id' => self::tenant_account_id()]);
         return $token;
     }
 
@@ -504,6 +561,7 @@ class NLS1_Fotoportal_Admin {
         }
 
         $wpdb->insert(self::table('contracts'), [
+            'account_id' => self::tenant_account_id(),
             'project_id' => $project_id,
             'contract_name' => $contract_name,
             'contract_version' => $contract_version ?: '1.0',
@@ -517,7 +575,7 @@ class NLS1_Fotoportal_Admin {
 
         $contract_id = (int)$wpdb->insert_id;
         self::create_signing_token($contract_id);
-        $wpdb->update(self::table('projects'), ['status' => 'contract_created', 'updated_at' => current_time('mysql')], ['id' => $project_id]);
+        $wpdb->update(self::table('projects'), ['status' => 'contract_created', 'updated_at' => current_time('mysql')], ['id' => $project_id, 'account_id' => self::tenant_account_id()]);
         $this->log((int)$project->client_id, $project_id, 'contract', 'Kontrakt opprettet: ' . $contract_name, (int)$project->is_test);
 
         wp_safe_redirect(self::project_url($project_id) . '&message=contract_created');
@@ -541,10 +599,10 @@ class NLS1_Fotoportal_Admin {
         $wpdb->update(self::table('contracts'), [
             'status' => 'sent',
             'sent_at' => current_time('mysql'),
-        ], ['id' => $contract_id]);
+        ], ['id' => $contract_id, 'account_id' => self::tenant_account_id()]);
 
         if ($project) {
-            $wpdb->update(self::table('projects'), ['status' => 'contract_sent', 'updated_at' => current_time('mysql')], ['id' => (int)$project->id]);
+            $wpdb->update(self::table('projects'), ['status' => 'contract_sent', 'updated_at' => current_time('mysql')], ['id' => (int)$project->id, 'account_id' => self::tenant_account_id()]);
             $this->log((int)$project->client_id, (int)$project->id, 'contract', 'Kontrakt markert som sendt: ' . $contract->contract_name, (int)$project->is_test);
         }
 
@@ -624,10 +682,10 @@ class NLS1_Fotoportal_Admin {
         $clients = self::table('clients');
 
         if ($project_id) {
-            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $galleries WHERE project_id = %d ORDER BY created_at DESC", $project_id));
+            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $galleries WHERE project_id = %d AND account_id = %d ORDER BY created_at DESC", $project_id,self::tenant_account_id()));
         }
 
-        $where = $include_test ? '1=1' : 'g.is_test = 0';
+        $where = $wpdb->prepare('g.account_id = %d', self::tenant_account_id()) . ($include_test ? '' : ' AND g.is_test = 0');
         return $wpdb->get_results("
             SELECT g.*, p.project_name, p.project_number, c.client_name
             FROM $galleries g
@@ -641,13 +699,16 @@ class NLS1_Fotoportal_Admin {
 
     public static function get_gallery($gallery_id) {
         global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM " . self::table('galleries') . " WHERE id = %d", $gallery_id));
+        return $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM " . self::table('galleries') . " WHERE id=%d AND account_id=%d",
+            $gallery_id,self::tenant_account_id()
+        ));
     }
 
     public static function get_gallery_images($gallery_id, $limit = 80) {
         global $wpdb;
         $images = self::table('images');
-        return $wpdb->get_results($wpdb->prepare("SELECT * FROM $images WHERE gallery_id = %d ORDER BY sort_order ASC, id ASC LIMIT %d", $gallery_id, $limit));
+        return $wpdb->get_results($wpdb->prepare("SELECT * FROM $images WHERE gallery_id = %d AND account_id = %d ORDER BY sort_order ASC, id ASC LIMIT %d", $gallery_id,self::tenant_account_id(),$limit));
     }
 
     public static function is_allowed_image_file($filename) {
@@ -703,7 +764,7 @@ class NLS1_Fotoportal_Admin {
             if ($update) {
                 $update['status'] = $preview_ok ? 'preview_generated' : $img->status;
                 $update['updated_at'] = current_time('mysql');
-                $wpdb->update(self::table('images'), $update, ['id' => (int)$img->id]);
+                $wpdb->update(self::table('images'), $update, ['id' => (int)$img->id, 'account_id' => self::tenant_account_id()]);
             }
         }
 
@@ -712,7 +773,7 @@ class NLS1_Fotoportal_Admin {
             'thumbnail_count' => $thumb_count,
             'status' => $preview_count ? 'preview_generated' : 'uploaded',
             'updated_at' => current_time('mysql'),
-        ], ['id' => $gallery_id]);
+        ], ['id' => $gallery_id, 'account_id' => self::tenant_account_id()]);
 
         return ['preview' => $preview_count, 'thumbs' => $thumb_count];
     }
@@ -1366,6 +1427,7 @@ class NLS1_Fotoportal_Admin {
         }
 
         $wpdb->insert(self::table('galleries'), [
+            'account_id' => self::tenant_account_id(),
             'client_id' => (int)$project->client_id,
             'project_id' => $project_id,
             'gallery_number' => $gallery_number,
@@ -1391,6 +1453,7 @@ class NLS1_Fotoportal_Admin {
 
         foreach ($registered as $img) {
             $wpdb->insert(self::table('images'), [
+            'account_id' => self::tenant_account_id(),
                 'gallery_id' => $gallery_id,
                 'project_id' => $project_id,
                 'original_filename' => $img['filename'],
@@ -1407,7 +1470,7 @@ class NLS1_Fotoportal_Admin {
 
         $derivatives = self::generate_gallery_derivatives($gallery_id);
 
-        $wpdb->update(self::table('projects'), ['status' => 'images_uploaded', 'updated_at' => current_time('mysql')], ['id' => $project_id]);
+        $wpdb->update(self::table('projects'), ['status' => 'images_uploaded', 'updated_at' => current_time('mysql')], ['id' => $project_id, 'account_id' => self::tenant_account_id()]);
 
         $this->log((int)$project->client_id, $project_id, 'gallery', 'Galleri lastet opp: ' . $gallery_title . ' (' . $original_count . ' bilder). Preview: ' . $derivatives['preview'] . ', thumbnails: ' . $derivatives['thumbs'] . '.', (int)$project->is_test);
         wp_safe_redirect(self::project_url($project_id) . '&message=gallery_uploaded');
@@ -1434,7 +1497,7 @@ class NLS1_Fotoportal_Admin {
             $wpdb->delete(self::table('favorites'), ['gallery_id' => $gallery_id], ['%d']);
             $wpdb->delete(self::table('downloads'), ['gallery_id' => $gallery_id], ['%d']);
             $wpdb->delete(self::table('images'), ['gallery_id' => $gallery_id], ['%d']);
-            $wpdb->delete(self::table('galleries'), ['id' => $gallery_id], ['%d']);
+            $wpdb->delete(self::table('galleries'), ['id' => $gallery_id, 'account_id' => self::tenant_account_id()], ['%d']);
         }
 
         wp_safe_redirect(self::project_url($project_id) . '&message=gallery_deleted');
@@ -1461,10 +1524,10 @@ class NLS1_Fotoportal_Admin {
         $clients = self::table('clients');
 
         if ($project_id) {
-            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $documents WHERE project_id = %d ORDER BY created_at DESC", $project_id));
+            return $wpdb->get_results($wpdb->prepare("SELECT * FROM $documents WHERE project_id = %d AND account_id = %d ORDER BY created_at DESC", $project_id,self::tenant_account_id()));
         }
 
-        $where = $include_test ? '1=1' : 'd.is_test = 0';
+        $where = $wpdb->prepare('d.account_id = %d', self::tenant_account_id()) . ($include_test ? '' : ' AND d.is_test = 0');
         return $wpdb->get_results("
             SELECT d.*, p.project_name, p.project_number, c.client_name
             FROM $documents d
@@ -1479,7 +1542,7 @@ class NLS1_Fotoportal_Admin {
     public static function get_document_templates($include_test = true) {
         global $wpdb;
         $templates = self::table('document_templates');
-        $where = $include_test ? '1=1' : 'is_test = 0';
+        $where = $wpdb->prepare('account_id = %d', self::tenant_account_id()) . ($include_test ? '' : ' AND is_test = 0');
         return $wpdb->get_results("SELECT * FROM $templates WHERE $where ORDER BY project_type ASC, template_name ASC LIMIT 300");
     }
 
@@ -1527,6 +1590,7 @@ class NLS1_Fotoportal_Admin {
         }
 
         $wpdb->insert(self::table('documents'), [
+            'account_id' => self::tenant_account_id(),
             'client_id' => (int)$project->client_id,
             'project_id' => $project_id,
             'attachment_id' => $attachment_id ?: null,
@@ -1553,7 +1617,7 @@ class NLS1_Fotoportal_Admin {
         $project_id = (int)($_POST['project_id'] ?? 0);
 
         if ($document_id) {
-            $wpdb->delete(self::table('documents'), ['id' => $document_id], ['%d']);
+            $wpdb->delete(self::table('documents'), ['id' => $document_id, 'account_id' => self::tenant_account_id()], ['%d']);
         }
 
         wp_safe_redirect(self::project_url($project_id) . '&message=document_deleted');
@@ -1588,7 +1652,7 @@ class NLS1_Fotoportal_Admin {
         ];
 
         if ($template_id) {
-            $wpdb->update(self::table('document_templates'), $data, ['id' => $template_id]);
+            $wpdb->update(self::table('document_templates'), $data, ['id' => $template_id, 'account_id' => self::tenant_account_id()]);
         } else {
             $data['created_at'] = current_time('mysql');
             $wpdb->insert(self::table('document_templates'), $data);
@@ -1642,7 +1706,7 @@ class NLS1_Fotoportal_Admin {
                 'city' => $city,
                 'notes' => $notes,
                 'updated_at' => current_time('mysql'),
-            ], ['id' => $client_id]);
+            ], ['id' => $client_id, 'account_id' => self::tenant_account_id()]);
             $this->log($client_id, 0, 'updated', 'Kundeinformasjon oppdatert.', (int)$client->is_test);
         }
 
@@ -1682,7 +1746,7 @@ class NLS1_Fotoportal_Admin {
                 'location' => $location,
                 'description' => $description,
                 'updated_at' => current_time('mysql'),
-            ], ['id' => $project_id]);
+            ], ['id' => $project_id, 'account_id' => self::tenant_account_id()]);
 
             if ($new_project_number !== $project->project_number) {
                 $this->log((int)$project->client_id, $project_id, 'updated', 'Prosjektnummer endret fra ' . $project->project_number . ' til ' . $new_project_number . '.', (int)$project->is_test);
@@ -1709,11 +1773,11 @@ class NLS1_Fotoportal_Admin {
                 foreach ($project_ids as $pid) {
                     $wpdb->delete(self::table('logs'), ['project_id' => (int)$pid, 'is_test' => 1], ['%d','%d']);
                     $wpdb->delete(self::table('contracts'), ['project_id' => (int)$pid, 'is_test' => 1], ['%d','%d']);
-                    $wpdb->delete(self::table('projects'), ['id' => (int)$pid, 'is_test' => 1], ['%d','%d']);
+                    $wpdb->delete(self::table('projects'), ['id' => (int)$pid, 'is_test' => 1, 'account_id' => self::tenant_account_id(), 'account_id' => self::tenant_account_id()], ['%d','%d']);
                 }
                 $wpdb->delete(self::table('logs'), ['client_id' => $id, 'is_test' => 1], ['%d','%d']);
                 $wpdb->delete(self::table('contacts'), ['client_id' => $id, 'is_test' => 1], ['%d','%d']);
-                $wpdb->delete(self::table('clients'), ['id' => $id, 'is_test' => 1], ['%d','%d']);
+                $wpdb->delete(self::table('clients'), ['id' => $id, 'is_test' => 1, 'account_id' => self::tenant_account_id(), 'account_id' => self::tenant_account_id(), 'account_id' => self::tenant_account_id()], ['%d','%d']);
             }
             wp_safe_redirect(self::fotoportal_url('clients', ['message' => 'test_item_deleted']));
             exit;
@@ -1724,7 +1788,7 @@ class NLS1_Fotoportal_Admin {
             if ($project && (int)$project->is_test === 1) {
                 $wpdb->delete(self::table('logs'), ['project_id' => $id, 'is_test' => 1], ['%d','%d']);
                 $wpdb->delete(self::table('contracts'), ['project_id' => $id, 'is_test' => 1], ['%d','%d']);
-                $wpdb->delete(self::table('projects'), ['id' => $id, 'is_test' => 1], ['%d','%d']);
+                $wpdb->delete(self::table('projects'), ['id' => $id, 'is_test' => 1, 'account_id' => self::tenant_account_id(), 'account_id' => self::tenant_account_id(), 'account_id' => self::tenant_account_id()], ['%d','%d']);
             }
             wp_safe_redirect(self::fotoportal_url('projects', ['message' => 'test_item_deleted']));
             exit;

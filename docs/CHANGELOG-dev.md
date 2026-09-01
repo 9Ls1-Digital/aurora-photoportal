@@ -1,5 +1,32 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.13-fix3
+- Fix the remaining Aurora Admin / System “Fotografvisning” links that still pointed directly to the legacy Fotoportal admin.
+- Route both photographer-view entry points to the new Photographer Workspace dashboard.
+- Update the support-mode wording so Aurora Admin clearly distinguishes platform administration from the photographer workspace.
+
+## 0.7.1-dev.13-fix2
+- Route Aurora System / Fotografvisning to the new Photographer Workspace instead of the legacy Fotoportal admin.
+- Fix new customer/project save flow so newly created records keep the active photographer account and redirect with the correct client/project ID.
+- Harden `get_client()` with account-scoped lookup.
+- Suppress WordPress/third-party notices such as Vipps inside temporary legacy Fotoportal screens.
+- Remove the old notice-relocation script that intentionally moved external notices into Aurora.
+
+## 0.7.1-dev.13-fix1
+- Fix the Photographer Workspace “Ny kunde / prosjekt” bridge to open the existing `wizard` tab.
+- Make every legacy Fotoportal URL automatically include `aurora_legacy=1`.
+- Keep navigation inside the temporary legacy Fotoportal view instead of redirecting back to the new Workspace dashboard.
+- Fix buttons such as “Ny kunde/prosjekt” inside Kunder and other legacy module navigation.
+
+## 0.7.1-dev.13
+- Correct tenant migration to target the real `9ls1_fotoportal_*` domain tables.
+- Migrate legacy domain rows to the default photographer account using `account_id`.
+- Enforce photographer account scope on core customer, project, contract, document, gallery, image and log reads.
+- Stamp new domain records with the active photographer account.
+- Add account-aware lookups for project/customer relationships.
+- Keep public contract token lookup separate because the signing token itself is the external access credential.
+- Tenant isolation is now enforced in the core Fotoportal admin data path; remaining secondary handlers will continue to be audited as modules move into Photographer Workspace.
+
 ## 0.7.1-dev.12-fix1
 - Fix Photographer Workspace legacy-module links.
 - Pass the legacy Fotoportal tab as the correct first argument to `fotoportal_url()`.
