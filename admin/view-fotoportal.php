@@ -72,6 +72,29 @@
             <a class="nls1-card aurora-stat-card" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('contracts')); ?>"><span class="aurora-stat-label">Kontrakter</span><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('contracts')); ?></p><small>Åpne kontrakter →</small></a>
         </div>
 
+
+        <section class="aurora-workflow">
+            <div class="aurora-section-heading aurora-workflow-heading">
+                <div><span class="aurora-kicker">ARBEIDSFLYT</span><h2>Fra kunde til leveranse</h2><p>Fire steg gjennom et fotooppdrag – bygget på funksjonene som allerede finnes i Fotoportal.</p></div>
+                <span class="aurora-workflow-badge">Aurora Workflow</span>
+            </div>
+            <div class="aurora-workflow-grid">
+                <a class="aurora-workflow-step" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('clients')); ?>">
+                    <span class="aurora-workflow-number">01</span><span class="aurora-workflow-content"><strong>Kunde</strong><span>Opprett eller åpne kunden som fotograferingen tilhører.</span></span><span class="aurora-workflow-arrow">→</span>
+                </a>
+                <a class="aurora-workflow-step" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('projects')); ?>">
+                    <span class="aurora-workflow-number">02</span><span class="aurora-workflow-content"><strong>Prosjekt</strong><span>Planlegg oppdraget, prosjektdata og avtaler.</span></span><span class="aurora-workflow-arrow">→</span>
+                </a>
+                <a class="aurora-workflow-step" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('galleries')); ?>">
+                    <span class="aurora-workflow-number">03</span><span class="aurora-workflow-content"><strong>Galleri</strong><span>Last opp bilder og bygg preview/proof for kunden.</span></span><span class="aurora-workflow-arrow">→</span>
+                </a>
+                <a class="aurora-workflow-step" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('deliveries')); ?>">
+                    <span class="aurora-workflow-number">04</span><span class="aurora-workflow-content"><strong>Leveranse</strong><span>Klargjør godkjent materiale og kundeleveranse.</span></span>
+                </a>
+            </div>
+            <div class="aurora-workflow-note"><strong>Neste Aurora-lag:</strong> Customer App og Portal/API kobles senere mot denne arbeidsflyten via stabile tjenester, uten å gjøre Aurora Core til en hard avhengighet.</div>
+        </section>
+
         <div class="aurora-dashboard-columns">
             <section class="nls1-panel aurora-command-panel">
                 <span class="aurora-kicker">HURTIGHANDLINGER</span>

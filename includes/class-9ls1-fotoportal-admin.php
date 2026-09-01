@@ -1772,5 +1772,4 @@ class NLS1_Fotoportal_Admin {
         wp_safe_redirect(self::fotoportal_url('settings', ['message' => 'branding_saved']));
         exit;
     }
-
 }

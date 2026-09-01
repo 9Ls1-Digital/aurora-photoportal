@@ -1,3 +1,11 @@
+# Aurora Fotoportal development changelog
+
+## 0.7.1-dev.6
+- Add visual Aurora Workflow: Kunde → Prosjekt → Galleri → Leveranse.
+- Reuse existing Fotoportal routes; no database or handler changes.
+- Prepare admin information architecture for later Customer App and Portal/API modules.
+- Keep stable in-place WordPress update packaging established in dev.4/dev.5.
+
 # Development Changelog
 
 ## 0.7.1-dev.4

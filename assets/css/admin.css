@@ -225,3 +225,20 @@
 .aurora-external-notices .updated,
 .aurora-external-notices .error,
 .aurora-external-notices .update-nag{margin:0 0 10px!important;max-width:none!important}
+
+
+/* Aurora Workflow — dev.6 */
+.aurora-workflow{margin:18px 0 20px}
+.aurora-workflow-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+.aurora-workflow-badge{display:inline-flex;align-items:center;border:1px solid #ddd3ff;background:#f7f3ff;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:700;color:#6741e8;white-space:nowrap}
+.aurora-workflow-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.aurora-workflow-step{position:relative;display:flex;min-height:108px;gap:12px;align-items:flex-start;padding:17px;border:1px solid #e5e2ea;border-radius:14px;background:#fff;text-decoration:none;color:#27222e;box-shadow:0 2px 8px rgba(34,26,46,.025);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.aurora-workflow-step:hover{transform:translateY(-2px);border-color:#cbbcff;box-shadow:0 8px 22px rgba(62,42,85,.08);color:#27222e}
+.aurora-workflow-number{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;border-radius:10px;background:#f2edff;color:#6b43ef;font-size:11px;font-weight:800;letter-spacing:.04em}
+.aurora-workflow-content{display:flex;flex-direction:column;gap:7px}
+.aurora-workflow-content strong{font-size:14px}
+.aurora-workflow-content span{font-size:11px;line-height:1.45;color:#746d7c}
+.aurora-workflow-arrow{position:absolute;right:-10px;top:43px;z-index:2;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border:1px solid #e0d8f7;border-radius:50%;background:#faf8ff;color:#7b56ed;font-size:12px}
+.aurora-workflow-note{margin-top:10px;padding:10px 13px;border-left:3px solid #8c61ff;background:#f8f6fb;border-radius:0 9px 9px 0;font-size:11px;color:#665e6c}
+@media(max-width:1100px){.aurora-workflow-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.aurora-workflow-arrow{display:none}}
+@media(max-width:782px){.aurora-workflow-grid{grid-template-columns:1fr}.aurora-workflow-heading{align-items:flex-start;flex-direction:column}.aurora-workflow-badge{display:none}}
