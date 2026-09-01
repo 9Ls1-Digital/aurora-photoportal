@@ -217,6 +217,16 @@ class NLS1_Aurora_Account_Platform {
         return (int)$wpdb->get_var("SELECT COUNT(*) FROM " . self::table('account_modules') . " WHERE enabled=1");
     }
 
+    public static function default_account() {
+        global $wpdb;
+        return $wpdb->get_row("SELECT * FROM " . self::table('accounts') . " ORDER BY id ASC LIMIT 1");
+    }
+
+    public static function is_module_enabled($account_id, $module_key) {
+        $modules = self::get_account_modules((int)$account_id);
+        return !empty($modules[sanitize_key($module_key)]);
+    }
+
     public static function platform_branding() {
         return [
             'platform_name' => get_option('9ls1_aurora_platform_name', 'Aurora'),

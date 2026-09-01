@@ -1,5 +1,26 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.11-fix2
+- Left-align Photographer Workspace content against the sidebar.
+- Remove centered desktop content container behavior on wide screens.
+- Keep a controlled maximum content width while unused space remains to the right.
+
+## 0.7.1-dev.11-fix1
+- Redirect the legacy Fotoportal admin route to the new Photographer Workspace.
+- Require an explicit `aurora_legacy=1` flag to open the old Fotoportal UI.
+- Keep temporary legacy module links working only as development bridges.
+- Suppress WordPress/plugin admin notices inside the Photographer Workspace.
+
+## 0.7.1-dev.11
+- Add the first dedicated Aurora Photographer Workspace shell.
+- Remove normal WordPress admin chrome inside the photographer workspace.
+- Add permanent Aurora sidebar, top bar, photographer identity and dashboard.
+- Drive photographer navigation from account module entitlements.
+- Add photographer account/settings and module-access overview.
+- Keep existing Fotoportal module screens available as explicit temporary development links.
+- Keep dashboard metrics unbound until Fotoportal domain records have tenant ownership.
+- Point Aurora Admin development/support link to the new Photographer Workspace.
+
 ## 0.7.1-dev.10
 - Add Aurora Account Platform foundation.
 - Replace normal Aurora owner dashboard with platform-only administration.

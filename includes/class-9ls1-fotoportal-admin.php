@@ -86,6 +86,15 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function render_fotoportal_entry() {
+        // dev.11-fix1: The old Fotoportal route is no longer the normal
+        // photographer entry point. Redirect to the new Photographer Workspace.
+        // Legacy UI is available only via an explicit support/development flag.
+        if (empty($_GET['aurora_legacy']) || $_GET['aurora_legacy'] !== '1') {
+            if (class_exists('NLS1_Photographer_Workspace')) {
+                wp_safe_redirect(NLS1_Photographer_Workspace::url('dashboard'));
+                exit;
+            }
+        }
         $tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'dashboard';
         include NLS1_FOTOPORTAL_PLUGIN_DIR . 'admin/view-fotoportal.php';
     }
