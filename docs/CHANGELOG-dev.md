@@ -1,5 +1,28 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.9
+- Move project date, location, contract state and editable status into the fixed project header.
+- Remove duplicate Project Details and Status panels from step 1.
+- Change project workflow order to Project → Contract → Documents → Gallery → Delivery.
+- Add contextual Back / Next buttons.
+- Lock Gallery until at least one project contract is signed.
+- Enforce the contract gate in the gallery ZIP upload handler.
+- Add ADR-003 documenting project workflow gating.
+
+## 0.7.1-dev.8
+- Convert project profile from one long page into a five-step workspace:
+  Prosjekt → Galleri → Dokumenter → Kontrakt → Leveranse.
+- Keep all existing forms, handlers and database records.
+- Add a delivery preparation view without introducing new delivery data.
+- Document Photographer Accounts / multi-tenant entitlement architecture in ADR-002.
+
+## 0.7.1-dev.7
+- Replace the combined customer/project page with a real 3-step wizard.
+- Separate customer data from project data visually and conceptually.
+- Correct customer-name guidance and placeholders.
+- Add validation per step and a confirmation summary before creation.
+- Keep the existing save handler and database schema unchanged.
+
 ## 0.7.1-dev.6
 - Add visual Aurora Workflow: Kunde → Prosjekt → Galleri → Leveranse.
 - Reuse existing Fotoportal routes; no database or handler changes.

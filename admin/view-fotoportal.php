@@ -52,6 +52,7 @@
     <?php if (isset($_GET['message']) && $_GET['message'] === 'gallery_zip_missing') : ?><div class="notice notice-error"><p>Velg en ZIP-fil.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message'] === 'gallery_not_zip') : ?><div class="notice notice-error"><p>Filen må være en ZIP-fil.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message'] === 'gallery_upload_failed') : ?><div class="notice notice-error"><p>Opplasting feilet.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message'] === 'gallery_contract_required') : ?><div class="notice notice-warning"><p>Galleri er låst til kontrakten er signert.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message'] === 'gallery_dir_failed') : ?><div class="notice notice-error"><p>Kunne ikke opprette mappestruktur.</p></div><?php endif; ?>
 
     <?php if (isset($_GET['message']) && $_GET['message'] === 'branding_saved') : ?><div class="notice notice-success"><p>Branding og vannmerkeinnstillinger er lagret.</p></div><?php endif; ?>
@@ -118,26 +119,95 @@
 
     <?php elseif ($tab === 'wizard') : ?>
         <?php if (isset($_GET['message']) && $_GET['message'] === 'missing_fields') : ?><div class="notice notice-error"><p>Fyll ut alle obligatoriske felt.</p></div><?php endif; ?>
-        <div class="nls1-wizard"><div class="nls1-step active"><span>1</span>Kunde</div><div class="nls1-step active"><span>2</span>Prosjekt</div><div class="nls1-step"><span>3</span>Kontrakt</div><div class="nls1-step"><span>4</span>Invitasjon</div><div class="nls1-step"><span>5</span>Ferdig</div></div>
-        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="nls1-form">
+
+        <div class="aurora-create-intro">
+            <span class="aurora-kicker">NYTT FOTOOPPDRAG</span>
+            <h2>Opprett kunde og prosjekt</h2>
+            <p>Vi tar én ting av gangen. Kundeopplysninger først, deretter selve fotooppdraget.</p>
+        </div>
+
+        <div class="nls1-wizard aurora-real-wizard" data-current-step="1">
+            <div class="nls1-step active" data-step-indicator="1"><span>1</span><strong>Kunde</strong><small>Kontakt og kundeinfo</small></div>
+            <div class="nls1-step" data-step-indicator="2"><span>2</span><strong>Prosjekt</strong><small>Selve fotooppdraget</small></div>
+            <div class="nls1-step" data-step-indicator="3"><span>3</span><strong>Bekreft</strong><small>Kontroller og opprett</small></div>
+        </div>
+
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="nls1-form aurora-step-form" id="aurora-new-project-form">
             <input type="hidden" name="action" value="9ls1_fotoportal_save_client_project"><?php wp_nonce_field('9ls1_fotoportal_save_client_project'); ?>
-            <div class="nls1-panel"><h2>Kunde</h2><div class="nls1-form-grid">
-                <label>Kundenavn *<input type="text" name="client_name" required placeholder="f.eks. Hansen Bryllup"></label>
-                <label>Kundegruppe *<select name="client_group" required><option value="">Velg gruppe</option><?php foreach(array_keys(NLS1_Fotoportal_Admin::$project_types) as $type): ?><option><?php echo esc_html($type); ?></option><?php endforeach; ?></select></label>
-                <label>Kundetype<select name="client_type"><option value="private">Privat</option><option value="business">Bedrift</option><option value="artist">Artist/Band</option><option value="organization">Organisasjon</option></select></label>
-                <label>Hovedkontakt fornavn *<input type="text" name="first_name" required></label>
-                <label>Hovedkontakt etternavn<input type="text" name="last_name"></label>
-                <label>E-post *<input type="email" name="email" required></label>
-                <label>Telefon<input type="text" name="phone"></label>
-                <label>Sted/by<input type="text" name="city"></label>
-            </div></div>
-            <div class="nls1-panel"><h2>Prosjekt</h2><div class="nls1-form-grid">
-                <label>Prosjektnavn *<input type="text" name="project_name" required placeholder="f.eks. Bryllup Hansen 2027"></label>
-                <label>Prosjekttype *<select name="project_type" required><option value="">Velg type</option><?php foreach(NLS1_Fotoportal_Admin::$project_types as $type=>$prefix): ?><option><?php echo esc_html($type); ?></option><?php endforeach; ?></select></label>
-                <label>Dato<input type="date" name="project_date"></label><label>Lokasjon<input type="text" name="location"></label>
-                <label class="nls1-full">Notater<textarea name="description" rows="4"></textarea></label><label class="nls1-checkbox"><input type="checkbox" name="is_test" value="1"> Merk som testdata</label>
-            </div><p><button class="button button-primary">Opprett kunde og prosjekt</button></p></div>
+
+            <section class="nls1-panel aurora-form-step is-active" data-step="1">
+                <div class="aurora-form-step-head"><div><span class="aurora-step-label">STEG 1 AV 3</span><h2>Kunde</h2><p>Hvem er kunden? Bruk personnavn, familienavn eller firmanavn – ikke navnet på fotograferingen.</p></div></div>
+                <div class="nls1-form-grid">
+                    <label>Kundenavn *<input type="text" name="client_name" required placeholder="f.eks. Ola Hansen eller Hansen-familien"></label>
+                    <label>Kundegruppe *<select name="client_group" required><option value="">Velg gruppe</option><option>Privatkunde</option><option>Bedrift</option><option>Artist/Band</option><option>Organisasjon</option><option>Annet</option></select></label>
+                    <label>Kundetype<select name="client_type"><option value="private">Privat</option><option value="business">Bedrift</option><option value="artist">Artist/Band</option><option value="organization">Organisasjon</option></select></label>
+                    <div class="aurora-form-hint"><strong>Kundenavn</strong><span>Eksempel: «Ola Hansen». Prosjektnavn som «Bryllup Hansen 2027» legges inn i neste steg.</span></div>
+                    <label>Hovedkontakt fornavn *<input type="text" name="first_name" required placeholder="f.eks. Ola"></label>
+                    <label>Hovedkontakt etternavn<input type="text" name="last_name" placeholder="f.eks. Hansen"></label>
+                    <label>E-post *<input type="email" name="email" required placeholder="ola@eksempel.no"></label>
+                    <label>Telefon<input type="text" name="phone" placeholder="+47 ..."></label>
+                    <label>Sted/by<input type="text" name="city" placeholder="f.eks. Vestby"></label>
+                </div>
+                <div class="aurora-step-actions"><span></span><button type="button" class="button button-primary aurora-next-step" data-next="2">Neste: Prosjekt →</button></div>
+            </section>
+
+            <section class="nls1-panel aurora-form-step" data-step="2" hidden>
+                <div class="aurora-form-step-head"><div><span class="aurora-step-label">STEG 2 AV 3</span><h2>Prosjekt</h2><p>Beskriv selve fotograferingen. Dette holdes adskilt fra kunden.</p></div></div>
+                <div class="nls1-form-grid">
+                    <label>Prosjektnavn *<input type="text" name="project_name" required placeholder="f.eks. Bryllup Hansen 2027"></label>
+                    <label>Prosjekttype *<select name="project_type" required><option value="">Velg type</option><?php foreach (NLS1_Fotoportal_Admin::$project_types as $type => $prefix): ?><option value="<?php echo esc_attr($type); ?>"><?php echo esc_html($type); ?></option><?php endforeach; ?></select></label>
+                    <label>Dato<input type="date" name="project_date"></label>
+                    <label>Lokasjon<input type="text" name="location" placeholder="f.eks. Son Spa / Vestby"></label>
+                    <label class="nls1-full">Notater<textarea name="description" rows="5" placeholder="Praktiske notater, ønsker, tidspunkt eller annen prosjektinformasjon."></textarea></label>
+                    <label class="nls1-checkbox nls1-full"><input type="checkbox" name="is_test" value="1"> Merk som testdata</label>
+                </div>
+                <div class="aurora-step-actions"><button type="button" class="button aurora-prev-step" data-prev="1">← Tilbake</button><button type="button" class="button button-primary aurora-next-step" data-next="3">Neste: Bekreft →</button></div>
+            </section>
+
+            <section class="nls1-panel aurora-form-step" data-step="3" hidden>
+                <div class="aurora-form-step-head"><div><span class="aurora-step-label">STEG 3 AV 3</span><h2>Bekreft</h2><p>Kontroller hovedopplysningene før kunden og prosjektet opprettes.</p></div></div>
+                <div class="aurora-review-grid">
+                    <div class="aurora-review-card"><span>KUNDE</span><strong data-review="client_name">—</strong><small data-review="contact">—</small><small data-review="email">—</small></div>
+                    <div class="aurora-review-card"><span>PROSJEKT</span><strong data-review="project_name">—</strong><small data-review="project_type">—</small><small data-review="project_date">—</small></div>
+                </div>
+                <div class="aurora-after-create"><strong>Etter opprettelse</strong><p>Du kommer til kundekortet. Derfra kan du fortsette med kontrakt, dokumenter, galleri og senere leveranse.</p></div>
+                <div class="aurora-step-actions"><button type="button" class="button aurora-prev-step" data-prev="2">← Tilbake</button><button type="submit" class="button button-primary">Opprett kunde og prosjekt</button></div>
+            </section>
         </form>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('aurora-new-project-form');
+            if (!form) return;
+            const steps = Array.from(form.querySelectorAll('.aurora-form-step'));
+            const indicators = Array.from(document.querySelectorAll('[data-step-indicator]'));
+            function showStep(n) {
+                steps.forEach(el => { const active = Number(el.dataset.step) === n; el.hidden = !active; el.classList.toggle('is-active', active); });
+                indicators.forEach(el => { const step = Number(el.dataset.stepIndicator); el.classList.toggle('active', step <= n); el.classList.toggle('is-current', step === n); });
+                if (n === 3) updateReview();
+                window.scrollTo({top: Math.max(0, form.getBoundingClientRect().top + window.scrollY - 150), behavior: 'smooth'});
+            }
+            function validStep(n) {
+                const step = form.querySelector('.aurora-form-step[data-step="'+n+'"]');
+                const fields = Array.from(step.querySelectorAll('[required]'));
+                for (const field of fields) { if (!field.checkValidity()) { field.reportValidity(); return false; } }
+                return true;
+            }
+            function value(name) { const el=form.elements[name]; return el ? (el.value || '').trim() : ''; }
+            function updateReview() {
+                const set=(key,val)=>{ const el=form.querySelector('[data-review="'+key+'"]'); if(el) el.textContent=val || '—'; };
+                set('client_name', value('client_name'));
+                set('contact', [value('first_name'),value('last_name')].filter(Boolean).join(' '));
+                set('email', value('email'));
+                set('project_name', value('project_name'));
+                set('project_type', value('project_type'));
+                set('project_date', value('project_date'));
+            }
+            form.querySelectorAll('.aurora-next-step').forEach(btn => btn.addEventListener('click', () => { const current=Number(btn.closest('.aurora-form-step').dataset.step); if(validStep(current)) showStep(Number(btn.dataset.next)); }));
+            form.querySelectorAll('.aurora-prev-step').forEach(btn => btn.addEventListener('click', () => showStep(Number(btn.dataset.prev))));
+            showStep(1);
+        });
+        </script>
 
     <?php elseif ($tab === 'clients') : ?>
         <?php $search=sanitize_text_field($_GET['s']??''); $group=sanitize_text_field($_GET['group']??''); $type=sanitize_key($_GET['ctype']??''); $clients=NLS1_Fotoportal_Admin::get_clients(true,$search,$group,$type); ?>
@@ -193,10 +263,68 @@
         <div class="nls1-panel"><h3>Logg</h3><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="9ls1_fotoportal_add_log"><input type="hidden" name="client_id" value="<?php echo esc_attr($client->id); ?>"><?php wp_nonce_field('9ls1_fotoportal_add_log'); ?><textarea name="message" rows="3" placeholder="Skriv notat..."></textarea><p><button class="button">Legg til notat</button></p></form><ul class="nls1-log"><?php foreach($logs as $l): ?><li><strong><?php echo esc_html($l->created_at); ?></strong> — <?php echo esc_html($l->message); ?></li><?php endforeach; ?></ul></div>
 
     <?php elseif ($tab === 'project_profile') : ?>
-        <?php $project=NLS1_Fotoportal_Admin::get_project((int)($_GET['project_id']??0)); if(!$project){echo '<div class="notice notice-error"><p>Prosjekt ikke funnet.</p></div>'; return;} $logs=NLS1_Fotoportal_Admin::get_logs(0,$project->id); ?>
-        <div class="nls1-profile-header"><div><h2><?php echo esc_html($project->project_name); ?></h2><p><?php echo esc_html($project->project_number); ?> · <a href="<?php echo esc_url(NLS1_Fotoportal_Admin::client_url($project->client_id)); ?>"><?php echo esc_html($project->client_name); ?></a> · <?php echo esc_html($project->project_type); ?></p></div><span class="nls1-status-badge"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span></div>
-        <div class="nls1-panel">
-            <h3>Rediger prosjekt</h3>
+        <?php
+        $project=NLS1_Fotoportal_Admin::get_project((int)($_GET['project_id']??0));
+        if(!$project){echo '<div class="notice notice-error"><p>Prosjekt ikke funnet.</p></div>'; return;}
+        $logs=NLS1_Fotoportal_Admin::get_logs(0,$project->id);
+        $project_contracts = NLS1_Fotoportal_Admin::get_project_contracts($project->id);
+        $gallery_unlocked = NLS1_Fotoportal_Admin::has_signed_contract($project->id);
+
+        $project_step = sanitize_key($_GET['project_step'] ?? 'overview');
+        $project_steps = ['overview','contracts','documents','gallery','delivery'];
+        if (!in_array($project_step, $project_steps, true)) $project_step = 'overview';
+
+        $project_step_url = function($step) use ($project) {
+            return add_query_arg('project_step', $step, NLS1_Fotoportal_Admin::project_url($project->id));
+        };
+
+        $project_date_display = !empty($project->project_date)
+            ? date_i18n('d.m.Y', strtotime($project->project_date))
+            : 'Ikke satt';
+        $project_location_display = !empty($project->location) ? $project->location : 'Ikke satt';
+        ?>
+        <section class="aurora-project-header">
+            <div class="aurora-project-title-row">
+                <div>
+                    <span class="aurora-kicker">PROSJEKT</span>
+                    <h2><?php echo esc_html($project->project_name); ?></h2>
+                    <p><?php echo esc_html($project->project_number); ?> · <a href="<?php echo esc_url(NLS1_Fotoportal_Admin::client_url($project->client_id)); ?>"><?php echo esc_html($project->client_name); ?></a> · <?php echo esc_html($project->project_type); ?></p>
+                </div>
+                <span class="nls1-status-badge"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span>
+            </div>
+
+            <div class="aurora-project-meta">
+                <div><span>Dato</span><strong><?php echo esc_html($project_date_display); ?></strong></div>
+                <div><span>Lokasjon</span><strong><?php echo esc_html($project_location_display); ?></strong></div>
+                <div><span>Kontrakt</span><strong class="<?php echo $gallery_unlocked ? 'is-ok' : 'is-waiting'; ?>"><?php echo $gallery_unlocked ? 'Signert' : 'Ikke signert'; ?></strong></div>
+                <div class="aurora-project-status-control">
+                    <span>Status</span>
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                        <input type="hidden" name="action" value="9ls1_fotoportal_update_project_status">
+                        <input type="hidden" name="project_id" value="<?php echo esc_attr($project->id); ?>">
+                        <?php wp_nonce_field('9ls1_fotoportal_update_project_status'); ?>
+                        <select name="status"><?php foreach(NLS1_Fotoportal_Admin::$project_statuses as $k=>$label): ?><option value="<?php echo esc_attr($k); ?>" <?php selected($project->status,$k); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select>
+                        <button class="button">Lagre</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <nav class="aurora-project-steps" aria-label="Prosjektflyt">
+            <a class="<?php echo $project_step==='overview'?'is-active':''; ?>" href="<?php echo esc_url($project_step_url('overview')); ?>"><span>1</span><strong>Prosjekt</strong><small>Info og status</small></a>
+            <a class="<?php echo $project_step==='contracts'?'is-active':''; ?>" href="<?php echo esc_url($project_step_url('contracts')); ?>"><span>2</span><strong>Kontrakt</strong><small>Avtale og signering</small></a>
+            <a class="<?php echo $project_step==='documents'?'is-active':''; ?>" href="<?php echo esc_url($project_step_url('documents')); ?>"><span>3</span><strong>Dokumenter</strong><small>Filer og underlag</small></a>
+            <?php if ($gallery_unlocked) : ?>
+                <a class="<?php echo $project_step==='gallery'?'is-active':''; ?>" href="<?php echo esc_url($project_step_url('gallery')); ?>"><span>4</span><strong>Galleri</strong><small>Bilder og proof</small></a>
+            <?php else : ?>
+                <span class="aurora-project-step-locked<?php echo $project_step==='gallery'?' is-active':''; ?>"><span>4</span><strong>Galleri 🔒</strong><small>Åpnes etter signering</small></span>
+            <?php endif; ?>
+            <a class="<?php echo $project_step==='delivery'?'is-active':''; ?>" href="<?php echo esc_url($project_step_url('delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Godkjenning og levering</small></a>
+        </nav>
+
+        <?php if ($project_step === 'overview') : ?>
+        <div class="nls1-panel aurora-project-section">
+            <div class="aurora-project-section-head"><span class="aurora-kicker">STEG 1</span><h3>Prosjektinformasjon</h3><p>Grunninformasjon, dato, lokasjon og prosjektstatus.</p></div>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="nls1-form">
                 <input type="hidden" name="action" value="9ls1_fotoportal_update_project">
                 <input type="hidden" name="project_id" value="<?php echo esc_attr($project->id); ?>">
@@ -211,11 +339,22 @@
                 <p><button class="button button-primary">Lagre prosjekt</button></p>
             </form>
         </div>
-        <div class="nls1-profile-grid"><div class="nls1-panel"><h3>Prosjektdetaljer</h3><p><strong>Dato:</strong> <?php echo esc_html($project->project_date); ?></p><p><strong>Lokasjon:</strong> <?php echo esc_html($project->location); ?></p><p><?php echo nl2br(esc_html($project->description)); ?></p></div>
-        <div class="nls1-panel"><h3>Status</h3><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="9ls1_fotoportal_update_project_status"><input type="hidden" name="project_id" value="<?php echo esc_attr($project->id); ?>"><?php wp_nonce_field('9ls1_fotoportal_update_project_status'); ?><select name="status"><?php foreach(NLS1_Fotoportal_Admin::$project_statuses as $k=>$v): ?><option value="<?php echo esc_attr($k); ?>" <?php selected($project->status,$k); ?>><?php echo esc_html($v); ?></option><?php endforeach; ?></select><button class="button button-primary">Oppdater status</button></form></div></div>
+        <div class="nls1-panel aurora-project-log"><h3>Prosjektnotater</h3><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="9ls1_fotoportal_add_log"><input type="hidden" name="project_id" value="<?php echo esc_attr($project->id); ?>"><?php wp_nonce_field('9ls1_fotoportal_add_log'); ?><textarea name="message" rows="3" placeholder="Skriv prosjektnotat..."></textarea><p><button class="button">Legg til notat</button></p></form><ul class="nls1-log"><?php foreach($logs as $l): ?><li><strong><?php echo esc_html($l->created_at); ?></strong> — <?php echo esc_html($l->message); ?></li><?php endforeach; ?></ul></div>
+        <div class="aurora-step-actions"><span></span><a class="button button-primary" href="<?php echo esc_url($project_step_url('contracts')); ?>">Neste: Kontrakt →</a></div>
+        <?php endif; ?>
+
         <?php $project_galleries = NLS1_Fotoportal_Admin::get_galleries($project->id); ?>
-        <div class="nls1-panel nls1-wide">
-            <h3>Gallerier</h3>
+        <?php if ($project_step === 'gallery' && !$gallery_unlocked) : ?>
+        <div class="nls1-panel nls1-wide aurora-project-section aurora-locked-panel">
+            <div class="aurora-lock-icon">🔒</div>
+            <span class="aurora-kicker">STEG 4</span>
+            <h3>Galleri er låst</h3>
+            <p>Minst én kontrakt må være signert før bilder kan lastes opp til dette prosjektet.</p>
+            <p><a class="button button-primary" href="<?php echo esc_url($project_step_url('contracts')); ?>">Gå til kontrakt</a></p>
+        </div>
+        <?php elseif ($project_step === 'gallery') : ?>
+        <div class="nls1-panel nls1-wide aurora-project-section">
+            <div class="aurora-project-section-head"><span class="aurora-kicker">STEG 4</span><h3>Galleri</h3><p>Last opp bilder, bygg preview og generer proof-materiale.</p></div>
             <table class="widefat striped">
                 <thead><tr><th>Galleri</th><th>Bilder</th><th>Nedlastbar til</th><th>Auto-slett</th><th>Backup</th><th>Status</th><th></th></tr></thead>
                 <tbody>
@@ -298,9 +437,17 @@
             </form>
         </div>
 
+        <?php if ($gallery_unlocked) : ?>
+        <div class="aurora-step-actions">
+            <a class="button" href="<?php echo esc_url($project_step_url('documents')); ?>">← Tilbake: Dokumenter</a>
+            <a class="button button-primary" href="<?php echo esc_url($project_step_url('delivery')); ?>">Neste: Leveranse →</a>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
         <?php $project_documents = NLS1_Fotoportal_Admin::get_documents($project->id); ?>
-        <div class="nls1-panel nls1-wide">
-            <h3>Dokumenter</h3>
+        <?php if ($project_step === 'documents') : ?>
+        <div class="nls1-panel nls1-wide aurora-project-section">
+            <div class="aurora-project-section-head"><span class="aurora-kicker">STEG 3</span><h3>Dokumenter</h3><p>Samle prosjektfiler, avtaler, guider og annen dokumentasjon.</p></div>
             <table class="widefat striped">
                 <thead><tr><th>Dokument</th><th>Type</th><th>Dato</th><th>Handling</th><th></th></tr></thead>
                 <tbody>
@@ -332,9 +479,18 @@
             </form>
         </div>
 
-        <?php $project_contracts = NLS1_Fotoportal_Admin::get_project_contracts($project->id); ?>
-        <div class="nls1-panel nls1-wide">
-            <h3>Kontrakter</h3>
+        <div class="aurora-step-actions">
+            <a class="button" href="<?php echo esc_url($project_step_url('contracts')); ?>">← Tilbake: Kontrakt</a>
+            <?php if ($gallery_unlocked) : ?>
+                <a class="button button-primary" href="<?php echo esc_url($project_step_url('gallery')); ?>">Neste: Galleri →</a>
+            <?php else : ?>
+                <span class="aurora-next-locked">🔒 Galleri åpnes når kontrakten er signert</span>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+        <?php if ($project_step === 'contracts') : ?>
+        <div class="nls1-panel nls1-wide aurora-project-section">
+            <div class="aurora-project-section-head"><span class="aurora-kicker">STEG 2</span><h3>Kontrakt og signering</h3><p>Opprett avtalen, send den til kunden og følg signeringsstatus.</p></div>
             <table class="widefat striped">
                 <thead><tr><th>Kontrakt</th><th>Signerer</th><th>Status</th><th>Signeringslenke</th><th></th></tr></thead>
                 <tbody>
@@ -369,9 +525,26 @@ Kunden bekrefter med dette at avtalen er lest og godkjent.</textarea></label>
                 </div>
                 <p><button class="button button-primary">Opprett kontrakt</button></p>
             </form>
+        <div class="aurora-step-actions">
+            <a class="button" href="<?php echo esc_url($project_step_url('overview')); ?>">← Tilbake: Prosjekt</a>
+            <a class="button button-primary" href="<?php echo esc_url($project_step_url('documents')); ?>">Neste: Dokumenter →</a>
+        </div>
         </div>
 
-        <div class="nls1-panel"><h3>Logg</h3><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="9ls1_fotoportal_add_log"><input type="hidden" name="project_id" value="<?php echo esc_attr($project->id); ?>"><?php wp_nonce_field('9ls1_fotoportal_add_log'); ?><textarea name="message" rows="3" placeholder="Skriv prosjektnotat..."></textarea><p><button class="button">Legg til notat</button></p></form><ul class="nls1-log"><?php foreach($logs as $l): ?><li><strong><?php echo esc_html($l->created_at); ?></strong> — <?php echo esc_html($l->message); ?></li><?php endforeach; ?></ul></div>
+        <?php endif; ?>
+
+        <?php if ($project_step === 'delivery') : ?>
+        <div class="nls1-panel nls1-wide aurora-project-section aurora-delivery-stage">
+            <div class="aurora-project-section-head"><span class="aurora-kicker">STEG 5</span><h3>Leveranse</h3><p>Klargjør prosjektet for kundeportal, godkjenning og endelig levering.</p></div>
+            <div class="aurora-delivery-grid">
+                <div><span class="aurora-delivery-label">Prosjektstatus</span><strong><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></strong><p>Status brukes videre når leveranseflyten kobles til kundeportalen.</p></div>
+                <div><span class="aurora-delivery-label">Gallerier</span><strong><?php echo esc_html(count($project_galleries)); ?></strong><p>Kontroller at preview, proof og eventuell nedlasting er klare.</p></div>
+                <div><span class="aurora-delivery-label">Neste modul</span><strong>Customer App / Portal</strong><p>Denne kobles inn etter admin-oppryddingen via et eget API-lag.</p></div>
+            </div>
+            <p><a class="button" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('deliveries')); ?>">Åpne leveranseoversikt</a></p>
+            <div class="aurora-step-actions"><a class="button" href="<?php echo esc_url($gallery_unlocked ? $project_step_url('gallery') : $project_step_url('documents')); ?>">← Tilbake</a><span></span></div>
+        </div>
+        <?php endif; ?>
 
     <?php elseif ($tab === 'contracts') : ?>
         <?php $contracts = NLS1_Fotoportal_Admin::get_contracts(true); ?>

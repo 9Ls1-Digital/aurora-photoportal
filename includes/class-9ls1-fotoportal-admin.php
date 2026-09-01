@@ -411,6 +411,17 @@ class NLS1_Fotoportal_Admin {
         return $wpdb->get_results($wpdb->prepare("SELECT * FROM $contracts WHERE project_id = %d ORDER BY created_at DESC", $project_id));
     }
 
+    public static function has_signed_contract($project_id) {
+        global $wpdb;
+        $contracts = self::table('contracts');
+        $count = (int)$wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $contracts WHERE project_id = %d AND status = %s",
+            (int)$project_id,
+            'signed'
+        ));
+        return $count > 0;
+    }
+
     public static function get_contract($contract_id) {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare("SELECT * FROM " . self::table('contracts') . " WHERE id = %d", $contract_id));
@@ -1216,6 +1227,15 @@ class NLS1_Fotoportal_Admin {
         $project = self::get_project($project_id);
         if (!$project) {
             wp_safe_redirect(self::fotoportal_url('galleries'));
+            exit;
+        }
+
+        // Aurora workflow gate: gallery production starts after a signed contract.
+        if (!self::has_signed_contract($project_id)) {
+            wp_safe_redirect(add_query_arg([
+                'project_step' => 'gallery',
+                'message' => 'gallery_contract_required',
+            ], self::project_url($project_id)));
             exit;
         }
 
