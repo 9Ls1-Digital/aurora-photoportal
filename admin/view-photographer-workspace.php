@@ -25,13 +25,13 @@ $view_titles = [
 $title = $view_titles[$view] ?? $view_titles['dashboard'];
 
 $legacy_links = [
-    'new' => NLS1_Fotoportal_Admin::fotoportal_url(['view'=>'new','aurora_legacy'=>'1']),
-    'customers' => NLS1_Fotoportal_Admin::fotoportal_url(['view'=>'clients','aurora_legacy'=>'1']),
-    'projects' => NLS1_Fotoportal_Admin::fotoportal_url(['view'=>'projects','aurora_legacy'=>'1']),
-    'contracts' => NLS1_Fotoportal_Admin::fotoportal_url(['view'=>'contracts','aurora_legacy'=>'1']),
-    'documents' => NLS1_Fotoportal_Admin::fotoportal_url(['view'=>'documents','aurora_legacy'=>'1']),
-    'galleries' => NLS1_Fotoportal_Admin::fotoportal_url(['view'=>'galleries','aurora_legacy'=>'1']),
-    'hq_delivery' => NLS1_Fotoportal_Admin::fotoportal_url(['view'=>'galleries','aurora_legacy'=>'1']),
+    'new' => NLS1_Fotoportal_Admin::fotoportal_url('new', ['aurora_legacy'=>'1']),
+    'customers' => NLS1_Fotoportal_Admin::fotoportal_url('clients', ['aurora_legacy'=>'1']),
+    'projects' => NLS1_Fotoportal_Admin::fotoportal_url('projects', ['aurora_legacy'=>'1']),
+    'contracts' => NLS1_Fotoportal_Admin::fotoportal_url('contracts', ['aurora_legacy'=>'1']),
+    'documents' => NLS1_Fotoportal_Admin::fotoportal_url('documents', ['aurora_legacy'=>'1']),
+    'galleries' => NLS1_Fotoportal_Admin::fotoportal_url('galleries', ['aurora_legacy'=>'1']),
+    'hq_delivery' => NLS1_Fotoportal_Admin::fotoportal_url('galleries', ['aurora_legacy'=>'1']),
 ];
 ?>
 <div class="aurora-workspace">

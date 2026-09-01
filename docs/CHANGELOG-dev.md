@@ -1,5 +1,10 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.12-fix1
+- Fix Photographer Workspace legacy-module links.
+- Pass the legacy Fotoportal tab as the correct first argument to `fotoportal_url()`.
+- Preserve `aurora_legacy=1` as a separate query argument so Kunder, Prosjekter, Kontrakter, Dokumenter and Gallerier open their intended existing views instead of returning to Dashboard.
+
 ## 0.7.1-dev.12
 - Add centralized Aurora Tenant Context.
 - Add additive `account_id` ownership to existing Fotoportal domain tables.
