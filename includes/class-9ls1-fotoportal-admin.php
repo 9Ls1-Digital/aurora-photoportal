@@ -186,8 +186,11 @@ class NLS1_Fotoportal_Admin {
     public static function generate_customer_number() {
         global $wpdb;
         $clients = self::table('clients');
-        $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $clients WHERE customer_number LIKE 'K-%'");
-        return 'K-' . str_pad((string) ($count + 1), 4, '0', STR_PAD_LEFT);
+        $count = (int)$wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $clients WHERE account_id=%d AND customer_number LIKE 'K-%%'",
+            self::tenant_account_id()
+        ));
+        return 'K-' . str_pad((string)($count + 1), 4, '0', STR_PAD_LEFT);
     }
 
     public static function get_clients($include_test = false, $search = '', $group = '', $type = '') {
@@ -313,6 +316,7 @@ class NLS1_Fotoportal_Admin {
 
         global $wpdb;
         $now = current_time('mysql');
+        $workspace = !empty($_POST['aurora_workspace']);
 
         $client_name = sanitize_text_field($_POST['client_name'] ?? '');
         $client_group = sanitize_text_field($_POST['client_group'] ?? '');
@@ -330,28 +334,18 @@ class NLS1_Fotoportal_Admin {
         $is_test = !empty($_POST['is_test']) ? 1 : 0;
 
         if (!$client_name || !$client_group || !$first_name || !$email || !$project_name || !$project_type) {
-            if (!empty($project_id)) {
-            wp_safe_redirect(self::fotoportal_url('project_profile', [
-                'project_id' => (int)$project_id,
-                'aurora_legacy' => '1',
-            ]));
-        } elseif (!empty($client_id)) {
-            wp_safe_redirect(self::fotoportal_url('client_profile', [
-                'client_id' => (int)$client_id,
-                'aurora_legacy' => '1',
-            ]));
-        } else {
-            wp_safe_redirect(self::fotoportal_url('clients', [
-                'aurora_legacy' => '1',
-            ]));
-        }
-        exit;
+            $target = ($workspace && class_exists('NLS1_Photographer_Workspace'))
+                ? NLS1_Photographer_Workspace::url('new', ['message' => 'missing_fields'])
+                : self::fotoportal_url('wizard', ['message' => 'missing_fields']);
+            wp_safe_redirect($target);
+            exit;
         }
 
+        $account_id = self::tenant_account_id();
         $customer_number = self::generate_customer_number();
 
-        $wpdb->insert(self::table('clients'), [
-            'account_id' => self::tenant_account_id(),
+        $ok = $wpdb->insert(self::table('clients'), [
+            'account_id' => $account_id,
             'customer_number' => $customer_number,
             'client_name' => $client_name,
             'client_group' => $client_group,
@@ -363,10 +357,12 @@ class NLS1_Fotoportal_Admin {
             'is_test' => $is_test,
             'created_at' => $now,
         ]);
+        if (!$ok) wp_die('Kunne ikke opprette kunde.');
+
         $client_id = (int)$wpdb->insert_id;
 
         $wpdb->insert(self::table('contacts'), [
-            'account_id' => self::tenant_account_id(),
+            'account_id' => $account_id,
             'client_id' => $client_id,
             'first_name' => $first_name,
             'last_name' => $last_name,
@@ -379,8 +375,8 @@ class NLS1_Fotoportal_Admin {
         ]);
 
         $project_number = self::generate_project_number($project_type);
-        $wpdb->insert(self::table('projects'), [
-            'account_id' => self::tenant_account_id(),
+        $ok = $wpdb->insert(self::table('projects'), [
+            'account_id' => $account_id,
             'client_id' => $client_id,
             'project_number' => $project_number,
             'project_name' => $project_name,
@@ -392,11 +388,19 @@ class NLS1_Fotoportal_Admin {
             'is_test' => $is_test,
             'created_at' => $now,
         ]);
-        $project_id = (int)$wpdb->insert_id;
+        if (!$ok) wp_die('Kunden ble opprettet, men prosjektet kunne ikke opprettes.');
 
+        $project_id = (int)$wpdb->insert_id;
         $this->log($client_id, $project_id, 'created', 'Kunde og prosjekt opprettet.', $is_test);
 
-        wp_safe_redirect(self::client_url($client_id) . '&message=created');
+        if ($workspace && class_exists('NLS1_Photographer_Workspace')) {
+            wp_safe_redirect(NLS1_Photographer_Workspace::url('customers', [
+                'customer_id' => $client_id,
+                'message' => 'created',
+            ]));
+        } else {
+            wp_safe_redirect(self::client_url($client_id) . '&message=created');
+        }
         exit;
     }
 

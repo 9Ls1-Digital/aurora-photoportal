@@ -1,5 +1,25 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.14-fix2
+- Use the configured Aurora branding logo in Photographer Workspace instead of the static `A` mark when a logo is available.
+- Apply the same branding logo to the mobile workspace header.
+- Increase customer search-field left padding so the search icon no longer overlaps typed text.
+
+## 0.7.1-dev.14-fix1
+- Show all tenant-owned customers in the native Photographer Workspace customer register.
+- Include customers/projects created as test data instead of silently hiding them.
+- Mark test customers with a visible `Test` status badge.
+
+## 0.7.1-dev.14
+- Move Customers into the native Aurora Photographer Workspace.
+- Add tenant-scoped customer list with search and filters.
+- Add native Aurora customer profile with contact details and project overview.
+- Move the new customer/project 3-step wizard into Photographer Workspace.
+- Redirect workspace-created customers directly to their new Aurora customer profile.
+- Repair required-field handling in the customer/project save handler.
+- Tenant-scope customer number generation.
+- Keep Projects and remaining modules on temporary legacy bridges for now.
+
 ## 0.7.1-dev.13-fix3
 - Fix the remaining Aurora Admin / System “Fotografvisning” links that still pointed directly to the legacy Fotoportal admin.
 - Route both photographer-view entry points to the new Photographer Workspace dashboard.

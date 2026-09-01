@@ -53,11 +53,11 @@ class NLS1_Photographer_Workspace {
         wp_enqueue_style('9ls1-fotoportal-admin', NLS1_FOTOPORTAL_PLUGIN_URL . 'assets/css/admin.css', [], NLS1_FOTOPORTAL_VERSION);
     }
 
-    public static function url($view = 'dashboard') {
-        return add_query_arg([
+    public static function url($view = 'dashboard', $args = []) {
+        return add_query_arg(array_merge([
             'page' => self::PAGE_SLUG,
             'workspace_view' => sanitize_key($view),
-        ], admin_url('admin.php'));
+        ], $args), admin_url('admin.php'));
     }
 
     public function render() {
