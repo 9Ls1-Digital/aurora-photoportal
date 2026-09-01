@@ -1,0 +1,25 @@
+<?php
+/**
+ * Plugin Name: 9Ls1 Fotoportal
+ * Description: Kundeportal for fotoprosjekter, kontrakter, signering og senere galleri/levering.
+ * Version: 0.7.0
+ * Author: 9Ls1 Digital
+ * Text Domain: 9ls1-fotoportal
+ */
+if (!defined('ABSPATH')) exit;
+
+define('NLS1_FOTOPORTAL_VERSION', '0.7.0');
+define('NLS1_FOTOPORTAL_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('NLS1_FOTOPORTAL_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-9ls1-fotoportal-activator.php';
+require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-9ls1-fotoportal-admin.php';
+require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-9ls1-fotoportal-frontend.php';
+require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-9ls1-fotoportal-pdf.php';
+
+register_activation_hook(__FILE__, ['NLS1_Fotoportal_Activator', 'activate']);
+
+if (is_admin()) {
+    new NLS1_Fotoportal_Admin();
+}
+new NLS1_Fotoportal_Frontend();

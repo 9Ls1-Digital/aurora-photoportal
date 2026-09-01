@@ -1,0 +1,134 @@
+/* 9Ls1 Fotoportal Admin */
+.nls1-fotoportal-admin .nls1-tabs{margin-top:20px}.nls1-fotoportal-admin .nls1-actions{margin:18px 0}
+.nls1-fotoportal-admin .nls1-card-grid{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:16px;margin-top:20px}
+.nls1-fotoportal-admin .nls1-card,.nls1-fotoportal-admin .nls1-panel,.nls1-fotoportal-admin .nls1-plugin-card,.nls1-profile-header{background:#fff;border:1px solid #dcdcde;border-radius:14px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.nls1-fotoportal-admin .nls1-card h2{margin:0 0 10px;font-size:14px}.nls1-fotoportal-admin .nls1-card p{margin:0;font-size:28px;font-weight:700}
+.nls1-fotoportal-admin .nls1-panel{max-width:1100px;margin-top:20px}.nls1-fotoportal-admin .nls1-wide{max-width:1400px}
+.nls1-fotoportal-admin .nls1-wizard{display:flex;gap:10px;margin-top:20px;max-width:1100px}.nls1-fotoportal-admin .nls1-step{flex:1;background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:14px;font-weight:600}.nls1-fotoportal-admin .nls1-step span{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:999px;background:#dcdcde;margin-right:8px}.nls1-fotoportal-admin .nls1-step.active{border-color:#2271b1}.nls1-fotoportal-admin .nls1-step.active span{background:#2271b1;color:#fff}
+.nls1-plugin-center .nls1-plugin-grid{display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:18px;margin-top:22px;max-width:1200px}.nls1-plugin-center .nls1-plugin-card{display:flex;gap:16px;text-decoration:none;color:inherit;min-height:150px}.nls1-plugin-center .nls1-plugin-card-active:hover{border-color:#2271b1}.nls1-plugin-center .nls1-plugin-card-muted{opacity:.72}.nls1-plugin-center .nls1-plugin-icon{width:54px;height:54px;border-radius:14px;background:#2271b1;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex:0 0 54px}.nls1-plugin-center h2{margin:0 0 8px}.nls1-plugin-center p{margin-top:0}.nls1-status-badge{display:inline-block;border-radius:999px;padding:4px 10px;background:#d1e7dd;color:#0f5132;font-size:12px;font-weight:700}.nls1-status-badge.muted{background:#f0f0f1;color:#50575e}
+.nls1-form-grid{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:16px}.nls1-form-grid label{font-weight:600}.nls1-form-grid input,.nls1-form-grid select,.nls1-form-grid textarea{display:block;width:100%;max-width:100%;margin-top:6px}.nls1-form-grid .nls1-full{grid-column:1/-1}.nls1-checkbox{display:flex!important;gap:8px;align-items:center}.nls1-checkbox input{width:auto!important;margin:0!important}
+.nls1-filter{display:flex;gap:10px;align-items:center;margin:12px 0 18px}.nls1-filter input,.nls1-filter select{min-width:180px}
+.nls1-profile-header{margin-top:20px;max-width:1400px;display:flex;justify-content:space-between;align-items:flex-start}.nls1-profile-header h2{margin:0 0 6px}.nls1-profile-header p{margin:0;color:#646970}
+.nls1-profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1400px}.nls1-mini-form{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}.nls1-mini-form input{width:100%}.nls1-log{margin:12px 0 0;padding-left:18px}.nls1-log li{margin-bottom:8px}
+
+.nls1-fotoportal-admin .button-small{font-size:12px;min-height:26px;line-height:24px;padding:0 8px}.nls1-profile-grid + .nls1-panel{max-width:1400px}.nls1-fotoportal-admin .notice{max-width:1100px;margin-top:14px}
+
+/* v0.3.2 responsive log fields */
+.nls1-fotoportal-admin textarea[name="message"]{
+    width:100%;
+    max-width:760px;
+    min-height:120px;
+    resize:vertical;
+}
+.nls1-fotoportal-admin .nls1-panel form textarea[name="message"] + p{
+    margin-top:10px;
+}
+@media (max-width: 900px){
+    .nls1-profile-grid{
+        grid-template-columns:1fr;
+    }
+    .nls1-fotoportal-admin .nls1-card-grid{
+        grid-template-columns:1fr 1fr;
+    }
+    .nls1-fotoportal-admin .nls1-wizard{
+        flex-direction:column;
+    }
+    .nls1-form-grid{
+        grid-template-columns:1fr;
+    }
+    .nls1-mini-form{
+        grid-template-columns:1fr;
+    }
+}
+@media (max-width: 600px){
+    .nls1-fotoportal-admin .nls1-card-grid{
+        grid-template-columns:1fr;
+    }
+    .nls1-filter{
+        flex-direction:column;
+        align-items:stretch;
+    }
+    .nls1-filter input,
+    .nls1-filter select,
+    .nls1-filter button{
+        width:100%;
+    }
+}
+
+.nls1-copy-input{
+    width:100%;
+    max-width:520px;
+    font-size:12px;
+}
+.nls1-fotoportal-admin textarea[name="contract_text"]{
+    width:100%;
+    min-height:260px;
+    resize:vertical;
+}
+
+.nls1-document-form .nls1-form-grid input[type=url]{
+    font-family:monospace;
+}
+.nls1-fotoportal-admin textarea[name="template_content"]{
+    width:100%;
+    min-height:280px;
+    resize:vertical;
+    font-family:Consolas, Monaco, monospace;
+}
+
+.nls1-image-preview-grid{
+    display:grid;
+    grid-template-columns:repeat(6,minmax(90px,1fr));
+    gap:12px;
+    padding:12px 0;
+}
+.nls1-image-preview{
+    background:#fff;
+    border:1px solid #dcdcde;
+    padding:8px;
+    text-align:center;
+}
+.nls1-image-preview img{
+    width:100%;
+    height:90px;
+    object-fit:cover;
+    display:block;
+    margin-bottom:6px;
+}
+.nls1-image-preview small{
+    display:block;
+    font-size:11px;
+    word-break:break-all;
+}
+@media (max-width: 900px){
+    .nls1-image-preview-grid{
+        grid-template-columns:repeat(3,minmax(90px,1fr));
+    }
+}
+@media (max-width: 600px){
+    .nls1-image-preview-grid{
+        grid-template-columns:repeat(2,minmax(90px,1fr));
+    }
+}
+
+.nls1-fotoportal-admin input[type=number]{
+    max-width:180px;
+}
+.nls1-image-preview img{
+    background:#f0f0f1;
+}
+
+.nls1-file-source{
+    opacity:.65;
+    font-size:10px!important;
+}
+.nls1-image-preview img{
+    height:110px;
+}
+
+.nls1-export-links{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin:8px 0 10px;
+}
