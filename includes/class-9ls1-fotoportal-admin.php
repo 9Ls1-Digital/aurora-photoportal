@@ -68,12 +68,18 @@ class NLS1_Fotoportal_Admin {
     public function register_menu() {
         add_menu_page('Aurora', 'Aurora', 'manage_options', self::MENU_SLUG, [$this, 'render_router'], 'dashicons-screenoptions', 58);
         add_submenu_page(self::MENU_SLUG, 'Aurora', 'Oversikt', 'manage_options', self::MENU_SLUG, [$this, 'render_router']);
+        add_submenu_page(self::MENU_SLUG, 'Aurora Fotoportal', 'Fotoportal', 'manage_options', 'nls1-fotoportal', [$this, 'render_fotoportal_entry']);
     }
 
     public function enqueue_assets($hook) {
-        if (strpos($hook, self::MENU_SLUG) === false) return;
+        if (strpos($hook, self::MENU_SLUG) === false && strpos($hook, 'nls1-fotoportal') === false) return;
         wp_enqueue_style('9ls1-fotoportal-admin', NLS1_FOTOPORTAL_PLUGIN_URL . 'assets/css/admin.css', [], NLS1_FOTOPORTAL_VERSION);
         wp_enqueue_media();
+    }
+
+    public function render_fotoportal_entry() {
+        $tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'dashboard';
+        include NLS1_FOTOPORTAL_PLUGIN_DIR . 'admin/view-fotoportal.php';
     }
 
     public function render_router() {
@@ -92,8 +98,7 @@ class NLS1_Fotoportal_Admin {
 
     public static function fotoportal_url($tab = 'dashboard', $args = []) {
         return add_query_arg(array_merge([
-            'page' => self::MENU_SLUG,
-            'module' => 'fotoportal',
+            'page' => 'nls1-fotoportal',
             'tab' => sanitize_key($tab),
         ], $args), admin_url('admin.php'));
     }

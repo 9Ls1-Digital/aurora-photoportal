@@ -187,3 +187,33 @@
     background:#5837e8;
     border-color:#5837e8;
 }
+
+
+/* Aurora Fotoportal admin shell — v0.7.1-dev.2 */
+.aurora-module-header{
+    display:flex;justify-content:space-between;gap:24px;align-items:flex-end;
+    max-width:1400px;padding:24px 28px;margin:18px 0 14px;
+    background:linear-gradient(120deg,#fff 0%,#fbf9ff 62%,#f4efff 100%);
+    border:1px solid var(--aurora-border);border-radius:18px;
+    box-shadow:0 8px 30px rgba(48,32,78,.06)
+}
+.aurora-module-header h1{margin:3px 0 6px!important}.aurora-module-header .description{margin:0;color:var(--aurora-muted)}
+.aurora-header-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.aurora-module-nav{max-width:1400px;display:flex;gap:10px;flex-wrap:wrap;padding:10px;background:#fff;border:1px solid var(--aurora-border);border-radius:14px;margin-bottom:22px}
+.aurora-nav-group{display:flex;align-items:center;gap:6px;padding:4px 7px;border-right:1px solid #eee9f1}.aurora-nav-group:last-child{border-right:0}
+.aurora-nav-group-label{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#8b8393;padding:0 5px}
+.aurora-nav-items{display:flex;gap:4px;flex-wrap:wrap}.aurora-nav-link{display:inline-flex;align-items:center;min-height:34px;padding:0 10px;border-radius:9px;text-decoration:none;color:#4b4552;font-weight:600;font-size:13px}
+.aurora-nav-link:hover{background:#f6f2ff;color:var(--aurora-accent)}.aurora-nav-link.is-active{background:#eee8ff;color:#5130d7;box-shadow:inset 0 0 0 1px #ded2ff}
+.aurora-section-heading{max-width:1400px;margin:26px 0 4px}.aurora-section-heading h2{font-size:23px;margin:2px 0 3px}.aurora-section-heading p{margin:0;color:var(--aurora-muted)}
+.aurora-kicker{display:block;color:var(--aurora-accent);font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px}
+.nls1-fotoportal-admin .aurora-stat-grid{max-width:1400px}.nls1-fotoportal-admin .aurora-stat-card{text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.nls1-fotoportal-admin .aurora-stat-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--aurora-accent),var(--aurora-accent-2));opacity:.75}
+.nls1-fotoportal-admin .aurora-stat-card:hover{border-color:#d9cff7;box-shadow:0 9px 24px rgba(48,32,78,.08);transform:translateY(-1px)}
+.aurora-stat-label{font-size:13px;font-weight:700;color:#686071}.nls1-fotoportal-admin .aurora-stat-card p{margin:7px 0 10px;font-size:32px}.aurora-stat-card small{color:#766e7f}
+.aurora-dashboard-columns{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:18px;max-width:1400px}.nls1-fotoportal-admin .aurora-dashboard-columns .nls1-panel{max-width:none;margin-top:18px}
+.aurora-command-panel h2,.aurora-roadmap-panel h2{margin-top:4px}.aurora-quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.aurora-quick-actions a{display:flex;flex-direction:column;gap:4px;padding:15px 16px;text-decoration:none;background:#faf9fb;border:1px solid #eee9f1;border-radius:12px;color:var(--aurora-ink)}
+.aurora-quick-actions a:hover{background:#f6f2ff;border-color:#dcd0ff}.aurora-quick-actions span{color:var(--aurora-muted);font-size:12px;line-height:1.45}
+.aurora-roadmap-panel{background:linear-gradient(150deg,#2d2537 0%,#3b2f49 100%)!important;border-color:#3b2f49!important;color:#fff}.aurora-roadmap-panel .aurora-kicker{color:#cfb7ff}.aurora-roadmap-panel h2{color:#fff}.aurora-roadmap-panel p{color:#d9d1df;line-height:1.55}
+.aurora-roadmap-steps{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}.aurora-roadmap-steps span{font-size:11px;padding:6px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.16);color:#d8cfdf}.aurora-roadmap-steps span.is-current{background:#7b55ff;border-color:#8f6dff;color:#fff}
+@media(max-width:1050px){.aurora-module-header{align-items:flex-start;flex-direction:column}.aurora-dashboard-columns{grid-template-columns:1fr}.aurora-nav-group{border-right:0;width:100%;align-items:flex-start;flex-direction:column}.aurora-nav-group-label{padding-top:4px}}
+@media(max-width:700px){.aurora-module-header{padding:19px}.aurora-header-actions{width:100%;justify-content:flex-start}.aurora-quick-actions{grid-template-columns:1fr}.aurora-module-nav{padding:8px}.aurora-nav-items{width:100%}.aurora-nav-link{flex:1 1 auto;justify-content:center}}

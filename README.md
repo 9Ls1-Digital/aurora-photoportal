@@ -11,3 +11,7 @@ Aurora Fotoportal is the photography workflow and customer-delivery module devel
 Existing `9ls1` / `NLS1` technical identifiers, WordPress option names and database structures are intentionally retained until a controlled migration is required. Aurora is introduced first as the product/platform layer.
 
 See `/docs` for architecture and Git workflow.
+
+
+## v0.7.1-dev.2
+Admin UX checkpoint: dedicated Fotoportal submenu, grouped Aurora navigation, dashboard KPI cards and quick actions. No database or media workflow changes.

@@ -1,13 +1,36 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <div class="wrap nls1-fotoportal-admin">
-    <div class="nls1-aurora-eyebrow">Aurora</div><h1>Aurora Fotoportal</h1>
-    <p class="description">Kunder, prosjekter, kontrakter, gallerier, leveranser og ressurser samlet i én modul.</p>
-    <div class="nls1-actions"><a class="button" href="<?php echo esc_url(NLS1_Fotoportal_Admin::dashboard_url()); ?>">Tilbake til Aurora</a></div>
-    <nav class="nav-tab-wrapper nls1-tabs">
-        <?php foreach (['dashboard'=>'Dashboard','wizard'=>'Ny kunde/prosjekt','clients'=>'Kunder','projects'=>'Prosjekter','contracts'=>'Kontrakter','documents'=>'Dokumenter','galleries'=>'Gallerier','deliveries'=>'Leveranser','resources'=>'Ressurser','shop'=>'Nettbutikk','settings'=>'Innstillinger'] as $key=>$label): ?>
-            <a class="nav-tab<?php echo esc_attr(NLS1_Fotoportal_Admin::active_tab($tab, $key)); ?>" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url($key)); ?>"><?php echo esc_html($label); ?></a>
+    <header class="aurora-module-header">
+        <div>
+            <div class="nls1-aurora-eyebrow">Aurora / Fotoportal</div>
+            <h1>Aurora Fotoportal</h1>
+            <p class="description">Kunder, prosjekter, kontrakter, gallerier og leveranser samlet i én arbeidsflate.</p>
+        </div>
+        <div class="aurora-header-actions">
+            <a class="button" href="<?php echo esc_url(NLS1_Fotoportal_Admin::dashboard_url()); ?>">Aurora-oversikt</a>
+            <a class="button button-primary" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('wizard')); ?>">+ Ny kunde / prosjekt</a>
+        </div>
+    </header>
+
+    <?php
+    $nav_groups = [
+        'Arbeid' => ['dashboard'=>'Dashboard','wizard'=>'Ny kunde/prosjekt','clients'=>'Kunder','projects'=>'Prosjekter'],
+        'Produksjon' => ['contracts'=>'Kontrakter','documents'=>'Dokumenter','galleries'=>'Gallerier','deliveries'=>'Leveranser'],
+        'System' => ['resources'=>'Ressurser','shop'=>'Nettbutikk','settings'=>'Innstillinger'],
+    ];
+    ?>
+    <div class="aurora-module-nav" aria-label="Fotoportal navigasjon">
+        <?php foreach ($nav_groups as $group_label => $items): ?>
+            <div class="aurora-nav-group">
+                <span class="aurora-nav-group-label"><?php echo esc_html($group_label); ?></span>
+                <div class="aurora-nav-items">
+                    <?php foreach ($items as $key => $label): ?>
+                        <a class="aurora-nav-link<?php echo $tab === $key ? ' is-active' : ''; ?>" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url($key)); ?>"><?php echo esc_html($label); ?></a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
         <?php endforeach; ?>
-    </nav>
+    </div>
 
     <?php if (isset($_GET['message']) && $_GET['message'] === 'client_updated') : ?><div class="notice notice-success"><p>Kundeinformasjon er oppdatert.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message'] === 'project_updated') : ?><div class="notice notice-success"><p>Prosjektinformasjon er oppdatert.</p></div><?php endif; ?>
@@ -38,12 +61,35 @@
     <?php if (isset($_GET['message']) && $_GET['message'] === 'proof_pdf_failed') : ?><div class="notice notice-error"><p>PDF kunne ikke genereres.</p></div><?php endif; ?>
 
     <?php if ($tab === 'dashboard') : ?>
-        <div class="nls1-actions"><a class="button button-primary" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('wizard')); ?>">Ny kunde/prosjekt</a></div>
-        <div class="nls1-card-grid">
-            <div class="nls1-card"><h2>Kunder</h2><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('clients', 'is_test = 0')); ?></p></div>
-            <div class="nls1-card"><h2>Kontakter</h2><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('contacts', 'is_test = 0')); ?></p></div>
-            <div class="nls1-card"><h2>Prosjekter</h2><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('projects', 'is_test = 0')); ?></p></div>
-            <div class="nls1-card"><h2>Testdata</h2><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('clients', 'is_test = 1')); ?></p></div>
+        <section class="aurora-section-heading">
+            <div><span class="aurora-kicker">OVERSIKT</span><h2>Arbeidsstatus</h2><p>Et raskt bilde av Fotoportal akkurat nå.</p></div>
+        </section>
+        <div class="nls1-card-grid aurora-stat-grid">
+            <a class="nls1-card aurora-stat-card" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('clients')); ?>"><span class="aurora-stat-label">Kunder</span><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('clients', 'is_test = 0')); ?></p><small>Åpne kunderegister →</small></a>
+            <a class="nls1-card aurora-stat-card" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('projects')); ?>"><span class="aurora-stat-label">Prosjekter</span><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('projects', 'is_test = 0')); ?></p><small>Se alle prosjekter →</small></a>
+            <a class="nls1-card aurora-stat-card" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('galleries')); ?>"><span class="aurora-stat-label">Gallerier</span><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('galleries')); ?></p><small>Administrer gallerier →</small></a>
+            <a class="nls1-card aurora-stat-card" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('contracts')); ?>"><span class="aurora-stat-label">Kontrakter</span><p><?php echo esc_html(NLS1_Fotoportal_Admin::count_rows('contracts')); ?></p><small>Åpne kontrakter →</small></a>
+        </div>
+
+        <div class="aurora-dashboard-columns">
+            <section class="nls1-panel aurora-command-panel">
+                <span class="aurora-kicker">HURTIGHANDLINGER</span>
+                <h2>Hva vil du gjøre?</h2>
+                <div class="aurora-quick-actions">
+                    <a href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('wizard')); ?>"><strong>Ny kunde / prosjekt</strong><span>Start ny fotografering og opprett kunden samtidig.</span></a>
+                    <a href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('galleries')); ?>"><strong>Gallerier</strong><span>Last opp, regenerer preview og lag proof-PDF.</span></a>
+                    <a href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('documents')); ?>"><strong>Dokumenter</strong><span>Finn kontrakter, avtaler og prosjektfiler.</span></a>
+                    <a href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url('settings')); ?>"><strong>Branding & innstillinger</strong><span>Logo, vannmerke og Premium Proof-oppsett.</span></a>
+                </div>
+            </section>
+            <section class="nls1-panel aurora-roadmap-panel">
+                <span class="aurora-kicker">AURORA READY</span>
+                <h2>Kundeportalen kommer inn som modul</h2>
+                <p>Fotoportal er fortsatt selvstendig, men nye kundevendte funksjoner bygges mot et stabilt API-lag slik at Aurora senere kan levere felles tjenester.</p>
+                <div class="aurora-roadmap-steps">
+                    <span class="is-current">Admin UX</span><span>Customer App</span><span>Portal/API</span><span>Levering</span>
+                </div>
+            </section>
         </div>
 
     <?php elseif ($tab === 'wizard') : ?>
