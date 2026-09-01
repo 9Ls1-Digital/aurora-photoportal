@@ -66,9 +66,17 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function register_menu() {
-        add_menu_page('Aurora', 'Aurora', 'manage_options', self::MENU_SLUG, [$this, 'render_router'], 'dashicons-screenoptions', 58);
-        add_submenu_page(self::MENU_SLUG, 'Aurora', 'Oversikt', 'manage_options', self::MENU_SLUG, [$this, 'render_router']);
-        add_submenu_page(self::MENU_SLUG, 'Aurora Fotoportal', 'Fotoportal', 'manage_options', 'nls1-fotoportal', [$this, 'render_fotoportal_entry']);
+        // Photographer workspace is intentionally hidden from the normal
+        // Aurora platform-owner navigation. It remains available explicitly
+        // as a development/support view until photographer account login exists.
+        add_submenu_page(
+            null,
+            'Aurora Fotoportal – Fotografvisning',
+            'Aurora Fotoportal',
+            'manage_options',
+            'nls1-fotoportal',
+            [$this, 'render_fotoportal_entry']
+        );
     }
 
     public function enqueue_assets($hook) {

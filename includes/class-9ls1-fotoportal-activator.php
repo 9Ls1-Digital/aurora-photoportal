@@ -3,6 +3,9 @@ if (!defined('ABSPATH')) exit;
 
 class NLS1_Fotoportal_Activator {
     public static function activate() {
+        if (class_exists('NLS1_Aurora_Account_Platform')) {
+            NLS1_Aurora_Account_Platform::maybe_install();
+        }
         global $wpdb;
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         $charset_collate = $wpdb->get_charset_collate();

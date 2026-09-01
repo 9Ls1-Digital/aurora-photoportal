@@ -1,5 +1,17 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.10
+- Add Aurora Account Platform foundation.
+- Replace normal Aurora owner dashboard with platform-only administration.
+- Add Photographer Accounts with a default `9Ls1 Foto` account.
+- Add per-account module entitlements.
+- Add licenses with status, validity, user limits and storage quota.
+- Add Aurora platform branding settings.
+- Hide the photographer/customer workspace from normal Aurora owner navigation.
+- Keep the existing Fotoportal workspace available explicitly as development/support mode.
+- Add additive account/module/license database tables.
+- Document the platform/photographer boundary and current tenant-isolation limitation in ADR-004.
+
 ## 0.7.1-dev.9
 - Move project date, location, contract state and editable status into the fixed project header.
 - Remove duplicate Project Details and Status panels from step 1.

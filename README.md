@@ -25,3 +25,7 @@ Admin UX checkpoint: dedicated Fotoportal submenu, grouped Aurora navigation, da
 
 ### dev.5
 Third-party admin notices are relocated above the Aurora module header.
+
+
+## 0.7.1-dev.10 — Account Platform Foundation
+Aurora Admin now separates platform-owner administration from the photographer workspace. Photographer Accounts, licenses, module entitlements and platform branding are introduced as additive infrastructure. Existing Fotoportal domain data is not yet tenant-migrated.
