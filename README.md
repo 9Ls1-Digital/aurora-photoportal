@@ -13,5 +13,15 @@ Existing `9ls1` / `NLS1` technical identifiers, WordPress option names and datab
 See `/docs` for architecture and Git workflow.
 
 
-## v0.7.1-dev.2
+## v0.7.1-dev.3
 Admin UX checkpoint: dedicated Fotoportal submenu, grouped Aurora navigation, dashboard KPI cards and quick actions. No database or media workflow changes.
+
+
+## v0.7.1-dev.3
+- Release ZIP is packaged with the stable technical root folder `9ls1-fotoportal/`.
+- This allows WordPress to recognize uploads as updates to the existing Aurora Fotoportal plugin and offer replacement.
+- No database, gallery, PDF or workflow logic changes in this build.
+
+
+### dev.5
+Third-party admin notices are relocated above the Aurora module header.

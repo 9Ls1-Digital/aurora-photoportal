@@ -1,4 +1,15 @@
+# Development Changelog
+
+## 0.7.1-dev.4
+- Keep the installed plugin directory identity from dev.2 so WordPress can replace the existing plugin during ZIP upload.
+- No database, gallery, PDF or workflow changes.
+
 # Development changelog
+
+## 0.7.1-dev.3
+- Fix release packaging: ZIP now contains the stable `9ls1-fotoportal/` plugin root.
+- Keeps the visible product name **Aurora Fotoportal**.
+- No functional/database changes.
 
 ## 0.7.1-dev.1 — Aurora admin baseline
 - Renamed visible WordPress admin hub from **9Ls1 Plugins** to **Aurora**.
@@ -15,3 +26,8 @@
 - Added Aurora-ready roadmap/status panel.
 - Kept existing database schema, handlers, gallery and PDF logic unchanged.
 - Legacy Aurora router remains available for compatibility; new internal links use the dedicated Fotoportal admin page.
+
+## 0.7.1-dev.5
+- Move third-party WordPress admin notices out of the Aurora Fotoportal hero/header.
+- Preserve Fotoportal's own workflow/status notices in their existing locations.
+- Keep the dev.2 technical plugin folder for in-place WordPress replacement updates.

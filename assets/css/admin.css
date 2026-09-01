@@ -217,3 +217,11 @@
 .aurora-roadmap-steps{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}.aurora-roadmap-steps span{font-size:11px;padding:6px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.16);color:#d8cfdf}.aurora-roadmap-steps span.is-current{background:#7b55ff;border-color:#8f6dff;color:#fff}
 @media(max-width:1050px){.aurora-module-header{align-items:flex-start;flex-direction:column}.aurora-dashboard-columns{grid-template-columns:1fr}.aurora-nav-group{border-right:0;width:100%;align-items:flex-start;flex-direction:column}.aurora-nav-group-label{padding-top:4px}}
 @media(max-width:700px){.aurora-module-header{padding:19px}.aurora-header-actions{width:100%;justify-content:flex-start}.aurora-quick-actions{grid-template-columns:1fr}.aurora-module-nav{padding:8px}.aurora-nav-items{width:100%}.aurora-nav-link{flex:1 1 auto;justify-content:center}}
+
+/* External WordPress notices belong above the Aurora module header. */
+.aurora-external-notices{max-width:1400px;margin:12px 0 0}
+.aurora-external-notices:empty{display:none}
+.aurora-external-notices .notice,
+.aurora-external-notices .updated,
+.aurora-external-notices .error,
+.aurora-external-notices .update-nag{margin:0 0 10px!important;max-width:none!important}

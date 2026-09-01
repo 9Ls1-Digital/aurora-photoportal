@@ -1,5 +1,6 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <div class="wrap nls1-fotoportal-admin">
+    <div class="aurora-external-notices" aria-live="polite"></div>
     <header class="aurora-module-header">
         <div>
             <div class="nls1-aurora-eyebrow">Aurora / Fotoportal</div>
@@ -590,4 +591,30 @@ jQuery(function($){
         frame.open();
     });
 });
+</script>
+
+<script>
+(function(){
+    function relocateAuroraAdminNotices(){
+        var wrap = document.querySelector('.nls1-fotoportal-admin');
+        if (!wrap) return;
+        var target = wrap.querySelector('.aurora-external-notices');
+        var header = wrap.querySelector('.aurora-module-header');
+        if (!target || !header) return;
+
+        header.querySelectorAll('.notice, .updated, .error, .update-nag').forEach(function(notice){
+            target.appendChild(notice);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', relocateAuroraAdminNotices);
+    } else {
+        relocateAuroraAdminNotices();
+    }
+
+    var observer = new MutationObserver(relocateAuroraAdminNotices);
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.setTimeout(function(){ observer.disconnect(); }, 5000);
+})();
 </script>
