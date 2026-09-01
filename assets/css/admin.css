@@ -132,3 +132,58 @@
     gap:6px;
     margin:8px 0 10px;
 }
+
+
+/* Aurora admin skin — v0.7.1-dev.1
+   Visual layer only. Existing NLS1 technical identifiers remain unchanged. */
+.nls1-fotoportal-admin{
+    --aurora-ink:#231f2d;
+    --aurora-muted:#6f6878;
+    --aurora-surface:#ffffff;
+    --aurora-border:#e7e2eb;
+    --aurora-accent:#6d4aff;
+    --aurora-accent-2:#c044ff;
+}
+.nls1-fotoportal-admin>h1{
+    color:var(--aurora-ink);
+    font-size:30px;
+    line-height:1.15;
+    margin-top:4px;
+}
+.nls1-aurora-eyebrow{
+    margin-top:18px;
+    margin-bottom:2px;
+    color:var(--aurora-accent);
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+}
+.nls1-fotoportal-admin>.description{color:var(--aurora-muted);font-size:14px}
+.nls1-plugin-center .nls1-plugin-card{
+    border-color:var(--aurora-border);
+    transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;
+}
+.nls1-plugin-center .nls1-plugin-card-active:hover{
+    border-color:var(--aurora-accent);
+    box-shadow:0 8px 26px rgba(64,45,94,.10);
+    transform:translateY(-1px);
+}
+.nls1-plugin-center .nls1-plugin-icon{
+    background:linear-gradient(145deg,var(--aurora-accent),var(--aurora-accent-2));
+}
+.nls1-fotoportal-admin .nav-tab-active,
+.nls1-fotoportal-admin .nav-tab-active:focus,
+.nls1-fotoportal-admin .nav-tab-active:hover{
+    color:var(--aurora-ink);
+    border-bottom-color:#f0f0f1;
+}
+.nls1-fotoportal-admin .button-primary{
+    background:var(--aurora-accent);
+    border-color:var(--aurora-accent);
+}
+.nls1-fotoportal-admin .button-primary:hover,
+.nls1-fotoportal-admin .button-primary:focus{
+    background:#5837e8;
+    border-color:#5837e8;
+}

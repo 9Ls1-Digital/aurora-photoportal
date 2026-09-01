@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name: 9Ls1 Fotoportal
- * Description: Kundeportal for fotoprosjekter, kontrakter, signering og senere galleri/levering.
- * Version: 0.7.0
+ * Plugin Name: Aurora Fotoportal
+ * Description: Aurora Fotoportal – kundeportal for fotoprosjekter, kontrakter, gallerier og levering.
+ * Version: 0.7.1-dev.1
  * Author: 9Ls1 Digital
  * Text Domain: 9ls1-fotoportal
  */
 if (!defined('ABSPATH')) exit;
 
-define('NLS1_FOTOPORTAL_VERSION', '0.7.0');
+define('NLS1_FOTOPORTAL_VERSION', '0.7.1-dev.1');
 define('NLS1_FOTOPORTAL_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('NLS1_FOTOPORTAL_PLUGIN_URL', plugin_dir_url(__FILE__));
 

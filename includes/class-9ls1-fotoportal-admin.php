@@ -66,8 +66,8 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function register_menu() {
-        add_menu_page('9Ls1 Plugins', '9Ls1 Plugins', 'manage_options', self::MENU_SLUG, [$this, 'render_router'], 'dashicons-screenoptions', 58);
-        add_submenu_page(self::MENU_SLUG, 'Dashboard', 'Dashboard', 'manage_options', self::MENU_SLUG, [$this, 'render_router']);
+        add_menu_page('Aurora', 'Aurora', 'manage_options', self::MENU_SLUG, [$this, 'render_router'], 'dashicons-screenoptions', 58);
+        add_submenu_page(self::MENU_SLUG, 'Aurora', 'Oversikt', 'manage_options', self::MENU_SLUG, [$this, 'render_router']);
     }
 
     public function enqueue_assets($hook) {
@@ -969,61 +969,6 @@ class NLS1_Fotoportal_Admin {
         }
     }
 
-
-    public static function pdf_hex_to_rgb($hex, $fallback = [17,24,39]) {
-        $hex = ltrim((string)$hex, '#');
-        if (strlen($hex) !== 6) return $fallback;
-        return [hexdec(substr($hex,0,2)), hexdec(substr($hex,2,2)), hexdec(substr($hex,4,2))];
-    }
-
-    public static function pdf_media_url_to_path($url) {
-        if (!$url) return '';
-        $id = attachment_url_to_postid($url);
-        if ($id) {
-            $path = get_attached_file($id);
-            if ($path && file_exists($path)) return $path;
-        }
-        $upload = wp_upload_dir();
-        if (!empty($upload['baseurl']) && strpos($url, $upload['baseurl']) === 0) {
-            $relative = ltrim(str_replace($upload['baseurl'], '', $url), '/');
-            $candidate = trailingslashit($upload['basedir']) . $relative;
-            if (file_exists($candidate)) return $candidate;
-        }
-        return '';
-    }
-
-    public static function pdf_ensure_jpeg($path, $suffix = 'pdf') {
-        if (!$path || !file_exists($path)) return '';
-        $info = @getimagesize($path);
-        if (!$info) return '';
-        if (($info['mime'] ?? '') === 'image/jpeg') return $path;
-        if (!function_exists('imagecreatetruecolor')) return '';
-        if ($info['mime'] === 'image/png') $src = @imagecreatefrompng($path);
-        elseif ($info['mime'] === 'image/webp' && function_exists('imagecreatefromwebp')) $src = @imagecreatefromwebp($path);
-        else return '';
-        if (!$src) return '';
-        $w = imagesx($src); $h = imagesy($src);
-        $dst = imagecreatetruecolor($w, $h);
-        $white = imagecolorallocate($dst, 255, 255, 255);
-        imagefilledrectangle($dst, 0, 0, $w, $h, $white);
-        imagecopy($dst, $src, 0, 0, 0, 0, $w, $h);
-        $tmp = trailingslashit(get_temp_dir()) . sanitize_file_name($suffix . '-' . md5($path . filemtime($path)) . '.jpg');
-        imagejpeg($dst, $tmp, 90);
-        imagedestroy($src); imagedestroy($dst);
-        return file_exists($tmp) ? $tmp : '';
-    }
-
-    public static function pdf_draw_qr_placeholder($pdf, $x, $y) {
-        $pdf->rect_fill($x, $y, 58, 58, 0.92);
-        $pdf->rect_rgb($x+6, $y+6, 14, 14, 45,45,45);
-        $pdf->rect_rgb($x+38, $y+6, 14, 14, 45,45,45);
-        $pdf->rect_rgb($x+6, $y+38, 14, 14, 45,45,45);
-        for ($i=0; $i<5; $i++) {
-            $pdf->rect_rgb($x+24+($i*5), $y+25, 3, 3, 45,45,45);
-            $pdf->rect_rgb($x+28, $y+30+($i*4), 3, 3, 45,45,45);
-        }
-    }
-
     public static function get_gallery_export_pdfs($gallery) {
         if (!$gallery || empty($gallery->base_dir) || empty($gallery->base_url)) return [];
         $dir = trailingslashit($gallery->base_dir) . 'export/';
@@ -1063,38 +1008,38 @@ class NLS1_Fotoportal_Admin {
         $branding = self::branding_settings();
         $images = self::get_gallery_images($gallery_id, 10000);
 
-        $accent = self::pdf_hex_to_rgb($branding['pdf_accent_color'] ?? '#111827', [17,24,39]);
-        $soft = [245, 242, 238];
+        $accent = self::hex_to_rgb($branding['pdf_accent_color'] ?? '#111827', [17,24,39]);
+        $gallery_url = !empty($branding['pdf_gallery_url']) ? $branding['pdf_gallery_url'] : home_url('/galleri/' . sanitize_title($project->project_number));
 
         $usable = [];
         foreach ($images as $img) {
             $path = (!empty($img->preview_path) && file_exists($img->preview_path)) ? $img->preview_path : '';
             if (!$path && !empty($img->thumbnail_path) && file_exists($img->thumbnail_path)) $path = $img->thumbnail_path;
             if ($path) {
-                $jpeg = self::pdf_ensure_jpeg($path, 'preview');
+                $jpeg = self::ensure_pdf_jpeg($path, 'preview');
                 if ($jpeg) $usable[] = [$img, $jpeg];
             }
         }
 
         $cover_path = '';
         if (!empty($branding['pdf_cover_image_url'])) {
-            $cover_path = self::pdf_ensure_jpeg(self::pdf_media_url_to_path($branding['pdf_cover_image_url']), 'cover');
+            $cover_path = self::ensure_pdf_jpeg(self::media_url_to_path($branding['pdf_cover_image_url']), 'cover');
         }
         if (!$cover_path && !empty($usable[0][1])) $cover_path = $usable[0][1];
 
         $logo_path = '';
         if (!empty($branding['watermark_logo_url'])) {
-            $logo_path = self::pdf_ensure_jpeg(self::pdf_media_url_to_path($branding['watermark_logo_url']), 'logo');
+            $logo_path = self::ensure_pdf_jpeg(self::media_url_to_path($branding['watermark_logo_url']), 'logo');
         }
 
         $signature_path = '';
         if (!empty($branding['pdf_signature_image_url'])) {
-            $signature_path = self::pdf_ensure_jpeg(self::pdf_media_url_to_path($branding['pdf_signature_image_url']), 'signature');
+            $signature_path = self::ensure_pdf_jpeg(self::media_url_to_path($branding['pdf_signature_image_url']), 'signature');
         }
 
         $pdf = new NLS1_Fotoportal_PDF();
 
-        // COVER: image background + soft transparent-style boxes
+        // Premium cover
         $pdf->add_page();
         if ($cover_path) {
             $pdf->image($cover_path, 0, 0, 595, 842);
@@ -1102,75 +1047,63 @@ class NLS1_Fotoportal_Admin {
             $pdf->rect_rgb(0, 0, 595, 842, $accent[0], $accent[1], $accent[2]);
         }
 
-        // Soft overlay panel, not hard black frame
-        $pdf->rect_rgb(42, 42, 265, 758, 32, 37, 43);
-        $pdf->rect_rgb(60, 60, 229, 720, 40, 45, 50);
+        $pdf->rect_rgb(38, 50, 265, 720, 18, 24, 32);
 
         if ($logo_path) {
-            $pdf->rect_rgb(91, 78, 110, 60, 250, 250, 250);
-            $pdf->image($logo_path, 99, 88, 94, 42);
+            $pdf->image($logo_path, 70, 78, 105, 58);
         } else {
-            $pdf->text_rgb(100, 96, $branding['brand_name'] ?: '9Ls1 Foto', 28, 255,255,255);
+            $pdf->text_rgb(70, 110, $branding['brand_name'] ?: '9Ls1 Foto', 26, 255, 255, 255);
         }
 
-        $pdf->line(96, 158, 253, 158, 220,220,220);
-        $pdf->text_rgb(96, 218, 'KONTAKTARK', 31, 255,255,255);
-        $pdf->text_rgb(98, 248, 'PROOF GALLERI', 12, 210,210,210);
+        $pdf->line(70, 160, 255, 160, 230, 230, 230);
+        $pdf->text_rgb(70, 224, 'KONTAKTARK', 32, 255, 255, 255);
+        $pdf->text_rgb(72, 256, 'PROOF GALLERI', 12, 210, 210, 210);
 
-        $meta_y = 320;
-        $meta = [
+        $y = 318;
+        $items = [
             ['KUNDE', $client ? $client->client_name : ''],
             ['PROSJEKT', $project->project_name],
             ['PROSJEKTNR.', $project->project_number],
             ['DATO', $project->project_date ?: current_time('Y-m-d')],
             ['FOTOGRAF', $branding['contact_name'] ?: ''],
+            ['NEDLASTBAR TIL', $gallery->downloadable_until ?: '-'],
         ];
-
-        foreach ($meta as $row) {
-            $pdf->text_rgb(96, $meta_y, $row[0], 8, 220,220,220);
-            $pdf->text_rgb(96, $meta_y + 18, $row[1], 11, 255,255,255);
-            $meta_y += 58;
+        foreach ($items as $item) {
+            $pdf->text_rgb(72, $y, $item[0], 8, 220,220,220);
+            $pdf->text_rgb(72, $y+18, $item[1], 11, 255,255,255);
+            $y += 58;
         }
 
-        $pdf->line(96, 626, 253, 626, 220,220,220);
-        $pdf->text_rgb(96, 654, ($branding['brand_name'] ?: '9Ls1 Foto') . ' - ' . ($branding['contact_name'] ?: ''), 7, 235,235,235);
-        $pdf->text_rgb(96, 671, $branding['contact_email'] ?: '', 7, 235,235,235);
-        $pdf->text_rgb(96, 688, $branding['website'] ?: '', 7, 235,235,235);
-        $pdf->text_rgb(96, 705, $branding['contact_phone'] ?: '', 7, 235,235,235);
+        $pdf->line(70, 655, 255, 655, 230,230,230);
+        $pdf->text_rgb(70, 682, ($branding['brand_name'] ?: '9Ls1 Foto') . ' - ' . ($branding['contact_name'] ?: ''), 8, 235,235,235);
+        $pdf->text_rgb(70, 700, $branding['contact_email'] ?: '', 8, 235,235,235);
+        $pdf->text_rgb(70, 718, $branding['website'] ?: '', 8, 235,235,235);
+        $pdf->text_rgb(70, 736, $branding['contact_phone'] ?: '', 8, 235,235,235);
 
-        $pdf->line(205, 646, 205, 730, 160,160,160);
-        $pdf->text_rgb(217, 663, 'Skann QR-kode for', 7, 235,235,235);
-        $pdf->text_rgb(217, 678, 'tilgang til ditt galleri', 7, 235,235,235);
-        self::pdf_draw_qr_placeholder($pdf, 217, 692);
+        self::draw_qr_placeholder($pdf, 218, 688, $gallery_url);
+        $pdf->text_rgb(195, 762, 'Skann QR-kode for galleri', 7, 235,235,235);
 
-        // CONTACT SHEETS
-        $cols = 4;
-        $rows = 4;
-        $per_page = 16;
-        $x0 = 54;
-        $y0 = 100;
-        $gap_x = 16;
-        $gap_y = 35;
-        $cell_w = 108;
-        $img_h = 80;
-
+        // Contact sheets
+        $cols = 4; $rows = 4; $per_page = 16;
+        $x0 = 54; $y0 = 106; $gap_x = 15; $gap_y = 34;
+        $cell_w = 108; $img_h = 78;
         $chunks = array_chunk($usable, $per_page);
         $total_pages = count($chunks) + 2;
         $page_no = 2;
 
         foreach ($chunks as $chunk) {
             $pdf->add_page();
-            $pdf->rect_rgb(0, 0, 595, 842, 252,252,251);
+            $pdf->rect_fill(0, 0, 595, 842, 0.99);
 
             if ($logo_path) {
-                $pdf->image($logo_path, 54, 32, 72, 38);
+                $pdf->image($logo_path, 54, 30, 70, 40);
             } else {
-                $pdf->text_rgb(54, 56, $branding['brand_name'] ?: '9Ls1 Foto', 18, 40,40,40);
+                $pdf->text(54, 58, $branding['brand_name'] ?: '9Ls1 Foto', 18);
             }
 
-            $pdf->text_rgb(455, 44, $project->project_number, 9, 55,55,55);
-            $pdf->text_rgb(455, 60, date('d.m.Y'), 9, 55,55,55);
-            $pdf->line(54, 78, 541, 78, 160,160,160);
+            $pdf->text(455, 44, $project->project_number, 9);
+            $pdf->text(455, 60, date('d.m.Y'), 9);
+            $pdf->line(54, 78, 541, 78);
 
             foreach ($chunk as $i => $item) {
                 [$img, $path] = $item;
@@ -1179,67 +1112,67 @@ class NLS1_Fotoportal_Admin {
                 $x = $x0 + ($cell_w + $gap_x) * $col;
                 $y = $y0 + ($img_h + $gap_y) * $row;
 
-                $pdf->rect_rgb($x - 2, $y - 2, $cell_w + 4, $img_h + 4, 242,242,240);
+                $pdf->rect_fill($x, $y, $cell_w, $img_h, 0.94);
                 $pdf->image($path, $x, $y, $cell_w, $img_h);
-                $pdf->text_rgb($x + 4, $y + $img_h + 15, $img->original_filename, 7, 45,45,45);
+                $pdf->text($x + 3, $y + $img_h + 14, $img->original_filename, 7);
             }
 
-            $pdf->line(54, 802, 541, 802, 180,180,180);
-            $pdf->text_rgb(54, 824, ($branding['brand_name'] ?: '9Ls1 Foto') . ' - ' . ($branding['contact_name'] ?: ''), 7, 65,65,65);
-            $pdf->text_rgb(260, 824, 'Kontaktark - Proof', 7, 65,65,65);
-            $pdf->text_rgb(500, 824, 'Side ' . $page_no . ' av ' . $total_pages, 7, 65,65,65);
+            $pdf->line(54, 802, 541, 802);
+            $pdf->text(54, 824, ($branding['brand_name'] ?: '9Ls1 Foto') . ' - ' . ($branding['contact_name'] ?: ''), 7);
+            $pdf->text(260, 824, 'Kontaktark - Proof', 7);
+            $pdf->text(500, 824, 'Side ' . $page_no . ' av ' . $total_pages, 7);
             $page_no++;
         }
 
-        // THANK YOU PAGE
+        // Thank you page
         $pdf->add_page();
-        $pdf->rect_rgb(0, 0, 595, 842, 252,252,251);
+        $pdf->rect_fill(0, 0, 595, 842, 0.99);
 
         if ($logo_path) {
-            $pdf->image($logo_path, 245, 52, 105, 60);
+            $pdf->image($logo_path, 245, 54, 105, 60);
         } else {
-            $pdf->text_rgb(220, 88, $branding['brand_name'] ?: '9Ls1 Foto', 24, 45,45,45);
+            $pdf->text(220, 90, $branding['brand_name'] ?: '9Ls1 Foto', 24);
         }
 
-        $pdf->line(105, 140, 490, 140, 165,165,165);
-        $pdf->text_rgb(155, 190, 'Takk for at du valgte ' . ($branding['brand_name'] ?: '9Ls1 Foto') . '!', 15, 55,55,55);
-        $pdf->text_rgb(155, 223, 'Dette kontaktarket er laget for enkel gjennomgang og bildeutvalg.', 9, 85,85,85);
+        $pdf->line(100, 136, 495, 136);
+        $pdf->text(155, 190, 'Takk for at du valgte ' . ($branding['brand_name'] ?: '9Ls1 Foto') . '!', 16);
+        $pdf->text(155, 226, 'Dette kontaktarket er laget for enkel gjennomgang og bildeutvalg.', 10);
 
-        $pdf->text_rgb(155, 292, 'Marker dine favoritter i galleriet', 10, 70,70,70);
-        $pdf->text_rgb(155, 324, 'Legg gjerne til kommentarer', 10, 70,70,70);
-        $pdf->text_rgb(155, 356, 'Høyoppløselige bilder leveres etter avtale', 10, 70,70,70);
-        $pdf->text_rgb(155, 388, 'Alle bilder er beskyttet og må ikke kopieres', 10, 70,70,70);
+        $pdf->text(155, 288, 'Marker dine favoritter i galleriet', 10);
+        $pdf->text(155, 320, 'Legg gjerne til kommentarer', 10);
+        $pdf->text(155, 352, 'Høyoppløselige bilder leveres etter avtale', 10);
+        $pdf->text(155, 384, 'Alle bilder er beskyttet og må ikke kopieres', 10);
 
-        $pdf->line(105, 458, 490, 458, 165,165,165);
-        $pdf->text_rgb(120, 505, 'KONTAKTINFORMASJON', 11, 70,70,70);
-        $pdf->text_rgb(120, 535, $branding['contact_name'] ?: '', 10, 70,70,70);
-        $pdf->text_rgb(120, 557, $branding['contact_email'] ?: '', 10, 70,70,70);
-        $pdf->text_rgb(120, 579, $branding['contact_phone'] ?: '', 10, 70,70,70);
-        $pdf->text_rgb(120, 601, $branding['website'] ?: '', 10, 70,70,70);
+        $pdf->line(100, 456, 495, 456);
+        $pdf->text(120, 500, 'KONTAKTINFORMASJON', 11);
+        $pdf->text(120, 530, $branding['contact_name'] ?: '', 10);
+        $pdf->text(120, 552, $branding['contact_email'] ?: '', 10);
+        $pdf->text(120, 574, $branding['contact_phone'] ?: '', 10);
+        $pdf->text(120, 596, $branding['website'] ?: '', 10);
 
         if ($signature_path) {
-            $pdf->image($signature_path, 378, 510, 115, 70);
+            $pdf->image($signature_path, 385, 512, 110, 65);
         } else {
-            $pdf->text_rgb(390, 548, 'Takk!', 21, 80,80,80);
+            $pdf->text(385, 548, 'Takk!', 22);
         }
 
-        $pdf->rect_rgb(98, 668, 399, 84, 238,238,236);
-        $pdf->text_rgb(124, 707, 'Skann QR-koden for å komme', 8, 90,90,90);
-        $pdf->text_rgb(124, 723, 'tilbake til ditt galleri.', 8, 90,90,90);
-        self::pdf_draw_qr_placeholder($pdf, 258, 681);
-        $pdf->text_rgb(350, 707, 'Takk!', 15, 70,70,70);
-        $pdf->text_rgb(350, 727, ($branding['contact_name'] ?: ''), 8, 70,70,70);
+        $pdf->rect_fill(100, 660, 395, 80, 0.94);
+        self::draw_qr_placeholder($pdf, 248, 672, $gallery_url);
+        $pdf->text(125, 700, 'Skann QR-koden for å komme', 8);
+        $pdf->text(125, 716, 'tilbake til ditt galleri.', 8);
+        $pdf->text(335, 700, 'Takk!', 15);
+        $pdf->text(335, 720, ($branding['contact_name'] ?: ''), 8);
 
-        $pdf->line(54, 802, 541, 802, 180,180,180);
-        $pdf->text_rgb(54, 824, ($branding['brand_name'] ?: '9Ls1 Foto') . ' - ' . ($branding['contact_name'] ?: ''), 7, 65,65,65);
-        $pdf->text_rgb(500, 824, 'Side ' . $total_pages . ' av ' . $total_pages, 7, 65,65,65);
+        $pdf->line(54, 802, 541, 802);
+        $pdf->text(54, 824, ($branding['brand_name'] ?: '9Ls1 Foto') . ' - ' . ($branding['contact_name'] ?: ''), 7);
+        $pdf->text(500, 824, 'Side ' . $total_pages . ' av ' . $total_pages, 7);
 
-        $safe_name = sanitize_file_name('premium-proof-' . $project->project_number . '-' . $gallery->gallery_number . '-' . date('Ymd-His') . '.pdf');
+        $safe_name = sanitize_file_name('premium-preview-' . $project->project_number . '-' . $gallery->gallery_number . '-' . date('Ymd-His') . '.pdf');
         $export_path = trailingslashit($gallery->base_dir) . 'export/' . $safe_name;
         $ok = $pdf->output($export_path);
 
         if ($ok) {
-            $this->log((int)$project->client_id, (int)$project->id, 'pdf', 'Premium Proof PDF generert: ' . $safe_name, (int)$gallery->is_test);
+            $this->log((int)$project->client_id, (int)$project->id, 'pdf', 'Premium PDF Preview Sheet generert: ' . $safe_name, (int)$gallery->is_test);
             wp_safe_redirect(self::project_url((int)$project->id) . '&message=proof_pdf_generated');
         } else {
             wp_safe_redirect(self::project_url((int)$project->id) . '&message=proof_pdf_failed');

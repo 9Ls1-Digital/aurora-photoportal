@@ -1,8 +1,8 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <div class="wrap nls1-fotoportal-admin">
-    <h1>9Ls1 Fotoportal</h1>
+    <div class="nls1-aurora-eyebrow">Aurora</div><h1>Aurora Fotoportal</h1>
     <p class="description">Kunder, prosjekter, kontrakter, gallerier, leveranser og ressurser samlet i én modul.</p>
-    <div class="nls1-actions"><a class="button" href="<?php echo esc_url(NLS1_Fotoportal_Admin::dashboard_url()); ?>">Tilbake til 9Ls1 Dashboard</a></div>
+    <div class="nls1-actions"><a class="button" href="<?php echo esc_url(NLS1_Fotoportal_Admin::dashboard_url()); ?>">Tilbake til Aurora</a></div>
     <nav class="nav-tab-wrapper nls1-tabs">
         <?php foreach (['dashboard'=>'Dashboard','wizard'=>'Ny kunde/prosjekt','clients'=>'Kunder','projects'=>'Prosjekter','contracts'=>'Kontrakter','documents'=>'Dokumenter','galleries'=>'Gallerier','deliveries'=>'Leveranser','resources'=>'Ressurser','shop'=>'Nettbutikk','settings'=>'Innstillinger'] as $key=>$label): ?>
             <a class="nav-tab<?php echo esc_attr(NLS1_Fotoportal_Admin::active_tab($tab, $key)); ?>" href="<?php echo esc_url(NLS1_Fotoportal_Admin::fotoportal_url($key)); ?>"><?php echo esc_html($label); ?></a>
