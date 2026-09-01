@@ -2,17 +2,18 @@
 /**
  * Plugin Name: Aurora Fotoportal
  * Description: Aurora Fotoportal – kundeportal for fotoprosjekter, kontrakter, gallerier og levering.
- * Version: 0.7.1-dev.11-fix2
+ * Version: 0.7.1-dev.12
  * Author: 9Ls1 Digital
  * Text Domain: 9ls1-fotoportal
  */
 if (!defined('ABSPATH')) exit;
 
-define('NLS1_FOTOPORTAL_VERSION', '0.7.1-dev.11-fix2');
+define('NLS1_FOTOPORTAL_VERSION', '0.7.1-dev.12');
 define('NLS1_FOTOPORTAL_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('NLS1_FOTOPORTAL_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-aurora-account-platform.php';
+require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-aurora-tenant-context.php';
 require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-photographer-workspace.php';
 require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-9ls1-fotoportal-activator.php';
 require_once NLS1_FOTOPORTAL_PLUGIN_DIR . 'includes/class-9ls1-fotoportal-admin.php';

@@ -27,6 +27,7 @@ class NLS1_Aurora_Account_Platform {
 
     public function __construct() {
         add_action('admin_init', [__CLASS__, 'maybe_install']);
+        add_action('admin_init', [__CLASS__, 'maybe_install_tenant'], 11);
         add_action('admin_menu', [$this, 'register_menu'], 1);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
 
@@ -34,6 +35,12 @@ class NLS1_Aurora_Account_Platform {
         add_action('admin_post_aurora_save_account_modules', [$this, 'handle_save_account_modules']);
         add_action('admin_post_aurora_save_platform_branding', [$this, 'handle_save_platform_branding']);
         add_action('admin_post_aurora_save_license', [$this, 'handle_save_license']);
+    }
+
+    public static function maybe_install_tenant() {
+        if (class_exists('NLS1_Aurora_Tenant_Context')) {
+            NLS1_Aurora_Tenant_Context::maybe_migrate();
+        }
     }
 
     public static function table($name) {
@@ -129,6 +136,10 @@ class NLS1_Aurora_Account_Platform {
         }
 
         update_option('9ls1_aurora_account_schema_version', self::SCHEMA_VERSION, false);
+
+        if (class_exists('NLS1_Aurora_Tenant_Context')) {
+            NLS1_Aurora_Tenant_Context::maybe_migrate();
+        }
     }
 
     public function register_menu() {

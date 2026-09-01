@@ -1809,4 +1809,20 @@ class NLS1_Fotoportal_Admin {
         wp_safe_redirect(self::fotoportal_url('settings', ['message' => 'branding_saved']));
         exit;
     }
+
+    /**
+     * Add current photographer ownership to new domain records.
+     */
+    private function tenant_data(array $data) {
+        return class_exists('NLS1_Aurora_Tenant_Context')
+            ? NLS1_Aurora_Tenant_Context::stamp_insert($data)
+            : $data;
+    }
+
+    private function current_account_id() {
+        return class_exists('NLS1_Aurora_Tenant_Context')
+            ? NLS1_Aurora_Tenant_Context::current_account_id()
+            : 0;
+    }
+
 }

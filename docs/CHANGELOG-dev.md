@@ -1,5 +1,16 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.12
+- Add centralized Aurora Tenant Context.
+- Add additive `account_id` ownership to existing Fotoportal domain tables.
+- Migrate existing unscoped rows to the seeded/default `9Ls1 Foto` photographer account.
+- Add indexes for tenant-scoped domain access.
+- Add centralized current photographer account resolution.
+- Add helpers for tenant-scoped SQL, insert stamping and row ownership checks.
+- Begin stamping new domain records with the current photographer account.
+- Expose tenant foundation status in Aurora Admin / System.
+- Preserve all existing Fotoportal data during migration.
+
 ## 0.7.1-dev.11-fix2
 - Left-align Photographer Workspace content against the sidebar.
 - Remove centered desktop content container behavior on wide screens.
