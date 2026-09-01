@@ -218,7 +218,7 @@ class NLS1_Fotoportal_Admin {
         if ($search) { $where[] = '(p.project_name LIKE %s OR p.project_number LIKE %s OR c.client_name LIKE %s)'; $like = '%' . $wpdb->esc_like($search) . '%'; $params = array_merge($params, [$like, $like, $like]); }
         if ($project_type) { $where[] = 'p.project_type = %s'; $params[] = $project_type; }
         if ($status) { $where[] = 'p.status = %s'; $params[] = $status; }
-        $sql = "SELECT p.*, c.client_name FROM $projects p LEFT JOIN $clients c ON c.id = p.client_id";
+        $sql = "SELECT p.*, c.client_name FROM $projects p LEFT JOIN $clients c ON c.id = p.client_id AND c.account_id = p.account_id";
         if ($where) $sql .= " WHERE " . implode(' AND ', $where);
         $sql .= " ORDER BY p.created_at DESC LIMIT 200";
         return $params ? $wpdb->get_results($wpdb->prepare($sql, $params)) : $wpdb->get_results($sql);
@@ -544,13 +544,21 @@ class NLS1_Fotoportal_Admin {
     public function handle_create_contract() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_create_contract');
+        $workspace = !empty($_POST['aurora_workspace']);
         global $wpdb;
 
         $project_id = (int)($_POST['project_id'] ?? 0);
         $project = self::get_project($project_id);
         if (!$project) {
-            wp_safe_redirect(self::fotoportal_url('contracts'));
-            exit;
+            if ($workspace && class_exists('NLS1_Photographer_Workspace')) {
+            wp_safe_redirect(NLS1_Photographer_Workspace::url('contracts', [
+                'project_id' => (int)$project_id,
+                'message' => 'contract_created',
+            ]));
+        } else {
+            wp_safe_redirect(self::project_url($project_id) . '&message=contract_created');
+        }
+        exit;
         }
 
         $contract_name = sanitize_text_field($_POST['contract_name'] ?? '');
@@ -589,13 +597,21 @@ class NLS1_Fotoportal_Admin {
     public function handle_mark_contract_sent() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_mark_contract_sent');
+        $workspace = !empty($_POST['aurora_workspace']);
         global $wpdb;
 
         $contract_id = (int)($_POST['contract_id'] ?? 0);
         $contract = self::get_contract($contract_id);
         if (!$contract) {
-            wp_safe_redirect(self::fotoportal_url('contracts'));
-            exit;
+            if ($workspace && class_exists('NLS1_Photographer_Workspace') && $project_id) {
+            wp_safe_redirect(NLS1_Photographer_Workspace::url('contracts', [
+                'project_id' => $project_id,
+                'message' => 'contract_sent',
+            ]));
+        } else {
+            wp_safe_redirect($project_id ? self::project_url($project_id) . '&message=contract_sent' : self::fotoportal_url('contracts'));
+        }
+        exit;
         }
 
         $project = self::get_project((int)$contract->project_id);

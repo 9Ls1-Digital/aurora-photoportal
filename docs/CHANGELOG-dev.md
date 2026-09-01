@@ -1,5 +1,28 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.16
+- Move project Contracts into the native Aurora Photographer Workspace.
+- Open the Contract step directly from the native project workflow.
+- Show project-scoped contract list with draft/sent/signed states and signed timestamp.
+- Add native contract creation form in Aurora Workspace.
+- Allow draft contracts to be marked as sent from the workspace.
+- Preserve workspace context after contract creation/status actions instead of redirecting to legacy admin.
+- Keep Documents, Gallery and Delivery as the remaining legacy workflow steps.
+
+## 0.7.1-dev.15-fix1
+- Fix critical error when opening a native Aurora project profile.
+- Use the existing tenant-scoped `get_documents()` and `get_galleries()` helpers instead of non-existent project-specific helper names.
+
+## 0.7.1-dev.15
+- Move Projects into the native Aurora Photographer Workspace.
+- Add tenant-scoped project list with search, project-type filter and status filter.
+- Add native project profile with project metadata, linked customer and project notes.
+- Add five-step Aurora project workflow: Project, Contract, Documents, Gallery and Delivery.
+- Surface contract/document/gallery counts in the project workflow.
+- Include test projects with a visible Test badge.
+- Harden customer join in the project list with matching tenant ownership.
+- Keep remaining production modules on temporary legacy bridges.
+
 ## 0.7.1-dev.14-fix2
 - Use the configured Aurora branding logo in Photographer Workspace instead of the static `A` mark when a logo is available.
 - Apply the same branding logo to the mobile workspace header.

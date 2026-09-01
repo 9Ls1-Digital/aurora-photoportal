@@ -25,8 +25,6 @@ $view_titles = [
 $title = $view_titles[$view] ?? $view_titles['dashboard'];
 
 $legacy_links = [
-    'projects' => NLS1_Fotoportal_Admin::fotoportal_url('projects'),
-    'contracts' => NLS1_Fotoportal_Admin::fotoportal_url('contracts'),
     'documents' => NLS1_Fotoportal_Admin::fotoportal_url('documents'),
     'galleries' => NLS1_Fotoportal_Admin::fotoportal_url('galleries'),
     'hq_delivery' => NLS1_Fotoportal_Admin::fotoportal_url('galleries'),
@@ -89,6 +87,8 @@ $legacy_links = [
                     <a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('new')); ?>"><span class="dashicons dashicons-plus-alt2"></span>Nytt prosjekt</a>
                 <?php elseif ($view === 'customers') : ?>
                     <a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('new')); ?>"><span class="dashicons dashicons-plus-alt2"></span>Ny kunde</a>
+                <?php elseif ($view === 'projects') : ?>
+                    <a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('new')); ?>"><span class="dashicons dashicons-plus-alt2"></span>Nytt prosjekt</a>
                 <?php endif; ?>
             </div>
 
@@ -358,6 +358,215 @@ $legacy_links = [
                     showStep(1);
                 });
                 </script>
+
+
+            <?php elseif ($view === 'projects') : ?>
+                <?php
+                $project_id = absint($_GET['project_id'] ?? 0);
+                $project = $project_id ? NLS1_Fotoportal_Admin::get_project($project_id) : null;
+                ?>
+
+                <?php if ($project_id && $project) : ?>
+                    <?php
+                    $project_client = NLS1_Fotoportal_Admin::get_client($project->client_id);
+                    $contracts = NLS1_Fotoportal_Admin::get_project_contracts($project_id);
+                    $documents = NLS1_Fotoportal_Admin::get_documents($project_id, true);
+                    $galleries = NLS1_Fotoportal_Admin::get_galleries($project_id, true);
+                    ?>
+                    <div class="aurora-customer-profile-head">
+                        <a class="aurora-back-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects')); ?>"><span class="dashicons dashicons-arrow-left-alt2"></span>Alle prosjekter</a>
+                        <div class="aurora-project-profile-card">
+                            <div class="aurora-project-mark"><span class="dashicons dashicons-portfolio"></span></div>
+                            <div class="aurora-customer-profile-main">
+                                <span class="aurora-workspace-eyebrow"><?php echo esc_html($project->project_number ?: 'PROSJEKT'); ?></span>
+                                <h2><?php echo esc_html($project->project_name); ?></h2>
+                                <div class="aurora-customer-meta">
+                                    <span><?php echo esc_html($project->project_type ?: '—'); ?></span>
+                                    <?php if ($project_client) : ?><a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('customers',['customer_id'=>$project_client->id])); ?>"><?php echo esc_html($project_client->client_name); ?></a><?php endif; ?>
+                                    <span class="aurora-status-pill"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span>
+                                    <?php if (!empty($project->is_test)) : ?><span class="aurora-status-pill is-test">Test</span><?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="aurora-customer-profile-actions">
+                                <a class="aurora-secondary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('customers',['customer_id'=>$project->client_id])); ?>">Kunde</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <section class="aurora-workspace-card aurora-project-summary">
+                        <div class="aurora-project-summary-grid">
+                            <div><span>Dato</span><strong><?php echo $project->project_date ? esc_html(date_i18n('d.m.Y', strtotime($project->project_date))) : '—'; ?></strong></div>
+                            <div><span>Lokasjon</span><strong><?php echo esc_html($project->location ?: '—'); ?></strong></div>
+                            <div><span>Status</span><strong><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></strong></div>
+                            <div><span>Kunde</span><strong><?php echo esc_html($project_client ? $project_client->client_name : '—'); ?></strong></div>
+                        </div>
+                        <?php if (!empty($project->description)) : ?><div class="aurora-project-notes"><span>NOTATER</span><p><?php echo nl2br(esc_html($project->description)); ?></p></div><?php endif; ?>
+                    </section>
+
+                    <section class="aurora-workspace-card aurora-project-workflow">
+                        <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">PROSJEKTFLYT</span><h2>Fra prosjekt til leveranse</h2></div></div>
+                        <div class="aurora-project-steps">
+                            <div class="is-current"><span>1</span><strong>Prosjekt</strong><small>Detaljer og status</small></div>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>"><span>2</span><strong>Kontrakt</strong><small><?php echo count($contracts); ?> registrert</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents')); ?>"><span>3</span><strong>Dokumenter</strong><small><?php echo count($documents); ?> filer</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries')); ?>"><span>4</span><strong>Galleri</strong><small><?php echo count($galleries); ?> gallerier</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
+                        </div>
+                    </section>
+
+                <?php else : ?>
+                    <?php
+                    $search = sanitize_text_field($_GET['s'] ?? '');
+                    $ptype = sanitize_text_field($_GET['ptype'] ?? '');
+                    $status = sanitize_key($_GET['status'] ?? '');
+                    $projects = NLS1_Fotoportal_Admin::get_projects(true, $search, $ptype, $status);
+                    ?>
+                    <section class="aurora-workspace-card aurora-customers-toolbar">
+                        <form method="get" class="aurora-customer-filters">
+                            <input type="hidden" name="page" value="<?php echo esc_attr(NLS1_Photographer_Workspace::PAGE_SLUG); ?>">
+                            <input type="hidden" name="workspace_view" value="projects">
+                            <label class="aurora-search-field"><span class="dashicons dashicons-search"></span><input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="Søk etter prosjekt, prosjektnummer eller kunde"></label>
+                            <select name="ptype">
+                                <option value="">Alle prosjekttyper</option>
+                                <?php foreach (NLS1_Fotoportal_Admin::$project_types as $type_name => $prefix) : ?><option value="<?php echo esc_attr($type_name); ?>" <?php selected($ptype,$type_name); ?>><?php echo esc_html($type_name); ?></option><?php endforeach; ?>
+                            </select>
+                            <select name="status">
+                                <option value="">Alle statuser</option>
+                                <?php foreach (NLS1_Fotoportal_Admin::$project_statuses as $status_key => $status_label) : ?><option value="<?php echo esc_attr($status_key); ?>" <?php selected($status,$status_key); ?>><?php echo esc_html($status_label); ?></option><?php endforeach; ?>
+                            </select>
+                            <button class="aurora-secondary-action" type="submit">Filtrer</button>
+                            <?php if ($search || $ptype || $status) : ?><a class="aurora-text-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects')); ?>">Nullstill</a><?php endif; ?>
+                        </form>
+                    </section>
+
+                    <section class="aurora-workspace-card aurora-customer-list-card">
+                        <div class="aurora-workspace-cardhead">
+                            <div><span class="aurora-workspace-eyebrow">PROSJEKTREGISTER</span><h2><?php echo count($projects); ?> prosjekter</h2></div>
+                        </div>
+
+                        <?php if ($projects) : ?>
+                            <div class="aurora-customer-table-wrap">
+                                <table class="aurora-customer-table aurora-project-table">
+                                    <thead><tr><th>Prosjekt</th><th>Kunde</th><th>Type</th><th>Dato</th><th>Status</th><th></th></tr></thead>
+                                    <tbody>
+                                    <?php foreach ($projects as $row) : ?>
+                                        <tr>
+                                            <td>
+                                                <a class="aurora-customer-name" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$row->id])); ?>">
+                                                    <span class="aurora-customer-avatar is-small"><span class="dashicons dashicons-portfolio"></span></span>
+                                                    <span><strong><?php echo esc_html($row->project_name); ?></strong><small><?php echo esc_html($row->project_number ?: '—'); ?></small></span>
+                                                </a>
+                                            </td>
+                                            <td><?php echo esc_html($row->client_name ?: '—'); ?></td>
+                                            <td><?php echo esc_html($row->project_type ?: '—'); ?></td>
+                                            <td><?php echo $row->project_date ? esc_html(date_i18n('d.m.Y', strtotime($row->project_date))) : '—'; ?></td>
+                                            <td>
+                                                <span class="aurora-status-pill"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($row->status)); ?></span>
+                                                <?php if (!empty($row->is_test)) : ?><span class="aurora-status-pill is-test">Test</span><?php endif; ?>
+                                            </td>
+                                            <td class="aurora-row-actions"><a class="aurora-icon-link" title="Åpne prosjekt" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$row->id])); ?>"><span class="dashicons dashicons-arrow-right-alt2"></span></a></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else : ?>
+                            <div class="aurora-empty-state"><span class="dashicons dashicons-portfolio"></span><strong>Ingen prosjekter funnet</strong><p>Opprett et nytt prosjekt eller juster søket.</p><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('new')); ?>">+ Nytt prosjekt</a></div>
+                        <?php endif; ?>
+                    </section>
+                <?php endif; ?>
+
+
+            <?php elseif ($view === 'contracts') : ?>
+                <?php
+                $project_id = absint($_GET['project_id'] ?? 0);
+                $project = $project_id ? NLS1_Fotoportal_Admin::get_project($project_id) : null;
+                $contracts = $project ? NLS1_Fotoportal_Admin::get_project_contracts($project_id) : [];
+                ?>
+
+                <?php if ($project) : ?>
+                    <div class="aurora-contract-context">
+                        <a class="aurora-back-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id])); ?>"><span class="dashicons dashicons-arrow-left-alt2"></span>Tilbake til prosjekt</a>
+                        <div class="aurora-project-profile-card">
+                            <div class="aurora-project-mark"><span class="dashicons dashicons-media-document"></span></div>
+                            <div class="aurora-customer-profile-main">
+                                <span class="aurora-workspace-eyebrow"><?php echo esc_html($project->project_number); ?></span>
+                                <h2><?php echo esc_html($project->project_name); ?></h2>
+                                <div class="aurora-customer-meta"><span><?php echo esc_html($project->client_name ?: '—'); ?></span><span class="aurora-status-pill"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="aurora-contract-grid">
+                        <section class="aurora-workspace-card aurora-workspace-card-wide">
+                            <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">KONTRAKTER</span><h2>Avtaler for prosjektet</h2></div><span class="aurora-count-badge"><?php echo count($contracts); ?></span></div>
+
+                            <?php if ($contracts) : ?>
+                                <div class="aurora-contract-list">
+                                    <?php foreach ($contracts as $contract) : ?>
+                                        <div class="aurora-contract-item">
+                                            <div class="aurora-contract-icon"><span class="dashicons dashicons-media-document"></span></div>
+                                            <div class="aurora-contract-main">
+                                                <strong><?php echo esc_html($contract->contract_title ?: 'Kontrakt'); ?></strong>
+                                                <small>Opprettet <?php echo !empty($contract->created_at) ? esc_html(date_i18n('d.m.Y', strtotime($contract->created_at))) : '—'; ?></small>
+                                            </div>
+                                            <div class="aurora-contract-status">
+                                                <?php
+                                                $cstatus = sanitize_key($contract->status ?? 'draft');
+                                                $labels = ['draft'=>'Utkast','sent'=>'Sendt','signed'=>'Signert','cancelled'=>'Kansellert'];
+                                                $label = $labels[$cstatus] ?? ucfirst($cstatus);
+                                                ?>
+                                                <span class="aurora-status-pill <?php echo $cstatus === 'signed' ? 'is-active' : ($cstatus === 'draft' ? 'is-test' : ''); ?>"><?php echo esc_html($label); ?></span>
+                                                <?php if ($cstatus === 'signed' && !empty($contract->signed_at)) : ?><small><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($contract->signed_at))); ?></small><?php endif; ?>
+                                            </div>
+                                            <div class="aurora-row-actions">
+                                                <?php if ($cstatus === 'draft') : ?>
+                                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                                                        <input type="hidden" name="action" value="9ls1_fotoportal_mark_contract_sent">
+                                                        <input type="hidden" name="contract_id" value="<?php echo (int)$contract->id; ?>">
+                                                        <input type="hidden" name="aurora_workspace" value="1">
+                                                        <?php wp_nonce_field('9ls1_fotoportal_mark_contract_sent_' . (int)$contract->id); ?>
+                                                        <button class="aurora-secondary-action" type="submit">Marker sendt</button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else : ?>
+                                <div class="aurora-empty-state"><span class="dashicons dashicons-media-document"></span><strong>Ingen kontrakter ennå</strong><p>Opprett første kontrakt for dette prosjektet.</p></div>
+                            <?php endif; ?>
+                        </section>
+
+                        <section class="aurora-workspace-card">
+                            <span class="aurora-workspace-eyebrow">NY KONTRAKT</span><h2>Opprett avtale</h2>
+                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-contract-form">
+                                <input type="hidden" name="action" value="9ls1_fotoportal_create_contract">
+                                <input type="hidden" name="project_id" value="<?php echo (int)$project_id; ?>">
+                                <input type="hidden" name="aurora_workspace" value="1">
+                                <?php wp_nonce_field('9ls1_fotoportal_create_contract'); ?>
+                                <label>Tittel<input type="text" name="contract_title" value="Kontrakt" required></label>
+                                <label>Avtaletekst<textarea name="contract_text" rows="9" required placeholder="Skriv eller lim inn kontraktstekst..."></textarea></label>
+                                <button class="aurora-primary-action" type="submit"><span class="dashicons dashicons-plus-alt2"></span>Opprett kontrakt</button>
+                            </form>
+                        </section>
+                    </div>
+
+                    <section class="aurora-workspace-card aurora-project-workflow">
+                        <div class="aurora-project-steps">
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id])); ?>"><span>1</span><strong>Prosjekt</strong><small>Detaljer og status</small></a>
+                            <div class="is-current"><span>2</span><strong>Kontrakt</strong><small><?php echo count($contracts); ?> registrert</small></div>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents')); ?>"><span>3</span><strong>Dokumenter</strong><small>Neste steg</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries')); ?>"><span>4</span><strong>Galleri</strong><small>Senere</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
+                        </div>
+                    </section>
+
+                <?php else : ?>
+                    <section class="aurora-workspace-card">
+                        <div class="aurora-empty-state"><span class="dashicons dashicons-media-document"></span><strong>Velg et prosjekt først</strong><p>Kontrakter administreres nå fra prosjektets arbeidsflyt.</p><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects')); ?>">Gå til Prosjekter</a></div>
+                    </section>
+                <?php endif; ?>
 
             <?php elseif ($view === 'settings') : ?>
                 <div class="aurora-workspace-grid">
