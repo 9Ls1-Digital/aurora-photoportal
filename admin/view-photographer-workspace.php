@@ -8,6 +8,9 @@ foreach (preg_split('/\s+/', trim($user->display_name)) as $part) {
     if ($part !== '') $initials .= strtoupper(substr($part, 0, 1));
 }
 $initials = substr($initials ?: 'PF', 0, 2);
+$photographer_profile = NLS1_Fotoportal_Admin::photographer_portal_settings((int)$account->id);
+$gallery_notifications = NLS1_Fotoportal_Admin::gallery_activity_notifications((int)$account->id);
+$gallery_unread = count(array_filter($gallery_notifications, function($n){ return !empty($n['unread']); }));
 
 $view_titles = [
     'dashboard' => ['Dashboard', 'Oversikt over Fotoportal og det som trenger oppfølging.'],
@@ -43,10 +46,7 @@ $legacy_links = [
         <div class="aurora-workspace-account">
             <span class="aurora-workspace-avatar"><?php echo esc_html(strtoupper(substr($account->account_name,0,1))); ?></span>
             <div><strong><?php echo esc_html($account->account_name); ?></strong><small>Fotografkonto</small></div>
-        </div><div class="aurora-profile-dropdown" hidden>
-<a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('settings')); ?>"><span class="dashicons dashicons-admin-users"></span>Min profil</a>
-<a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('settings',['edit_profile'=>1])); ?>"><span class="dashicons dashicons-edit"></span>Rediger profil</a>
-</div>
+        </div>
 
         <nav class="aurora-workspace-menu">
             <span class="aurora-menu-label">ARBEIDSFLATE</span>
@@ -81,8 +81,18 @@ $legacy_links = [
             </div>
             <div class="aurora-workspace-topactions">
                 <button type="button" class="aurora-icon-button" title="Hjelp"><span class="dashicons dashicons-editor-help"></span></button>
-                <button type="button" class="aurora-icon-button" title="Varsler"><span class="dashicons dashicons-bell"></span><i></i></button>
-                <div class="aurora-workspace-user"><span><?php echo esc_html($initials); ?></span><div><strong><?php echo esc_html($user->display_name); ?></strong><small><?php echo esc_html($account->account_name); ?></small></div></div>
+                <div class="aurora-notification-wrap"><button type="button" class="aurora-icon-button" title="Varsler" data-aurora-notification-toggle aria-expanded="false"><span class="dashicons dashicons-bell"></span><?php if($gallery_unread): ?><i></i><b class="aurora-notification-count"><?php echo (int)$gallery_unread; ?></b><?php endif; ?></button><div class="aurora-notification-dropdown" data-aurora-notification-dropdown hidden><div class="aurora-notification-head"><strong>Galleriaktivitet</strong><small><?php echo $gallery_unread ? (int)$gallery_unread.' ulest' : 'Ingen nye'; ?></small></div><?php if($gallery_notifications): foreach($gallery_notifications as $notice): $nc=$notice['counts']??[]; ?><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-notification-item <?php echo !empty($notice['unread'])?'is-unread':''; ?>"><input type="hidden" name="action" value="9ls1_fotoportal_mark_gallery_activity_read"><input type="hidden" name="gallery_id" value="<?php echo (int)$notice['gallery_id']; ?>"><?php wp_nonce_field('9ls1_fotoportal_mark_gallery_activity_read'); ?><button type="submit"><strong><?php echo esc_html($notice['gallery_title']??'Galleri'); ?></strong><span>♡ <?php echo (int)($nc['favorites']??0); ?> · ✓ <?php echo (int)($nc['approved']??0); ?> · 💬 <?php echo (int)($nc['comments']??0); ?></span><small>Sist aktivitet <?php echo esc_html($notice['updated_at']??''); ?></small></button></form><?php endforeach; else: ?><div class="aurora-notification-empty">Ingen galleriaktivitet ennå.</div><?php endif; ?></div></div>
+                <div class="aurora-profile-menu-wrap">
+                    <button type="button" class="aurora-workspace-user aurora-profile-trigger" data-aurora-profile-toggle aria-expanded="false">
+                        <?php if (!empty($photographer_profile['profile_image_url'])) : ?><img class="aurora-topbar-profile-image" src="<?php echo esc_url($photographer_profile['profile_image_url']); ?>" alt=""><?php else : ?><span><?php echo esc_html($initials); ?></span><?php endif; ?>
+                        <div><strong><?php echo esc_html($photographer_profile['photographer_name'] ?: $user->display_name); ?></strong><small><?php echo esc_html($photographer_profile['studio_name'] ?: $account->account_name); ?></small></div>
+                        <span class="dashicons dashicons-arrow-down-alt2 aurora-profile-chevron"></span>
+                    </button>
+                    <div class="aurora-profile-dropdown" data-aurora-profile-dropdown hidden>
+                        <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('settings')); ?>"><span class="dashicons dashicons-admin-users"></span>Min profil</a>
+                        <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('settings',['edit_profile'=>1])); ?>"><span class="dashicons dashicons-edit"></span>Rediger profil</a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -850,6 +860,7 @@ $legacy_links = [
                     'gallery_deleted' => ['Galleri slettet', 'Galleriet er fjernet.'],
                     'gallery_regenerated' => ['Galleri regenerert', 'Preview og thumbnails er generert på nytt.'],
                     'proof_pdf_generated' => ['PDF generert', 'Premium Proof PDF er generert.'],
+                    'gallery_updated' => ['Galleri oppdatert', 'Navn og beskrivelse er lagret.'],
                 ];
                 if (isset($message_map[$gallery_message])) :
                 ?>
@@ -861,19 +872,22 @@ $legacy_links = [
                 <?php if ($detail_gallery) :
                     $detail_images = NLS1_Fotoportal_Admin::get_gallery_images((int)$detail_gallery->id, 10000);
                     $customer_gallery_url = NLS1_Fotoportal_Admin::gallery_public_url($detail_gallery);
+                    $gallery_activity = NLS1_Fotoportal_Admin::gallery_interaction_counts((int)$detail_gallery->id,(int)$detail_gallery->account_id);
                 ?>
                     <a class="aurora-back-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span class="dashicons dashicons-arrow-left-alt2"></span>Tilbake til gallerier</a>
                     <section class="aurora-workspace-card aurora-gallery-detail-head">
                         <div>
                             <span class="aurora-workspace-eyebrow">GALLERI</span>
                             <h2><?php echo esc_html($detail_gallery->gallery_title); ?></h2>
-                            <p><?php echo (int)$detail_gallery->original_count; ?> bilder · <?php echo esc_html($detail_gallery->gallery_number); ?></p><div class="aurora-gallery-activity"><span>♡ <b>0</b> favoritter</span><span>✓ <b>0</b> valgt</span><span>💬 <b>0</b> kommentarer</span></div>
+                            <p><?php echo (int)$detail_gallery->original_count; ?> bilder · <?php echo esc_html($detail_gallery->gallery_number); ?></p><?php if(!empty($detail_gallery->gallery_description)): ?><p class="aurora-gallery-description"><?php echo esc_html($detail_gallery->gallery_description); ?></p><?php endif; ?><div class="aurora-gallery-activity"><span>♡ <b><?php echo (int)$gallery_activity['favorites']; ?></b> favoritter</span><span>✓ <b><?php echo (int)$gallery_activity['approved']; ?></b> valgt</span><span>💬 <b><?php echo (int)$gallery_activity['comments']; ?></b> kommentarer</span></div>
                         </div>
                         <div class="aurora-gallery-detail-actions">
                             <a class="aurora-secondary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'add_images'=>(int)$detail_gallery->id])); ?>"><span class="dashicons dashicons-images-alt2"></span>Legg til bilder</a>
                             <a class="aurora-primary-action" href="<?php echo esc_url($customer_gallery_url); ?>" target="_blank" rel="noopener"><span class="dashicons dashicons-external"></span>Se kundegalleri</a><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-inline-form"><input type="hidden" name="action" value="9ls1_fotoportal_send_customer_portal"><input type="hidden" name="gallery_id" value="<?php echo (int)$detail_gallery->id; ?>"><?php wp_nonce_field('9ls1_fotoportal_send_customer_portal'); ?><button class="aurora-secondary-action" type="submit"><span class="dashicons dashicons-email-alt"></span>Send URL til kunde</button></form>
                         </div>
                     </section>
+
+                    <section class="aurora-workspace-card aurora-gallery-edit-card"><div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">GALLERIINFO</span><h2>Navn og beskrivelse</h2><p>Dette er teksten kunden ser i galleriet. Kundens navn brukes ikke som beskrivelse.</p></div></div><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-gallery-edit-form"><input type="hidden" name="action" value="9ls1_fotoportal_update_gallery_details"><input type="hidden" name="gallery_id" value="<?php echo (int)$detail_gallery->id; ?>"><?php wp_nonce_field('9ls1_fotoportal_update_gallery_details'); ?><label>Gallerinavn<input type="text" name="gallery_title" value="<?php echo esc_attr($detail_gallery->gallery_title); ?>" required></label><label>Beskrivelse<textarea name="gallery_description" rows="3" placeholder="Skriv en kort beskrivelse av galleriet …"><?php echo esc_textarea($detail_gallery->gallery_description??''); ?></textarea></label><button class="aurora-primary-action" type="submit">Lagre galleriinfo</button></form></section>
 
                     <section class="aurora-workspace-card aurora-gallery-share-card">
                         <div><span class="aurora-workspace-eyebrow">KUNDEGALLERI</span><strong>Delbar URL</strong><p>Denne lenken åpner kundens rene galleri uten Aurora-administrasjonen.</p></div>
@@ -886,7 +900,7 @@ $legacy_links = [
 
                     <?php $gh=NLS1_Fotoportal_Admin::gallery_hero_settings((int)$detail_gallery->id);$fallback=!empty($detail_images)?($detail_images[0]->preview_url?:$detail_images[0]->thumbnail_url):'';$ghurl=NLS1_Fotoportal_Admin::hero_image_url($gh,$detail_images,$fallback); ?>
                     <section class="aurora-workspace-card aurora-hero-designer-card"><div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">HERO DESIGNER</span><h2>Galleri-cover</h2><p>Velg bilde, focal point, størrelse og overlay direkte for kundegalleriet.</p></div></div>
-                    <div class="aurora-hero-editor-preview size-<?php echo esc_attr($gh['size']); ?>" style="background-image:url('<?php echo esc_url($ghurl); ?>');background-position:<?php echo (int)$gh['focal_x']; ?>% <?php echo (int)$gh['focal_y']; ?>%"><span class="aurora-hero-editor-overlay" style="background:<?php echo esc_attr($gh['overlay_color']); ?>;opacity:<?php echo esc_attr($gh['overlay_opacity']/100); ?>"></span><div class="aurora-hero-editor-copy"><strong><?php echo esc_html($detail_gallery->gallery_title); ?></strong><span><?php echo esc_html($detail_gallery->client_name??''); ?></span></div><span class="aurora-focal-dot" style="left:<?php echo (int)$gh['focal_x']; ?>%;top:<?php echo (int)$gh['focal_y']; ?>%"></span></div>
+                    <div class="aurora-hero-editor-preview size-<?php echo esc_attr($gh['size']); ?>" style="background-image:url('<?php echo esc_url($ghurl); ?>');background-position:<?php echo (int)$gh['focal_x']; ?>% <?php echo (int)$gh['focal_y']; ?>%"><span class="aurora-hero-editor-overlay" style="background:<?php echo esc_attr($gh['overlay_color']); ?>;opacity:<?php echo esc_attr($gh['overlay_opacity']/100); ?>"></span><div class="aurora-hero-editor-copy"><strong><?php echo esc_html($detail_gallery->gallery_title); ?></strong><span><?php echo esc_html($detail_gallery->gallery_description??''); ?></span></div><span class="aurora-focal-dot" style="left:<?php echo (int)$gh['focal_x']; ?>%;top:<?php echo (int)$gh['focal_y']; ?>%"></span></div>
                     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-hero-controls"><input type="hidden" name="action" value="9ls1_fotoportal_save_gallery_hero"><input type="hidden" name="gallery_id" value="<?php echo (int)$detail_gallery->id; ?>"><?php wp_nonce_field('9ls1_fotoportal_save_gallery_hero'); ?><label>Størrelse<select name="hero_size"><option value="small" <?php selected($gh['size'],'small'); ?>>Small</option><option value="medium" <?php selected($gh['size'],'medium'); ?>>Medium</option><option value="large" <?php selected($gh['size'],'large'); ?>>Large</option></select></label><label>Overlay<input type="color" name="overlay_color" value="<?php echo esc_attr($gh['overlay_color']); ?>"></label><label>Transparens <b><?php echo (int)$gh['overlay_opacity']; ?>%</b><input type="range" name="overlay_opacity" min="0" max="80" value="<?php echo (int)$gh['overlay_opacity']; ?>"></label><label>Focal X<input type="range" name="focal_x" min="0" max="100" value="<?php echo (int)$gh['focal_x']; ?>"></label><label>Focal Y<input type="range" name="focal_y" min="0" max="100" value="<?php echo (int)$gh['focal_y']; ?>"></label><button class="aurora-primary-action" type="submit">Lagre Hero</button><div class="aurora-hero-image-picker"><?php foreach($detail_images as $im):$u=$im->thumbnail_url?:$im->preview_url;if(!$u)continue;?><label><input type="radio" name="hero_image_id" value="<?php echo (int)$im->id; ?>" <?php checked((int)$gh['image_id'],(int)$im->id); ?>><img src="<?php echo esc_url($u); ?>" alt=""></label><?php endforeach;?></div></form></section>
 
                     <section class="aurora-gallery-masonry-card">
@@ -1240,4 +1254,19 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 <script>
 (function heroDesignerLivePreview(){document.querySelectorAll('.aurora-hero-controls').forEach(function(form){var preview=form.previousElementSibling;if(!preview||!preview.classList.contains('aurora-hero-editor-preview'))return;var overlay=preview.querySelector('.aurora-hero-editor-overlay'),dot=preview.querySelector('.aurora-focal-dot');function update(){var size=form.querySelector('[name=hero_size]'),x=form.querySelector('[name=focal_x]'),y=form.querySelector('[name=focal_y]'),op=form.querySelector('[name=overlay_opacity]'),col=form.querySelector('[name=overlay_color]'),img=form.querySelector('[name=hero_image_id]:checked');preview.classList.remove('size-small','size-medium','size-large');preview.classList.add('size-'+size.value);preview.style.backgroundPosition=x.value+'% '+y.value+'%';if(overlay){overlay.style.background=col.value;overlay.style.opacity=(parseInt(op.value||0,10)/100);}if(dot){dot.style.left=x.value+'%';dot.style.top=y.value+'%';}if(img&&img.parentElement.querySelector('img'))preview.style.backgroundImage='url("'+img.parentElement.querySelector('img').src+'")';var b=op.parentElement.querySelector('b');if(b)b.textContent=op.value+'%';}form.querySelectorAll('input,select').forEach(function(el){el.addEventListener('input',update);el.addEventListener('change',update);});});})();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){var t=document.querySelector('[data-aurora-notification-toggle]'),d=document.querySelector('[data-aurora-notification-dropdown]');if(!t||!d)return;function close(){d.hidden=true;t.setAttribute('aria-expanded','false')}t.addEventListener('click',function(e){e.stopPropagation();d.hidden=!d.hidden;t.setAttribute('aria-expanded',d.hidden?'false':'true')});d.addEventListener('click',function(e){e.stopPropagation()});document.addEventListener('click',close);document.addEventListener('keydown',function(e){if(e.key==='Escape')close()})});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    var trigger=document.querySelector('[data-aurora-profile-toggle]');
+    var dropdown=document.querySelector('[data-aurora-profile-dropdown]');
+    if(!trigger||!dropdown)return;
+    function close(){dropdown.hidden=true;trigger.setAttribute('aria-expanded','false');}
+    trigger.addEventListener('click',function(e){e.stopPropagation();dropdown.hidden=!dropdown.hidden;trigger.setAttribute('aria-expanded',dropdown.hidden?'false':'true');});
+    dropdown.addEventListener('click',function(e){e.stopPropagation();});
+    document.addEventListener('click',close);
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+});
 </script>

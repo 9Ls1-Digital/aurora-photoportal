@@ -243,6 +243,7 @@ class NLS1_Fotoportal_Activator {
             project_id BIGINT UNSIGNED NOT NULL,
             gallery_number VARCHAR(50) DEFAULT '',
             gallery_title VARCHAR(190) NOT NULL,
+            gallery_description TEXT NULL,
             public_token VARCHAR(64) DEFAULT '',
             base_dir TEXT NOT NULL,
             base_url TEXT NOT NULL,

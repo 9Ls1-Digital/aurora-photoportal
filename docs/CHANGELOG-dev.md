@@ -1,3 +1,30 @@
+# 0.7.1-dev.29-fix2 – Gallery activity, optimistic UI and metadata
+
+- Immediate optimistic visual feedback for favorite and approved image actions.
+- Aggregated unread photographer notifications per gallery under the Workspace bell.
+- Notification items show current favorite, selected and comment totals and link to the gallery.
+- Editable gallery name and customer-facing gallery description.
+- Gallery description replaces customer name as descriptive copy in the public gallery hero.
+- Customer portal gallery cards use gallery description when available.
+
+# 0.7.1-dev.29-fix1 – Gallery Interaction UX refinement
+- Reduces gallery hover actions to compact, neutral controls that do not dominate the photograph.
+- Keeps action controls hidden until hover/focus on desktop; removes persistent text badges from image corners.
+- Makes favorite state gallery-wide for the customer gallery and counts unique favorited images.
+- Displays existing comments inside the image comment panel.
+- Makes the summary pills clickable filters for All images, Favorites, Selected and Comments.
+- Keeps filters synchronized immediately after customer interactions.
+
+# 0.7.1-dev.29 – Gallery Interaction Foundation
+
+- Added customer gallery hover actions for Favorite, Approved/Selected and Comment.
+- Interaction state persists and remains visible on gallery images.
+- Gallery counters now reflect stored favorites, selections and comments in customer and photographer views.
+- Added anonymous visitor identity for per-customer favorite state without requiring login.
+- Added tenant/gallery/image validation to public interaction writes.
+- Fixed Photographer Workspace top-right profile image and profile dropdown with Min profil / Rediger profil.
+- Preserved Hero Designer from dev.28.
+
 # Aurora Fotoportal development changelog
 
 ## 0.7.1-dev.28
