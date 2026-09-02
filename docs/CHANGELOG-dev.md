@@ -1,5 +1,18 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.27-fix1
+- Show the saved photographer cover/hero image as a preview in Profile settings.
+- Use the photographer cover image as a large photographic hero on the customer main portal.
+- Use the first gallery image as the gallery hero, with photographer cover as fallback.
+- Center photographer signature/contact information above the Aurora/9Ls1 footer.
+- Show photographer profile image in the Photographer Workspace topbar when available.
+- Add a profile dropdown with Min profil and Rediger profil shortcuts.
+
+## 0.7.1-dev.27
+- Refine photographer profile settings and customer-facing branding.
+- Add edit mode, URL normalization, accent preview and stable customer portal links on customer profiles.
+- Apply photographer identity to public galleries and add UI-ready favorites, selections and comment counters.
+
 ## 0.7.1-dev.26
 - Add permanent customer portal URL with all customer projects and galleries.
 - Add Send URL to customer with editable tenant email template.

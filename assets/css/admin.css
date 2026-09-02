@@ -783,3 +783,18 @@ html.aurora-menu-lock,html.aurora-menu-lock body{overflow:hidden}
 
 /* dev.26 — Customer Portal Foundation */
 .aurora-inline-form{display:inline-flex}.aurora-customer-portal-row{margin-top:8px}.aurora-portal-settings-form .aurora-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.aurora-portal-settings-form label{display:flex;flex-direction:column;gap:6px;margin:10px 0}.aurora-portal-settings-form input:not([type=file]),.aurora-portal-settings-form textarea{padding:10px;border:1px solid #ddd7e3;border-radius:9px}.aurora-span-2{grid-column:1/-1}@media(max-width:782px){.aurora-portal-settings-form .aurora-form-grid{grid-template-columns:1fr}.aurora-span-2{grid-column:auto}}
+
+/* dev.27 */
+.aurora-photographer-profile-card{min-width:0}.aurora-profile-summary{display:grid;grid-template-columns:220px 1fr;gap:24px}.aurora-profile-logo{max-width:190px;max-height:80px;object-fit:contain}.aurora-profile-person{display:flex;gap:14px;align-items:center}.aurora-profile-person img{width:62px;height:62px;border-radius:50%;object-fit:cover}.aurora-profile-person div{display:flex;flex-direction:column;gap:5px}.aurora-profile-summary dl{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.aurora-profile-summary dl div{padding:12px;background:#f8f7fa;border-radius:10px;min-width:0}.aurora-profile-summary dt{font-size:10px;color:#8a8190;text-transform:uppercase}.aurora-profile-summary dd{margin:5px 0 0;overflow-wrap:anywhere}.aurora-color-swatch{display:inline-block;width:22px;height:22px;border-radius:6px;vertical-align:middle;margin-right:8px;border:1px solid #ddd}.aurora-color-field{display:flex;align-items:center;gap:10px}.aurora-profile-preview-accent{height:10px;border-radius:999px;margin-top:18px}.aurora-gallery-activity{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.aurora-gallery-activity span{background:#f7f5f9;border:1px solid #e6e0ea;border-radius:999px;padding:6px 9px;font-size:11px}.aurora-gallery-activity b{color:#6f4bf2}.aurora-portal-settings-form,.aurora-portal-settings-form *{min-width:0}.aurora-portal-settings-form input,.aurora-portal-settings-form textarea{max-width:100%}@media(max-width:900px){.aurora-profile-summary{grid-template-columns:1fr}.aurora-profile-summary dl{grid-template-columns:1fr 1fr}}@media(max-width:600px){.aurora-profile-summary dl{grid-template-columns:1fr}}
+
+/* dev.27-fix1 — profile menu, cover preview and hero refinements */
+.aurora-profile-cover-preview{position:relative;width:100%;height:190px;border-radius:14px;background-position:center;background-size:cover;overflow:hidden;margin:4px 0 22px}
+.aurora-profile-cover-preview:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(20,16,24,.55))}
+.aurora-profile-cover-preview span{position:absolute;z-index:1;left:16px;bottom:13px;color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.aurora-workspace-avatar img,.aurora-topbar-avatar img,.aurora-profile-menu-toggle img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.aurora-profile-menu-toggle{padding:0;overflow:hidden;cursor:pointer}
+.aurora-profile-dropdown{position:absolute;right:20px;top:78px;z-index:1000;width:190px;background:#fff;border:1px solid #e5dfe9;border-radius:12px;box-shadow:0 14px 35px rgba(34,27,40,.14);padding:7px}
+.aurora-profile-dropdown[hidden]{display:none!important}
+.aurora-profile-dropdown a{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:8px;text-decoration:none;color:#3a333e;font-size:12px;font-weight:600}
+.aurora-profile-dropdown a:hover{background:#f6f3f8}
+@media(max-width:782px){.aurora-profile-cover-preview{height:145px}.aurora-profile-dropdown{right:12px;top:68px}}
