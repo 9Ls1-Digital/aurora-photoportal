@@ -629,3 +629,24 @@ body.admin_page_aurora-photographer-workspace #wpcontent{margin-left:0}
 .aurora-gallery-locked>.dashicons{font-size:28px;width:28px;height:28px;color:#7650cc;margin-top:4px}
 @media(max-width:1100px){.aurora-gallery-row{grid-template-columns:90px 1fr auto}.aurora-gallery-meta{grid-column:2}.aurora-gallery-actions{grid-column:3;grid-row:1 / span 3}.aurora-gallery-thumb{width:90px;height:66px}.aurora-gallery-upload-form .aurora-form-grid{grid-template-columns:1fr}}
 @media(max-width:720px){.aurora-gallery-row{grid-template-columns:76px 1fr}.aurora-gallery-thumb{width:76px;height:60px}.aurora-gallery-actions{grid-column:1 / -1;grid-row:auto}.aurora-gallery-meta{grid-column:2}.aurora-gallery-options{flex-direction:column;gap:10px}}
+
+/* dev.19 — native Delivery */
+.aurora-delivery-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.aurora-delivery-summary{display:flex;gap:14px;align-items:flex-start;margin:0}
+.aurora-delivery-summary>.dashicons{font-size:25px;width:25px;height:25px;color:#7350c5}
+.aurora-delivery-summary div{display:flex;flex-direction:column;gap:4px}
+.aurora-delivery-summary small{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8e8798}
+.aurora-delivery-summary strong{font-size:21px;color:#2b2533}
+.aurora-delivery-summary p{margin:0;color:#81798d;font-size:12px}
+.aurora-delivery-gallery-list{display:flex;flex-direction:column}
+.aurora-delivery-gallery-row{display:grid;grid-template-columns:34px minmax(200px,1.4fr) repeat(3,minmax(120px,.65fr)) 36px;gap:14px;align-items:center;padding:15px 0;border-bottom:1px solid #efedf3}
+.aurora-delivery-gallery-row:last-child{border-bottom:0}
+.aurora-delivery-gallery-icon{color:#7650cc}
+.aurora-delivery-gallery-row>div{display:flex;flex-direction:column;gap:4px}
+.aurora-delivery-gallery-row>div>span{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#91899c}
+.aurora-delivery-gallery-row small{color:#81798d}
+.aurora-delivery-status-card{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-top:16px}
+.aurora-delivery-status-form{display:flex;align-items:center;gap:10px}
+.aurora-delivery-status-form select{min-width:190px;border:1px solid #ddd9e8;border-radius:10px;padding:10px;background:#fff}
+@media(max-width:1100px){.aurora-delivery-summary-grid{grid-template-columns:1fr 1fr}.aurora-delivery-gallery-row{grid-template-columns:34px 1fr 1fr}.aurora-delivery-gallery-row>a{grid-column:3}.aurora-delivery-status-card{align-items:flex-start;flex-direction:column}}
+@media(max-width:720px){.aurora-delivery-summary-grid{grid-template-columns:1fr}.aurora-delivery-gallery-row{grid-template-columns:30px 1fr}.aurora-delivery-gallery-row>div:not(:first-of-type),.aurora-delivery-gallery-row>a{grid-column:2}.aurora-delivery-status-form{width:100%;flex-direction:column;align-items:stretch}}

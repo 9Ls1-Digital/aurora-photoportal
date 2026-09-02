@@ -407,6 +407,7 @@ class NLS1_Fotoportal_Admin {
     public function handle_update_project_status() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_update_project_status');
+        $workspace = !empty($_POST['aurora_workspace']);
         global $wpdb;
         $project_id = (int)($_POST['project_id'] ?? 0);
         $status = sanitize_key($_POST['status'] ?? 'created');

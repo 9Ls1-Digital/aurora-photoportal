@@ -1,5 +1,17 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.19-fix1
+- Fix Delivery workflow routing so step 5 opens the native Aurora Delivery view instead of falling back to Dashboard when the standalone delivery entitlement is not enabled.
+- Fix customer profile project links so they open the native Aurora project profile instead of the legacy Fotoportal admin.
+
+## 0.7.1-dev.19
+- Move Delivery into the native Aurora Photographer Workspace.
+- Complete the native five-step project workflow: Project, Contract, Documents, Gallery and Delivery.
+- Add project delivery readiness summary for galleries, previews, downloads and signed contract state.
+- Add native delivery gallery overview and project status control.
+- Remove the final workflow legacy bridge while preserving the existing delivery/status data model.
+- Keep Customer Portal and automated final delivery as future module work.
+
 ## 0.7.1-dev.18
 - Move Galleries into the native Aurora Photographer Workspace.
 - Add photographer-wide gallery overview and project-scoped gallery workflow.

@@ -26,7 +26,6 @@ $title = $view_titles[$view] ?? $view_titles['dashboard'];
 
 $legacy_links = [
 
-    'hq_delivery' => NLS1_Fotoportal_Admin::fotoportal_url('galleries'),
 ];
 ?>
 <div class="aurora-workspace">
@@ -178,7 +177,7 @@ $legacy_links = [
                                             <span class="dashicons dashicons-portfolio"></span>
                                             <div><strong><?php echo esc_html($project->project_name); ?></strong><small><?php echo esc_html($project->project_number); ?><?php if ($project->project_date) echo ' · ' . esc_html(date_i18n('d.m.Y', strtotime($project->project_date))); ?></small></div>
                                             <span class="aurora-status-pill"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span>
-                                            <a class="aurora-icon-link" title="Åpne prosjekt" href="<?php echo esc_url(NLS1_Fotoportal_Admin::project_url($project->id)); ?>"><span class="dashicons dashicons-arrow-right-alt2"></span></a>
+                                            <a class="aurora-icon-link" title="Åpne prosjekt" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>(int)$project->id])); ?>"><span class="dashicons dashicons-arrow-right-alt2"></span></a>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -409,7 +408,7 @@ $legacy_links = [
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>"><span>2</span><strong>Kontrakt</strong><small><?php echo count($contracts); ?> registrert</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id])); ?>"><span>3</span><strong>Dokumenter</strong><small><?php echo count($documents); ?> filer</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span>4</span><strong>Galleri</strong><small><?php echo count($galleries); ?> gallerier</small></a>
-                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery',['project_id'=>$project_id])); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
                         </div>
                     </section>
 
@@ -557,7 +556,7 @@ $legacy_links = [
                             <div class="is-current"><span>2</span><strong>Kontrakt</strong><small><?php echo count($contracts); ?> registrert</small></div>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id])); ?>"><span>3</span><strong>Dokumenter</strong><small>Neste steg</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span>4</span><strong>Galleri</strong><small>Senere</small></a>
-                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery',['project_id'=>$project_id])); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
                         </div>
                     </section>
 
@@ -635,7 +634,7 @@ $legacy_links = [
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>"><span>2</span><strong>Kontrakt</strong><small>Avtaler</small></a>
                             <div class="is-current"><span>3</span><strong>Dokumenter</strong><small><?php echo count($documents); ?> registrert</small></div>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span>4</span><strong>Galleri</strong><small>Neste steg</small></a>
-                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery',['project_id'=>$project_id])); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
                         </div>
                     </section>
                 <?php else : ?>
@@ -771,9 +770,89 @@ $legacy_links = [
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>"><span>2</span><strong>Kontrakt</strong><small>Avtaler</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id])); ?>"><span>3</span><strong>Dokumenter</strong><small>Underlag</small></a>
                             <div class="is-current"><span>4</span><strong>Galleri</strong><small><?php echo count($galleries); ?> gallerier</small></div>
-                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Neste steg</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery',['project_id'=>$project_id])); ?>"><span>5</span><strong>Leveranse</strong><small>Neste steg</small></a>
                         </div>
                     </section>
+                <?php endif; ?>
+
+
+            <?php elseif ($view === 'hq_delivery') : ?>
+                <?php
+                $project_id = absint($_GET['project_id'] ?? 0);
+                $project = $project_id ? NLS1_Fotoportal_Admin::get_project($project_id) : null;
+                $project_galleries = $project ? NLS1_Fotoportal_Admin::get_galleries($project_id, true) : [];
+                $signed = $project ? NLS1_Fotoportal_Admin::has_signed_contract($project_id) : false;
+                $ready_galleries = 0; $download_galleries = 0; $image_total = 0;
+                foreach ($project_galleries as $delivery_gallery) {
+                    if (in_array($delivery_gallery->status, ['preview_generated','ready'], true)) $ready_galleries++;
+                    if (!empty($delivery_gallery->download_enabled)) $download_galleries++;
+                    $image_total += (int)$delivery_gallery->original_count;
+                }
+                ?>
+                <?php if ($project) : ?>
+                    <a class="aurora-back-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id])); ?>"><span class="dashicons dashicons-arrow-left-alt2"></span>Tilbake til prosjekt</a>
+                    <div class="aurora-project-profile-card">
+                        <div class="aurora-project-mark"><span class="dashicons dashicons-download"></span></div>
+                        <div class="aurora-customer-profile-main">
+                            <span class="aurora-workspace-eyebrow"><?php echo esc_html($project->project_number); ?></span>
+                            <h2><?php echo esc_html($project->project_name); ?></h2>
+                            <div class="aurora-customer-meta"><span><?php echo esc_html($project->client_name ?: '—'); ?></span><span class="aurora-status-pill"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span></div>
+                        </div>
+                    </div>
+
+                    <div class="aurora-delivery-summary-grid">
+                        <section class="aurora-workspace-card aurora-delivery-summary"><span class="dashicons dashicons-format-gallery"></span><div><small>Gallerier</small><strong><?php echo count($project_galleries); ?></strong><p><?php echo (int)$image_total; ?> bilder totalt</p></div></section>
+                        <section class="aurora-workspace-card aurora-delivery-summary"><span class="dashicons dashicons-yes-alt"></span><div><small>Preview klare</small><strong><?php echo (int)$ready_galleries; ?> / <?php echo count($project_galleries); ?></strong><p>Gallerier med generert preview</p></div></section>
+                        <section class="aurora-workspace-card aurora-delivery-summary"><span class="dashicons dashicons-download"></span><div><small>Nedlasting</small><strong><?php echo (int)$download_galleries; ?></strong><p>Gallerier med nedlasting aktivert</p></div></section>
+                        <section class="aurora-workspace-card aurora-delivery-summary"><span class="dashicons dashicons-media-document"></span><div><small>Kontrakt</small><strong><?php echo $signed ? 'Signert' : 'Mangler'; ?></strong><p><?php echo $signed ? 'Prosjektet er godkjent for galleri.' : 'Signering må fullføres.'; ?></p></div></section>
+                    </div>
+
+                    <section class="aurora-workspace-card">
+                        <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">STEG 5</span><h2>Leveranse</h2><p>Klargjør prosjektet for kundeportal, godkjenning og endelig levering.</p></div><span class="aurora-status-pill <?php echo $project->status === 'delivered' ? 'is-active' : ''; ?>"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span></div>
+                        <?php if ($project_galleries) : ?>
+                            <div class="aurora-delivery-gallery-list">
+                            <?php foreach ($project_galleries as $gal) :
+                                $delivery_ready = in_array($gal->status, ['preview_generated','ready'], true);
+                            ?>
+                                <div class="aurora-delivery-gallery-row">
+                                    <span class="aurora-delivery-gallery-icon dashicons dashicons-format-gallery"></span>
+                                    <div><strong><?php echo esc_html($gal->gallery_title); ?></strong><small><?php echo esc_html($gal->gallery_number); ?> · <?php echo (int)$gal->original_count; ?> bilder</small></div>
+                                    <div><span>Preview</span><strong><?php echo $delivery_ready ? 'Klar' : 'Ikke klar'; ?></strong></div>
+                                    <div><span>Nedlasting</span><strong><?php echo !empty($gal->download_enabled) ? 'Aktivert' : 'Av'; ?></strong></div>
+                                    <div><span>Tilgjengelig til</span><strong><?php echo !empty($gal->downloadable_until) ? esc_html(date_i18n('d.m.Y',strtotime($gal->downloadable_until))) : 'Ikke satt'; ?></strong></div>
+                                    <a class="aurora-icon-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>" title="Administrer galleri"><span class="dashicons dashicons-arrow-right-alt2"></span></a>
+                                </div>
+                            <?php endforeach; ?>
+                            </div>
+                        <?php else : ?>
+                            <div class="aurora-empty-state"><span class="dashicons dashicons-format-gallery"></span><strong>Ingen gallerier klare for levering</strong><p>Opprett og klargjør et galleri før prosjektet leveres.</p><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>">Gå til Galleri</a></div>
+                        <?php endif; ?>
+                    </section>
+
+                    <section class="aurora-workspace-card aurora-delivery-status-card">
+                        <div><span class="aurora-workspace-eyebrow">PROSJEKTSTATUS</span><h2>Marker fremdrift</h2><p>Leveranse bruker den eksisterende prosjektstatusen. Kundeportal og automatisk sluttlevering kobles på i et senere modulsteg.</p></div>
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-delivery-status-form">
+                            <input type="hidden" name="action" value="9ls1_fotoportal_update_project_status"><input type="hidden" name="project_id" value="<?php echo (int)$project_id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_update_project_status'); ?>
+                            <select name="status">
+                                <?php foreach (NLS1_Fotoportal_Admin::$project_statuses as $status_key=>$status_name) : ?>
+                                    <option value="<?php echo esc_attr($status_key); ?>" <?php selected($project->status,$status_key); ?>><?php echo esc_html($status_name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button class="aurora-primary-action" type="submit">Oppdater status</button>
+                        </form>
+                    </section>
+
+                    <section class="aurora-workspace-card aurora-project-workflow">
+                        <div class="aurora-project-steps">
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id])); ?>"><span>1</span><strong>Prosjekt</strong><small>Detaljer og status</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>"><span>2</span><strong>Kontrakt</strong><small>Avtaler</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id])); ?>"><span>3</span><strong>Dokumenter</strong><small>Underlag</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span>4</span><strong>Galleri</strong><small><?php echo count($project_galleries); ?> gallerier</small></a>
+                            <div class="is-current"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></div>
+                        </div>
+                    </section>
+                <?php else : ?>
+                    <section class="aurora-workspace-card"><div class="aurora-empty-state"><span class="dashicons dashicons-download"></span><strong>Velg et prosjekt først</strong><p>Leveranse administreres fra prosjektets arbeidsflyt.</p><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects')); ?>">Gå til Prosjekter</a></div></section>
                 <?php endif; ?>
 
 <?php elseif ($view === 'settings') : ?>

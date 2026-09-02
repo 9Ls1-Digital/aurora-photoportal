@@ -69,7 +69,7 @@ class NLS1_Photographer_Workspace {
         $enabled = NLS1_Aurora_Account_Platform::get_account_modules($account->id);
         $view = sanitize_key($_GET['workspace_view'] ?? 'dashboard');
 
-        $allowed = ['dashboard', 'new', 'settings', 'resources'];
+        $allowed = ['dashboard', 'new', 'settings', 'resources', 'hq_delivery'];
         foreach ($this->module_pages as $key => $meta) {
             if (!empty($enabled[$key])) $allowed[] = $key;
         }
