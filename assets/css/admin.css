@@ -585,3 +585,12 @@ body.admin_page_aurora-photographer-workspace #wpcontent{margin-left:0}
     .aurora-contract-item{grid-template-columns:42px 1fr}
     .aurora-contract-status,.aurora-contract-item .aurora-row-actions{grid-column:2;text-align:left}
 }
+
+/* dev.17 — native Documents */
+.aurora-document-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,.7fr);gap:16px;margin-bottom:16px}
+.aurora-document-item{display:grid;grid-template-columns:42px 1fr auto auto;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid #efedf3}
+.aurora-document-item:last-child{border-bottom:0}
+.aurora-inline-form{display:inline-block;margin:0}
+.aurora-icon-link.is-danger{color:#a94646;background:#fff;border-color:#efdada}
+.aurora-contract-form select{display:block;width:100%;margin-top:6px;border:1px solid #ddd9e8;border-radius:10px;padding:10px;box-sizing:border-box}
+@media(max-width:1000px){.aurora-document-grid{grid-template-columns:1fr}.aurora-document-item{grid-template-columns:42px 1fr}.aurora-document-item>.aurora-status-pill,.aurora-document-item>.aurora-row-actions{grid-column:2}}

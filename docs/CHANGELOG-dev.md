@@ -1,5 +1,13 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.17
+- Move project Documents into the native Aurora Photographer Workspace.
+- Keep document navigation scoped to the active project.
+- Show existing project documents with type, date, open and delete actions.
+- Add native document registration form using the existing document data model.
+- Preserve Aurora Workspace context after add/delete actions.
+- Keep Gallery and Delivery as the remaining legacy workflow steps.
+
 ## 0.7.1-dev.16
 - Move project Contracts into the native Aurora Photographer Workspace.
 - Open the Contract step directly from the native project workflow.

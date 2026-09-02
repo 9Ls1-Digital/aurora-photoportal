@@ -1589,6 +1589,7 @@ class NLS1_Fotoportal_Admin {
     public function handle_add_document() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_add_document');
+        $workspace = !empty($_POST['aurora_workspace']);
         global $wpdb;
 
         $project_id = (int)($_POST['project_id'] ?? 0);
@@ -1624,13 +1625,16 @@ class NLS1_Fotoportal_Admin {
         ]);
 
         $this->log((int)$project->client_id, $project_id, 'document', 'Dokument lagt til: ' . $document_title, (int)$project->is_test);
-        wp_safe_redirect(self::project_url($project_id) . '&message=document_added');
+        wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+            ? NLS1_Photographer_Workspace::url('documents', ['project_id'=>$project_id,'message'=>'document_added'])
+            : self::project_url($project_id) . '&message=document_added');
         exit;
     }
 
     public function handle_delete_document() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_delete_document');
+        $workspace = !empty($_POST['aurora_workspace']);
         global $wpdb;
 
         $document_id = (int)($_POST['document_id'] ?? 0);
@@ -1640,7 +1644,9 @@ class NLS1_Fotoportal_Admin {
             $wpdb->delete(self::table('documents'), ['id' => $document_id, 'account_id' => self::tenant_account_id()], ['%d']);
         }
 
-        wp_safe_redirect(self::project_url($project_id) . '&message=document_deleted');
+        wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+            ? NLS1_Photographer_Workspace::url('documents', ['project_id'=>$project_id,'message'=>'document_deleted'])
+            : self::project_url($project_id) . '&message=document_deleted');
         exit;
     }
 
