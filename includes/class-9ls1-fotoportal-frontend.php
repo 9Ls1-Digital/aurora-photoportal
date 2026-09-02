@@ -10,6 +10,8 @@ class NLS1_Fotoportal_Frontend {
         add_action('template_redirect', [$this, 'render_public_gallery']);
         add_action('template_redirect', [$this, 'render_signing_page']);
         add_action('template_redirect', [$this, 'render_customer_password_page']);
+        add_action('template_redirect', [$this, 'render_photographer_password_page'], 0);
+        add_action('template_redirect', [$this, 'render_photographer_login_page'], 0);
         add_action('wp_mail_failed', [$this, 'capture_mail_failure']);
         add_filter('login_redirect', [$this, 'aurora_customer_login_redirect'], 20, 3);
         add_filter('logout_redirect', [$this, 'aurora_customer_logout_redirect'], 20, 3);
@@ -33,6 +35,8 @@ class NLS1_Fotoportal_Frontend {
         $vars[] = 'fotoportal_gallery';
         $vars[] = 'fotoportal_signer';
         $vars[] = 'fotoportal_password';
+        $vars[] = 'aurora_photographer_password';
+        $vars[] = 'aurora_photographer_login';
         return $vars;
     }
 
@@ -80,27 +84,69 @@ class NLS1_Fotoportal_Frontend {
 
     public function intercept_wordpress_customer_auth(){
         $action=sanitize_key($_REQUEST['action']??'login');
-        if($action==='logout')return;
-        $client=$this->customer_from_auth_context();
-        if(!$client && is_user_logged_in()){
-            $user=wp_get_current_user();
-            $client_id=(int)get_user_meta($user->ID,'aurora_fotoportal_client_id',true);
-            $account_id=(int)get_user_meta($user->ID,'aurora_fotoportal_account_id',true);
-            if($client_id&&$account_id)$client=NLS1_Fotoportal_Admin::get_public_client_by_id_account($client_id,$account_id);
+        if($action==='logout') return;
+
+        /*
+         * IMPORTANT AUTH BOUNDARY
+         * -----------------------
+         * wp-login.php is WordPress' shared authentication endpoint. Aurora must
+         * never infer "customer login" solely from a stale portal context cookie.
+         * Doing so hijacks administrator and photographer logins.
+         *
+         * Customer portal login/password handling is implemented on Aurora's own
+         * frontend routes. We only intercept wp-login.php when the request is
+         * explicitly marked as Aurora customer authentication.
+         */
+        $explicit_customer_auth = !empty($_REQUEST['aurora_customer_auth']);
+
+        if(!$explicit_customer_auth){
+            // Generic WordPress/admin/photographer login: remove stale customer
+            // context so it cannot influence a later request, then leave WP alone.
+            $cookie=$this->customer_auth_context_cookie_name();
+            if(isset($_COOKIE[$cookie]) && !headers_sent()){
+                $path=defined('SITECOOKIEPATH') && SITECOOKIEPATH ? SITECOOKIEPATH : '/';
+                $domain=defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '';
+                setcookie($cookie,'',[
+                    'expires'=>time()-3600,
+                    'path'=>$path,
+                    'domain'=>$domain ?: '',
+                    'secure'=>is_ssl(),
+                    'httponly'=>true,
+                    'samesite'=>'Lax',
+                ]);
+                unset($_COOKIE[$cookie]);
+            }
+            return;
         }
-        if(!$client)return;
+
+        $client=$this->customer_from_auth_context();
+        if(!$client) return;
+
         $this->set_customer_auth_context($client);
         $portal=NLS1_Fotoportal_Admin::customer_portal_url((int)$client->id);
+
         if(in_array($action,['rp','resetpass'],true)){
             $key=sanitize_text_field(wp_unslash($_REQUEST['key']??''));
             $login=sanitize_text_field(wp_unslash($_REQUEST['login']??''));
-            if($key&&$login){wp_safe_redirect($this->customer_password_url($client,'reset',['key'=>rawurlencode($key),'login'=>rawurlencode($login)]));exit;}
-            wp_safe_redirect($this->customer_password_url($client));exit;
+            if($key&&$login){
+                wp_safe_redirect($this->customer_password_url($client,'reset',[
+                    'key'=>rawurlencode($key),
+                    'login'=>rawurlencode($login)
+                ]));
+                exit;
+            }
+            wp_safe_redirect($this->customer_password_url($client));
+            exit;
         }
+
         if(in_array($action,['lostpassword','retrievepassword'],true)){
-            wp_safe_redirect($this->customer_password_url($client));exit;
+            wp_safe_redirect($this->customer_password_url($client));
+            exit;
         }
-        wp_safe_redirect($portal);exit;
+
+        // Explicit customer auth may return to the customer's portal.
+        wp_safe_redirect($portal);
+        exit;
     }
 
     private function aurora_customer_portal_for_user($user){
@@ -201,6 +247,136 @@ class NLS1_Fotoportal_Frontend {
         $this->brand_head($settings,$studio);
         echo '<main class="login-shell"><section class="login-card"><h1>'.esc_html($title).'</h1>'.$content.'</section></main>';
         $this->brand_foot($settings,$studio); echo '</body></html>'; exit;
+    }
+
+    private function photographer_auth_shell($account,$title,$content){
+        $branding=class_exists('NLS1_Aurora_Account_Platform') ? NLS1_Aurora_Account_Platform::platform_branding() : [];
+        $bg_desktop=$branding['photographer_login_bg_desktop']??(NLS1_FOTOPORTAL_PLUGIN_URL.'assets/aurora-login-background.png');
+        $bg_mobile=$branding['photographer_login_bg_mobile']??'';
+        if(!$bg_mobile) $bg_mobile=$bg_desktop;
+
+        status_header(200); nocache_headers();
+        echo '<!doctype html><html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.esc_html($title).' – Aurora Fotoportal</title><style>
+        *{box-sizing:border-box}
+        html,body{margin:0;width:100%;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#03111d;color:#fff}
+        body{min-height:100vh;background-image:linear-gradient(180deg,rgba(0,10,22,.12),rgba(0,10,22,.22)),url("'.esc_url($bg_desktop).'");background-position:center center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed}
+        .aurora-auth-shell{width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:42px 20px}
+        .aurora-auth-brand{text-align:center;margin:0 0 22px;text-shadow:0 4px 20px rgba(0,0,0,.5)}
+        .aurora-auth-mark{font-size:54px;line-height:1;font-weight:200;letter-spacing:.12em;color:#fff;margin-bottom:4px}
+        .aurora-auth-mark span{background:linear-gradient(90deg,#21e6b7,#38c6f4);-webkit-background-clip:text;background-clip:text;color:transparent}
+        .aurora-auth-brand h2{margin:0;font-size:38px;letter-spacing:.28em;font-weight:300;padding-left:.28em}
+        .aurora-auth-brand p{margin:8px 0 0;color:#4cf0d4;font-size:10px;font-weight:850;letter-spacing:.22em;text-transform:uppercase}
+        .aurora-auth-product{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px auto 0;color:#4cf0d4;font-size:11px;letter-spacing:.30em;font-weight:850;text-transform:uppercase}
+        .aurora-auth-product:before,.aurora-auth-product:after{content:"";display:block;width:62px;height:1px;background:#42e5d0}
+        .login-card{width:min(500px,100%);padding:28px 30px 30px;border:1px solid rgba(78,230,220,.56);border-radius:20px;background:rgba(2,24,38,.80);box-shadow:0 24px 70px rgba(0,0,0,.46);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+        .login-card .eyebrow{font-size:10px;font-weight:900;letter-spacing:.16em;color:#43e9d0;text-transform:uppercase}
+        .login-card h1{margin:7px 0 8px;font-size:29px;line-height:1.15;color:#fff}
+        .login-card p{margin:7px 0 15px;color:#c1cdd4;line-height:1.55}
+        .login-card label{display:block;margin:14px 0 6px;color:#d7e4e9;font-size:12px;font-weight:750;letter-spacing:.04em}
+        .login-card input[type=password],.login-card input[type=text],.login-card input[type=email]{width:100%;height:52px;padding:0 15px;border:1px solid rgba(118,178,194,.45);border-radius:8px;background:rgba(0,12,24,.62);color:#fff;font:inherit;outline:none}
+        .login-card input:focus{border-color:#38e8d2;box-shadow:0 0 0 3px rgba(56,232,210,.12)}
+        .login-card input[type=checkbox]{accent-color:#36e4cc}
+        .login-card label:has(input[type=checkbox]){display:flex;align-items:center;gap:8px;font-size:13px;letter-spacing:0}
+        .aurora-btn{display:inline-flex;width:100%;min-height:50px;margin-top:16px;align-items:center;justify-content:center;border:0;border-radius:8px;padding:12px 18px;background:linear-gradient(90deg,#16d0aa,#39c7f4);color:#fff;font-weight:850;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;text-align:center;text-decoration:none;box-shadow:0 8px 24px rgba(22,208,170,.18)}
+        .aurora-btn:hover{filter:brightness(1.06)}
+        .notice{padding:12px 14px;border-radius:9px;margin:14px 0;font-size:13px}
+        .notice.ok{background:rgba(31,160,111,.18);border:1px solid rgba(86,221,164,.4);color:#bff7dc}
+        .notice.err{background:rgba(188,48,69,.18);border:1px solid rgba(255,111,133,.35);color:#ffd1d8}
+        .back{display:inline-block;margin-top:16px;color:#42ecd5;font-weight:700;text-decoration:none}
+        .aurora-powered{margin-top:28px;text-align:center;color:#c2cdd3;font-size:11px;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+        .aurora-powered strong{display:block;margin-top:4px;color:#45f0d0;font-size:15px;letter-spacing:.04em}
+        @media(max-width:700px){
+            body{background-image:linear-gradient(180deg,rgba(0,10,22,.10),rgba(0,10,22,.22)),url("'.esc_url($bg_mobile).'");background-attachment:scroll;background-position:center center}
+            .aurora-auth-shell{justify-content:flex-start;padding:8vh 14px 28px}
+            .aurora-auth-brand{margin-bottom:17px}
+            .aurora-auth-mark{font-size:42px}
+            .aurora-auth-brand h2{font-size:28px}
+            .aurora-auth-product:before,.aurora-auth-product:after{width:38px}
+            .login-card{padding:23px 20px;border-radius:17px}
+            .login-card h1{font-size:25px}
+        }
+        </style></head><body>';
+        echo '<main class="aurora-auth-shell"><header class="aurora-auth-brand"><div class="aurora-auth-mark"><span>∿</span></div><h2>AURORA</h2><p>Intelligent Business Platform</p><div class="aurora-auth-product">Fotoportal</div></header><section class="login-card"><div class="eyebrow">Aurora · Fotograf</div><h1>'.esc_html($title).'</h1>'.$content.'</section><div class="aurora-powered">Powered by<strong>9Ls1 Digital</strong></div></main>';
+        echo '</body></html>'; exit;
+    }
+
+    public function render_photographer_password_page(){
+        if(!get_query_var('aurora_photographer_password')) return;
+        $account_id=absint($_REQUEST['account_id']??0);
+        $account=NLS1_Aurora_Account_Platform::get_account($account_id);
+        if(!$account){status_header(404);echo '<h1>Ugyldig invitasjon</h1>';exit;}
+        $key=sanitize_text_field(wp_unslash($_REQUEST['key']??''));
+        $login=sanitize_user(wp_unslash($_REQUEST['login']??''));
+        $user=($key&&$login)?check_password_reset_key($key,$login):new WP_Error('invalid_key','Ugyldig lenke');
+        $valid=!is_wp_error($user)
+            && ((int)get_user_meta($user->ID,'aurora_fotoportal_account_id',true)===$account_id)
+            && (in_array('aurora_photographer',(array)$user->roles,true) || $user->has_cap('aurora_fotoportal_photographer'));
+        if(!$valid){
+            $content='<div class="notice err"><strong>Invitasjonslenken er ugyldig eller utløpt.</strong></div><p>Be Aurora-administrator sende invitasjonen på nytt.</p>';
+            $this->photographer_auth_shell($account,'Lenken kan ikke brukes',$content);
+        }
+        $err='';
+        if($_SERVER['REQUEST_METHOD']==='POST'){
+            check_admin_referer('aurora_photographer_password_reset');
+            $p1=(string)($_POST['pass1']??''); $p2=(string)($_POST['pass2']??'');
+            if(strlen($p1)<8) $err='Passordet må inneholde minst 8 tegn.';
+            elseif($p1!==$p2) $err='Passordene er ikke like.';
+            else {
+                reset_password($user,$p1);
+                update_user_meta($user->ID,'aurora_fotoportal_password_activated_at',current_time('mysql'));
+                $login_url=add_query_arg([
+                    'aurora_photographer_login'=>1,
+                    'account_id'=>$account_id,
+                    'login'=>$user->user_email ?: $user->user_login
+                ],home_url('/'));
+                $content='<div class="notice ok"><strong>Passordet er lagret.</strong></div><p>Fotografkontoen din er nå aktivert. Logg inn for å starte førstegangsoppsettet av Aurora Fotoportal.</p><a class="aurora-btn" href="'.esc_url($login_url).'">Gå til fotografinnlogging</a>';
+                $this->photographer_auth_shell($account,'Kontoen er aktivert',$content);
+            }
+        }
+        $err_html=$err?'<div class="notice err">'.esc_html($err).'</div>':'';
+        $action=add_query_arg(['aurora_photographer_password'=>1,'account_id'=>$account_id,'key'=>rawurlencode($key),'login'=>rawurlencode($login)],home_url('/'));
+        ob_start(); echo $err_html.'<p>Velg passordet du vil bruke når du logger inn som fotograf.</p><form method="post" action="'.esc_url($action).'"><label>Nytt passord</label><input type="password" name="pass1" minlength="8" autocomplete="new-password" required><label>Gjenta nytt passord</label><input type="password" name="pass2" minlength="8" autocomplete="new-password" required>'; wp_nonce_field('aurora_photographer_password_reset'); echo '<button class="aurora-btn" type="submit">Lagre passord</button></form>'; $content=ob_get_clean();
+        $this->photographer_auth_shell($account,'Opprett passord',$content);
+    }
+
+    public function render_photographer_login_page(){
+        if(!get_query_var('aurora_photographer_login')) return;
+        $account_id=absint($_REQUEST['account_id']??0);
+        $account=NLS1_Aurora_Account_Platform::get_account($account_id);
+        if(!$account){status_header(404);echo '<h1>Fotografkonto finnes ikke</h1>';exit;}
+        if(is_user_logged_in()){
+            $current=wp_get_current_user();
+            if((int)get_user_meta($current->ID,'aurora_fotoportal_account_id',true)===$account_id && (in_array('aurora_photographer',(array)$current->roles,true)||$current->has_cap('aurora_fotoportal_photographer'))){wp_safe_redirect(NLS1_Photographer_Workspace::url('dashboard'));exit;}
+            wp_logout();
+        }
+        $login=sanitize_text_field(wp_unslash($_REQUEST['login']??'')); $err='';
+        if($_SERVER['REQUEST_METHOD']==='POST'){
+            check_admin_referer('aurora_photographer_login');
+            $creds=['user_login'=>sanitize_text_field(wp_unslash($_POST['user_login']??'')),'user_password'=>(string)($_POST['user_password']??''),'remember'=>!empty($_POST['remember'])];
+            $signed=wp_signon($creds,is_ssl());
+            if(is_wp_error($signed)) $err='E-post/brukernavn eller passord er ikke riktig.';
+            else {
+                $belongs=(int)get_user_meta($signed->ID,'aurora_fotoportal_account_id',true)===$account_id;
+                $photographer=in_array('aurora_photographer',(array)$signed->roles,true)||$signed->has_cap('aurora_fotoportal_photographer');
+                if(!$belongs||!$photographer){wp_logout();$err='Denne innloggingen har ikke tilgang til denne fotografkontoen.';}
+                else {
+                    // Repair legacy/test users that previously existed as WooCommerce
+                    // customers. Photographer owners must use the Aurora photographer role.
+                    if (
+                        !$signed->has_cap('manage_options')
+                        && !$signed->has_cap('manage_woocommerce')
+                        && !in_array('aurora_photographer',(array)$signed->roles,true)
+                    ) {
+                        $signed->set_role('aurora_photographer');
+                    }
+                    wp_safe_redirect(NLS1_Photographer_Workspace::url('dashboard'));exit;
+                }
+            }
+        }
+        $err_html=$err?'<div class="notice err">'.esc_html($err).'</div>':'';
+        $action=add_query_arg(['aurora_photographer_login'=>1,'account_id'=>$account_id],home_url('/'));
+        ob_start(); echo $err_html.'<p>Logg inn for å åpne ditt fotograf-Workspace.</p><form method="post" action="'.esc_url($action).'"><label>E-post / brukernavn</label><input type="text" name="user_login" value="'.esc_attr($login).'" autocomplete="username" required><label>Passord</label><input type="password" name="user_password" autocomplete="current-password" required><label style="font-weight:400"><input type="checkbox" name="remember" value="1"> Husk meg</label>'; wp_nonce_field('aurora_photographer_login'); echo '<button class="aurora-btn" type="submit">Logg inn</button></form>'; $content=ob_get_clean();
+        $this->photographer_auth_shell($account,'Fotografinnlogging',$content);
     }
 
     private $aurora_mail_failure = '';

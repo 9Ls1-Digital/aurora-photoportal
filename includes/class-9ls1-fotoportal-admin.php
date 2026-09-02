@@ -2308,9 +2308,13 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function handle_save_portal_settings(){
-        if(!current_user_can('manage_options')) wp_die('Mangler tilgang.');
+        if(!current_user_can('manage_options') && !current_user_can('aurora_fotoportal_photographer')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_save_portal_settings');
         $a=self::tenant_account_id();
+        if(!$a && current_user_can('aurora_fotoportal_photographer')){
+            $a=(int)get_user_meta(get_current_user_id(),'aurora_fotoportal_account_id',true);
+        }
+        if(!$a) wp_die('Fotografkonto kunne ikke bestemmes.');
         $c=self::photographer_portal_settings($a);
         $up=function($n,$old){if(empty($_FILES[$n]['name']))return $old;require_once ABSPATH.'wp-admin/includes/file.php';$u=wp_handle_upload($_FILES[$n],['test_form'=>false]);return empty($u['error'])?$u['url']:$old;};
         $positions=['top_left','top_center','top_right','center','bottom_left','bottom_center','bottom_right'];
@@ -2389,7 +2393,12 @@ class NLS1_Fotoportal_Admin {
         wp_safe_redirect(NLS1_Photographer_Workspace::url('customers',$args)); exit;
     }
     public function handle_save_customer_hero(){if(!current_user_can('manage_options'))wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_save_customer_hero');$c=self::get_client(absint($_POST['client_id']??0));if(!$c)wp_die('Kunde mangler.');$x=$this->clean_hero_post();if($x['image_id']){global $wpdb;$ok=$wpdb->get_var($wpdb->prepare("SELECT i.id FROM ".self::table('images')." i INNER JOIN ".self::table('galleries')." g ON g.id=i.gallery_id AND g.account_id=i.account_id WHERE i.id=%d AND g.client_id=%d AND i.account_id=%d",$x['image_id'],$c->id,$c->account_id));if(!$ok)$x['image_id']=0;}update_option('9ls1_fotoportal_customer_hero_'.(int)$c->account_id.'_'.(int)$c->id,$x,false);wp_safe_redirect(NLS1_Photographer_Workspace::url('customers',['customer_id'=>$c->id,'hero_saved'=>1]));exit;}
-    public function handle_send_customer_portal(){if(!current_user_can('manage_options'))wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_send_customer_portal');$g=self::get_gallery((int)($_POST['gallery_id']??0));if(!$g)wp_die('Galleri mangler.');$c=self::get_client($g->client_id);$pc=self::get_primary_contact($c->id);$to=sanitize_email($pc&&$pc->email?$pc->email:$c->email);if(!$to)wp_die('Kunden mangler e-post.');$s=self::photographer_portal_settings();$v=['customer_name'=>$c->client_name,'project_name'=>$g->project_name?:'','gallery_name'=>$g->gallery_title,'customer_portal_url'=>self::customer_portal_url($c->id),'gallery_url'=>self::gallery_public_url($g),'photographer_name'=>$s['photographer_name']?:($s['studio_name']?:get_bloginfo('name')),'studio_name'=>$s['studio_name']];$h=['Content-Type: text/plain; charset=UTF-8'];if($s['email'])$h[]='Reply-To: '.$s['email'];$ok=wp_mail($to,self::replace_mail_tokens($s['email_subject'],$v),self::replace_mail_tokens($s['email_body'],$v),$h);wp_safe_redirect(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$g->project_id,'gallery_id'=>$g->id,'message'=>$ok?'portal_mail_sent':'portal_mail_failed']));exit;}
+    public function handle_send_customer_portal(){if(!current_user_can('manage_options'))wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_send_customer_portal');$g=self::get_gallery((int)($_POST['gallery_id']??0));if(!$g)wp_die('Galleri mangler.');$c=self::get_client($g->client_id);$pc=self::get_primary_contact($c->id);$to=sanitize_email($pc&&$pc->email?$pc->email:$c->email);if(!$to)wp_die('Kunden mangler e-post.');$s=self::photographer_portal_settings();$v=['customer_name'=>$c->client_name,'project_name'=>$g->project_name?:'','gallery_name'=>$g->gallery_title,'customer_portal_url'=>self::customer_portal_url($c->id),'gallery_url'=>self::gallery_public_url($g),'photographer_name'=>$s['photographer_name']?:($s['studio_name']?:get_bloginfo('name')),'studio_name'=>$s['studio_name']];$h=['Content-Type: text/plain; charset=UTF-8'];$reply_to=$s['email'];
+        if(!$reply_to && class_exists('NLS1_Aurora_Account_Platform')){
+            $account=NLS1_Aurora_Account_Platform::get_account((int)$g->account_id);
+            if($account) $reply_to=sanitize_email($account->contact_email);
+        }
+        if($reply_to)$h[]='Reply-To: '.$reply_to;$ok=wp_mail($to,self::replace_mail_tokens($s['email_subject'],$v),self::replace_mail_tokens($s['email_body'],$v),$h);wp_safe_redirect(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$g->project_id,'gallery_id'=>$g->id,'message'=>$ok?'portal_mail_sent':'portal_mail_failed']));exit;}
 
     public function handle_save_branding() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');

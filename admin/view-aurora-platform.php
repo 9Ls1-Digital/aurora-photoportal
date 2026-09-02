@@ -47,11 +47,16 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
     </nav>
     <?php endif; ?>
 
-    <?php if (isset($_GET['message']) && $_GET['message']==='account_created') : ?><div class="notice notice-success"><p>Fotografkonto er opprettet.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='account_created_mail_sent') : ?><div class="notice notice-success"><p>Fotografkonto og demo er opprettet. Velkomstmail med sikker lenke for å sette passord er sendt.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='account_created_mail_failed') : ?><div class="notice notice-error"><p>Fotografkonto og demo er opprettet, men invitasjonen kunne ikke sendes. <?php echo !empty($_GET['mail_error']) ? '<strong>'.esc_html(rawurldecode(wp_unslash($_GET['mail_error']))).'</strong>' : 'Kontroller WordPress sitt e-postoppsett.'; ?></p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='invitation_resent') : ?><div class="notice notice-success"><p>En ny invitasjon med fersk «sett passord»-lenke er sendt.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='invitation_failed') : ?><div class="notice notice-error"><p>Invitasjonen kunne ikke sendes. <?php echo !empty($_GET['mail_error']) ? '<strong>'.esc_html(rawurldecode(wp_unslash($_GET['mail_error']))).'</strong>' : 'Kontroller WordPress sitt e-postoppsett.'; ?></p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message']==='account_missing') : ?><div class="notice notice-error"><p>Fotograf-/studionavn må fylles ut.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message']==='modules_saved') : ?><div class="notice notice-success"><p>Modultilgang er lagret.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message']==='branding_saved') : ?><div class="notice notice-success"><p>Aurora-branding er lagret.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message']==='license_saved') : ?><div class="notice notice-success"><p>Lisensinnstillinger er lagret.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='trial_extended') : ?><div class="notice notice-success"><p>Demoperioden er forlenget.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='trial_expired') : ?><div class="notice notice-warning"><p>Demoperioden er markert som utløpt.</p></div><?php endif; ?>
 
     <?php if ($section === 'dashboard') : ?>
         <section class="aurora-platform-stats">
@@ -169,7 +174,8 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
                     <label>Fotograf / studionavn *<input type="text" name="account_name" required placeholder="f.eks. Nordlys Foto"></label>
                     <label>Kontaktperson<input type="text" name="contact_name" placeholder="Fornavn Etternavn"></label>
                     <label>E-post<input type="email" name="contact_email" placeholder="foto@eksempel.no"></label>
-                    <p><button class="button button-primary">Opprett fotografkonto</button></p>
+                    <div class="aurora-trial-create-note"><strong>Demo aktiveres automatisk</strong><span><?php echo esc_html(NLS1_Aurora_Account_Platform::trial_days()); ?> dager fra opprettelse. Kan forlenges av Aurora Admin.</span></div>
+                    <p><button class="button button-primary">Opprett fotografkonto + demo</button></p>
                 </form>
             </section>
 
@@ -189,9 +195,11 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
         <?php if ($account) :
             $account_modules = NLS1_Aurora_Account_Platform::get_account_modules($account->id);
             $license = NLS1_Aurora_Account_Platform::get_license($account->id);
+            $trial_state = NLS1_Aurora_Account_Platform::trial_state($account);
+            $trial_days_left = NLS1_Aurora_Account_Platform::trial_days_left($account);
         ?>
         <section class="aurora-platform-card aurora-account-detail">
-            <div class="aurora-card-head"><div><span class="aurora-kicker">FOTOGRAFKONTO</span><h2><?php echo esc_html($account->account_name); ?></h2><p><?php echo esc_html($account->contact_name); ?> · <?php echo esc_html($account->contact_email); ?></p></div><span class="aurora-license-status is-<?php echo esc_attr($account->status); ?>"><?php echo esc_html($account->status); ?></span></div>
+            <div class="aurora-card-head"><div><span class="aurora-kicker">FOTOGRAFKONTO</span><h2><?php echo esc_html($account->account_name); ?></h2><p><?php echo esc_html($account->contact_name); ?> · <?php echo esc_html($account->contact_email); ?></p></div><span class="aurora-license-status is-<?php echo esc_attr($trial_state); ?>"><?php echo esc_html($trial_state); ?></span></div>
             <div class="aurora-account-detail-grid">
                 <div><span>Plan</span><strong><?php echo esc_html($account->plan_name); ?></strong></div>
                 <div><span>Lisens</span><strong><?php echo esc_html($license ? $license->license_name : 'Ikke satt'); ?></strong></div>
@@ -199,20 +207,103 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
                 <div><span>Lagring</span><strong><?php echo esc_html($license ? $license->storage_gb : 0); ?> GB</strong></div>
             </div>
 
+            <div class="aurora-trial-panel">
+                <div>
+                    <span class="aurora-kicker">DEMO / ONBOARDING</span>
+                    <h3><?php echo $trial_state === 'trial' ? 'Aktiv demoperiode' : ($trial_state === 'expired' ? 'Demo utløpt' : 'Kontostatus'); ?></h3>
+                    <?php if ($account->plan_name === 'Trial' || in_array($trial_state, ['trial','expired'], true)) : ?>
+                        <p>Demo utløper <strong><?php echo esc_html(NLS1_Aurora_Account_Platform::trial_end_label($account)); ?></strong><?php if ($trial_days_left !== null && $trial_state === 'trial') : ?> · <?php echo esc_html($trial_days_left); ?> dager igjen<?php endif; ?>.</p>
+                    <?php else : ?>
+                        <p>Kontoen er ikke i demo.</p>
+                    <?php endif; ?>
+                </div>
+                <div class="aurora-trial-actions">
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                        <input type="hidden" name="action" value="aurora_extend_trial">
+                        <input type="hidden" name="account_id" value="<?php echo esc_attr($account->id); ?>">
+                        <?php wp_nonce_field('aurora_extend_trial'); ?>
+                        <select name="days"><option value="7">+7 dager</option><option value="14">+14 dager</option><option value="30">+30 dager</option></select>
+                        <button class="button button-primary">Forleng demo</button>
+                    </form>
+                    <?php if ($trial_state === 'trial') : ?>
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('Vil du markere demoen som utløpt nå?');">
+                        <input type="hidden" name="action" value="aurora_expire_trial">
+                        <input type="hidden" name="account_id" value="<?php echo esc_attr($account->id); ?>">
+                        <?php wp_nonce_field('aurora_expire_trial'); ?>
+                        <button class="button">Avslutt demo nå</button>
+                    </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <?php
+                $owner_user = !empty($account->owner_user_id) ? get_user_by('id', (int)$account->owner_user_id) : false;
+                $invite_sent_at = $owner_user ? get_user_meta($owner_user->ID, 'aurora_fotoportal_invitation_sent_at', true) : '';
+            ?>
+            <div class="aurora-invitation-panel">
+                <div>
+                    <span class="aurora-kicker">INNLOGGING / INVITASJON</span>
+                    <h3>Fotografens tilgang</h3>
+                    <p>
+                        <?php if ($owner_user) : ?>
+                            Bruker <strong><?php echo esc_html($owner_user->user_email); ?></strong> er koblet til kontoen.
+                            <?php if ($invite_sent_at) : ?> Sist sendt <?php echo esc_html(wp_date(get_option('date_format').' H:i', strtotime($invite_sent_at))); ?>.<?php endif; ?>
+                            Invitasjonen bruker Aurora sin egen fotografinnlogging – ikke WordPress wp-admin.
+                        <?php else : ?>
+                            Ingen fotografbruker er koblet til kontoen ennå. Ved utsending opprettes eller kobles brukeren automatisk.
+                        <?php endif; ?>
+                    </p>
+                </div>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <input type="hidden" name="action" value="aurora_resend_photographer_invitation">
+                    <input type="hidden" name="account_id" value="<?php echo esc_attr($account->id); ?>">
+                    <?php wp_nonce_field('aurora_resend_photographer_invitation'); ?>
+                    <button class="button button-primary"><?php echo $invite_sent_at ? 'Send invitasjon på nytt' : 'Send invitasjon'; ?></button>
+                </form>
+            </div>
+
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                 <input type="hidden" name="action" value="aurora_save_account_modules">
                 <input type="hidden" name="account_id" value="<?php echo esc_attr($account->id); ?>">
                 <?php wp_nonce_field('aurora_save_account_modules'); ?>
-                <h3>Aktive moduler</h3>
-                <div class="aurora-module-toggle-grid">
-                    <?php foreach (NLS1_Aurora_Account_Platform::module_catalog() as $key => $meta) : ?>
-                    <label>
-                        <input type="checkbox" name="modules[]" value="<?php echo esc_attr($key); ?>" <?php checked(!empty($account_modules[$key])); ?>>
+                <div class="aurora-module-section-head">
+                    <div>
+                        <span class="aurora-kicker">AURORA FOTOPORTAL</span>
+                        <h3>Inkludert i Fotoportal</h3>
+                        <p>Kjernefunksjoner følger alltid Fotoportal og kan ikke slås av per fotografkonto.</p>
+                    </div>
+                    <span class="aurora-included-badge">Inkludert</span>
+                </div>
+                <div class="aurora-module-toggle-grid is-core">
+                    <?php foreach (NLS1_Aurora_Account_Platform::core_modules() as $key => $meta) : ?>
+                    <div class="aurora-core-module">
+                        <span class="aurora-core-check">✓</span>
                         <span><strong><?php echo esc_html($meta[0]); ?></strong><small><?php echo esc_html($meta[1]); ?></small></span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="aurora-module-section-head is-addons">
+                    <div>
+                        <span class="aurora-kicker">TILLEGGSFUNKSJONER</span>
+                        <h3>Tilleggsmoduler</h3>
+                        <p>Trial får tilgang til modne tilleggsmoduler som standard. Senere styres disse av valgt lisens/pakke.</p>
+                    </div>
+                    <?php if ($trial_state === 'trial') : ?><span class="aurora-trial-badge">Trial</span><?php endif; ?>
+                </div>
+                <div class="aurora-module-toggle-grid">
+                    <?php foreach (NLS1_Aurora_Account_Platform::addon_modules() as $key => $meta) : ?>
+                    <label class="<?php echo empty($meta[3]) ? 'is-future-addon' : ''; ?>">
+                        <input type="checkbox" name="modules[]" value="<?php echo esc_attr($key); ?>" <?php checked(!empty($account_modules[$key])); ?>>
+                        <span>
+                            <strong><?php echo esc_html($meta[0]); ?></strong>
+                            <small><?php echo esc_html($meta[1]); ?></small>
+                            <?php if (empty($meta[3])) : ?><em>Ikke i standard Trial</em><?php endif; ?>
+                        </span>
                     </label>
                     <?php endforeach; ?>
                 </div>
-                <p><button class="button button-primary">Lagre modultilgang</button></p>
+                <p><button class="button button-primary">Lagre tilleggsmoduler</button></p>
             </form>
         </section>
         <?php endif; ?>
@@ -236,10 +327,24 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
     <?php elseif ($section === 'modules') : ?>
         <section class="aurora-platform-card">
             <span class="aurora-kicker">MODULKATALOG</span><h2>Aurora Fotoportal-moduler</h2>
-            <p>Dette er funksjonene som kan tildeles per fotografkonto. Kontotilgang endres under Fotografkontoer.</p>
+            <p>Fotoportal består av faste kjernefunksjoner og lisens-/pakke-styrte tilleggsmoduler.</p>
+
+            <div class="aurora-module-section-head">
+                <div><span class="aurora-kicker">KJERNE</span><h3>Inkludert i Aurora Fotoportal</h3><p>Disse er alltid tilgjengelige når Fotoportal er aktiv.</p></div>
+                <span class="aurora-included-badge">Alltid inkludert</span>
+            </div>
             <div class="aurora-module-catalog">
-                <?php foreach (NLS1_Aurora_Account_Platform::module_catalog() as $key => $meta) : ?>
-                    <div><span class="aurora-module-code"><?php echo esc_html(strtoupper(substr($key,0,2))); ?></span><div><strong><?php echo esc_html($meta[0]); ?></strong><p><?php echo esc_html($meta[1]); ?></p><code><?php echo esc_html($key); ?></code></div></div>
+                <?php foreach (NLS1_Aurora_Account_Platform::core_modules() as $key => $meta) : ?>
+                    <div><span class="aurora-module-code">✓</span><div><strong><?php echo esc_html($meta[0]); ?></strong><p><?php echo esc_html($meta[1]); ?></p><code><?php echo esc_html($key); ?></code></div></div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="aurora-module-section-head is-addons">
+                <div><span class="aurora-kicker">TILLEGG</span><h3>Tilleggsmoduler</h3><p>Disse kan styres av Trial og senere av Aurora License/pakke.</p></div>
+            </div>
+            <div class="aurora-module-catalog">
+                <?php foreach (NLS1_Aurora_Account_Platform::addon_modules() as $key => $meta) : ?>
+                    <div><span class="aurora-module-code"><?php echo esc_html(strtoupper(substr($key,0,2))); ?></span><div><strong><?php echo esc_html($meta[0]); ?></strong><p><?php echo esc_html($meta[1]); ?></p><code><?php echo esc_html($key); ?></code><?php if (!empty($meta[3])) : ?><span class="aurora-catalog-trial">Standard Trial</span><?php else : ?><span class="aurora-catalog-future">Ikke i standard Trial</span><?php endif; ?></div></div>
                 <?php endforeach; ?>
             </div>
         </section>
@@ -258,6 +363,22 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
                 <label>Accent-farge<input type="color" name="accent" value="<?php echo esc_attr($branding['accent']); ?>"></label>
                 <label>Testbilde for vannmerke<input type="file" name="watermark_preview_image" accept="image/*"><small>Brukes i fotografens vannmerke-preview og på Dashboard.</small></label>
                 <?php if(!empty($branding['watermark_preview_url'])):?><div class="aurora-branding-preview"><img src="<?php echo esc_url($branding['watermark_preview_url']); ?>" alt="Testbilde" style="max-width:420px;width:100%;height:auto;border-radius:12px"></div><?php endif;?>
+
+                <div class="aurora-branding-login-backgrounds">
+                    <div class="aurora-module-section-head is-addons">
+                        <div><span class="aurora-kicker">FOTOGRAFINNLOGGING</span><h3>Bakgrunnsbilder</h3><p>Bruk egne høyoppløselige bilder for desktop og mobil. Aurora fyller alltid hele skjermen med bildet.</p></div>
+                    </div>
+                    <div class="aurora-platform-grid">
+                        <div>
+                            <label>Desktop / PC<input type="file" name="photographer_login_bg_desktop" accept="image/jpeg,image/png,image/webp"><small>Anbefalt minst 1920×1080. Bildet beskjæres med <code>cover</code> slik at hele skjermen fylles.</small></label>
+                            <?php if(!empty($branding['photographer_login_bg_desktop'])):?><div class="aurora-login-bg-preview is-desktop"><img src="<?php echo esc_url($branding['photographer_login_bg_desktop']); ?>" alt="Desktop login-bakgrunn"></div><?php endif;?>
+                        </div>
+                        <div>
+                            <label>Mobil<input type="file" name="photographer_login_bg_mobile" accept="image/jpeg,image/png,image/webp"><small>Anbefalt stående bilde, minst 1080×1920. Hvis tomt brukes desktop-bildet automatisk.</small></label>
+                            <?php if(!empty($branding['photographer_login_bg_mobile'])):?><div class="aurora-login-bg-preview is-mobile"><img src="<?php echo esc_url($branding['photographer_login_bg_mobile']); ?>" alt="Mobil login-bakgrunn"></div><label class="aurora-inline-check"><input type="checkbox" name="remove_mobile_login_bg" value="1"> Fjern eget mobilbilde og bruk desktop-bildet</label><?php endif;?>
+                        </div>
+                    </div>
+                </div>
                 <p><button class="button button-primary">Lagre Aurora-branding</button></p>
             </form>
         </section>
