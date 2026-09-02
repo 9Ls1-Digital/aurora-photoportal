@@ -193,19 +193,16 @@ class NLS1_Fotoportal_Admin {
         return 'K-' . str_pad((string)($count + 1), 4, '0', STR_PAD_LEFT);
     }
 
-    public static function get_clients($include_test = false, $search = '', $group = '', $type = '') {
-        global $wpdb;
-        $clients = self::table('clients');
-        $where = ['account_id = %d'];
-        $params = [self::tenant_account_id()];
-        if (!$include_test) $where[] = 'is_test = 0';
-        if ($search) { $where[] = '(client_name LIKE %s OR email LIKE %s OR phone LIKE %s)'; $like = '%' . $wpdb->esc_like($search) . '%'; $params = array_merge($params, [$like, $like, $like]); }
-        if ($group) { $where[] = 'client_group = %s'; $params[] = $group; }
-        if ($type) { $where[] = 'client_type = %s'; $params[] = $type; }
-        $sql = "SELECT * FROM $clients";
-        if ($where) $sql .= " WHERE " . implode(' AND ', $where);
-        $sql .= " ORDER BY created_at DESC LIMIT 200";
-        return $params ? $wpdb->get_results($wpdb->prepare($sql, $params)) : $wpdb->get_results($sql);
+    public static function get_clients($include_test=false,$search='',$group='',$type='',$sort='created',$order='desc') {
+        global $wpdb; $clients=self::table('clients'); $contacts=self::table('contacts');
+        $where=['c.account_id = %d']; $params=[self::tenant_account_id()];
+        if(!$include_test)$where[]='c.is_test = 0';
+        if($search){$where[]='(c.client_name LIKE %s OR c.email LIKE %s OR c.phone LIKE %s OR pc.first_name LIKE %s OR pc.last_name LIKE %s)';$like='%'.$wpdb->esc_like($search).'%';$params=array_merge($params,[$like,$like,$like,$like,$like]);}
+        if($group){$where[]='c.client_group = %s';$params[]=$group;} if($type){$where[]='c.client_type = %s';$params[]=$type;}
+        $map=['customer'=>'c.client_name','contact'=>'pc.first_name','type'=>'c.client_type','city'=>'c.city','status'=>'c.is_test','created'=>'c.created_at'];
+        $sort_sql=$map[$sort]??$map['created'];$order_sql=strtolower($order)==='asc'?'ASC':'DESC';
+        $sql="SELECT c.*,pc.first_name AS primary_first_name,pc.last_name AS primary_last_name FROM $clients c LEFT JOIN $contacts pc ON pc.client_id=c.id AND pc.account_id=c.account_id AND pc.is_primary=1 WHERE ".implode(' AND ',$where)." ORDER BY $sort_sql $order_sql,c.id DESC LIMIT 200";
+        return $wpdb->get_results($wpdb->prepare($sql,$params));
     }
 
     public static function get_projects($include_test = false, $search = '', $project_type = '', $status = '') {
@@ -325,7 +322,9 @@ class NLS1_Fotoportal_Admin {
         $last_name = sanitize_text_field($_POST['last_name'] ?? '');
         $email = sanitize_email($_POST['email'] ?? '');
         $phone = sanitize_text_field($_POST['phone'] ?? '');
-        $city = sanitize_text_field($_POST['city'] ?? '');
+        $address=sanitize_text_field($_POST['address']??''); $postal_code=sanitize_text_field($_POST['postal_code']??''); $city=sanitize_text_field($_POST['city']??'');
+        $organization_number=sanitize_text_field($_POST['organization_number']??''); $billing_same=!empty($_POST['billing_same_as_customer'])?1:0;
+        $billing_name=sanitize_text_field($_POST['billing_name']??''); $billing_address=sanitize_text_field($_POST['billing_address']??''); $billing_postal_code=sanitize_text_field($_POST['billing_postal_code']??''); $billing_city=sanitize_text_field($_POST['billing_city']??'');
         $project_name = sanitize_text_field($_POST['project_name'] ?? '');
         $project_type = sanitize_text_field($_POST['project_type'] ?? '');
         $project_date = sanitize_text_field($_POST['project_date'] ?? '');
@@ -333,7 +332,7 @@ class NLS1_Fotoportal_Admin {
         $description = sanitize_textarea_field($_POST['description'] ?? '');
         $is_test = !empty($_POST['is_test']) ? 1 : 0;
 
-        if (!$client_name || !$client_group || !$first_name || !$email || !$project_name || !$project_type) {
+        if (!$client_name || !$first_name || !$email || !$project_name || !$project_type) {
             $target = ($workspace && class_exists('NLS1_Photographer_Workspace'))
                 ? NLS1_Photographer_Workspace::url('new', ['message' => 'missing_fields'])
                 : self::fotoportal_url('wizard', ['message' => 'missing_fields']);
@@ -351,9 +350,9 @@ class NLS1_Fotoportal_Admin {
             'client_group' => $client_group,
             'client_type' => $client_type,
             'email' => $email,
-            'phone' => $phone,
-            'city' => $city,
-            'status' => 'active',
+            'phone'=>$phone,'address'=>$address,'postal_code'=>$postal_code,'city'=>$city,'organization_number'=>$organization_number,
+            'billing_same_as_customer'=>$billing_same,'billing_name'=>$billing_same?$client_name:$billing_name,'billing_address'=>$billing_same?$address:$billing_address,'billing_postal_code'=>$billing_same?$postal_code:$billing_postal_code,'billing_city'=>$billing_same?$city:$billing_city,
+            'status'=>'active',
             'is_test' => $is_test,
             'created_at' => $now,
         ]);
@@ -390,8 +389,14 @@ class NLS1_Fotoportal_Admin {
         ]);
         if (!$ok) wp_die('Kunden ble opprettet, men prosjektet kunne ikke opprettes.');
 
-        $project_id = (int)$wpdb->insert_id;
-        $this->log($client_id, $project_id, 'created', 'Kunde og prosjekt opprettet.', $is_test);
+        $project_id=(int)$wpdb->insert_id;
+        if(!empty($_FILES['project_document']['name']) && empty($_FILES['project_document']['error'])){
+            require_once ABSPATH.'wp-admin/includes/file.php';require_once ABSPATH.'wp-admin/includes/media.php';require_once ABSPATH.'wp-admin/includes/image.php';
+            $attachment_id=media_handle_upload('project_document',0);
+            if(!is_wp_error($attachment_id)){ $file_url=wp_get_attachment_url($attachment_id);$document_title=sanitize_text_field($_POST['project_document_title']??'');if(!$document_title)$document_title=get_the_title($attachment_id)?:basename((string)$file_url);
+                $wpdb->insert(self::table('documents'),['account_id'=>$account_id,'client_id'=>$client_id,'project_id'=>$project_id,'attachment_id'=>(int)$attachment_id,'document_title'=>$document_title,'document_type'=>sanitize_text_field($_POST['project_document_type']??'Annet'),'file_url'=>$file_url,'notes'=>'Lastet opp ved opprettelse av prosjekt.','status'=>'active','is_test'=>$is_test,'created_at'=>$now]);}
+        }
+        $this->log($client_id,$project_id,'created','Kunde og prosjekt opprettet.',$is_test);
 
         if ($workspace && class_exists('NLS1_Photographer_Workspace')) {
             wp_safe_redirect(NLS1_Photographer_Workspace::url('customers', [
@@ -1720,37 +1725,52 @@ class NLS1_Fotoportal_Admin {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_update_client');
         global $wpdb;
-
+        $workspace = !empty($_POST['aurora_workspace']);
         $client_id = (int)($_POST['client_id'] ?? 0);
         $client = self::get_client($client_id);
         if (!$client) {
-            wp_safe_redirect(self::fotoportal_url('clients'));
+            wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace') ? NLS1_Photographer_Workspace::url('customers') : self::fotoportal_url('clients'));
             exit;
         }
 
-        $client_name = sanitize_text_field($_POST['client_name'] ?? '');
-        $client_group = sanitize_text_field($_POST['client_group'] ?? '');
-        $client_type = sanitize_key($_POST['client_type'] ?? 'private');
-        $email = sanitize_email($_POST['email'] ?? '');
-        $phone = sanitize_text_field($_POST['phone'] ?? '');
-        $city = sanitize_text_field($_POST['city'] ?? '');
-        $notes = sanitize_textarea_field($_POST['notes'] ?? '');
+        $client_name=sanitize_text_field($_POST['client_name']??'');
+        $client_group=sanitize_text_field($_POST['client_group']??'');
+        $client_type=sanitize_key($_POST['client_type']??'private');
+        $first_name=sanitize_text_field($_POST['first_name']??'');
+        $last_name=sanitize_text_field($_POST['last_name']??'');
+        $email=sanitize_email($_POST['email']??'');
+        $phone=sanitize_text_field($_POST['phone']??'');
+        $address=sanitize_text_field($_POST['address']??'');
+        $postal_code=sanitize_text_field($_POST['postal_code']??'');
+        $city=sanitize_text_field($_POST['city']??'');
+        $organization_number=sanitize_text_field($_POST['organization_number']??'');
+        $billing_same=!empty($_POST['billing_same_as_customer'])?1:0;
+        $billing_name=sanitize_text_field($_POST['billing_name']??'');
+        $billing_address=sanitize_text_field($_POST['billing_address']??'');
+        $billing_postal_code=sanitize_text_field($_POST['billing_postal_code']??'');
+        $billing_city=sanitize_text_field($_POST['billing_city']??'');
 
-        if ($client_name && $client_group) {
+        if ($client_name) {
             $wpdb->update(self::table('clients'), [
-                'client_name' => $client_name,
-                'client_group' => $client_group,
-                'client_type' => $client_type,
-                'email' => $email,
-                'phone' => $phone,
-                'city' => $city,
-                'notes' => $notes,
-                'updated_at' => current_time('mysql'),
-            ], ['id' => $client_id, 'account_id' => self::tenant_account_id()]);
-            $this->log($client_id, 0, 'updated', 'Kundeinformasjon oppdatert.', (int)$client->is_test);
+                'client_name'=>$client_name,'client_group'=>$client_group,'client_type'=>$client_type,'email'=>$email,'phone'=>$phone,
+                'address'=>$address,'postal_code'=>$postal_code,'city'=>$city,'organization_number'=>$organization_number,
+                'billing_same_as_customer'=>$billing_same,'billing_name'=>$billing_same?$client_name:$billing_name,
+                'billing_address'=>$billing_same?$address:$billing_address,'billing_postal_code'=>$billing_same?$postal_code:$billing_postal_code,
+                'billing_city'=>$billing_same?$city:$billing_city,'updated_at'=>current_time('mysql'),
+            ], ['id'=>$client_id,'account_id'=>self::tenant_account_id()]);
+
+            $primary=self::get_primary_contact($client_id);
+            if($primary){
+                $wpdb->update(self::table('contacts'), [
+                    'first_name'=>$first_name,'last_name'=>$last_name,'email'=>$email,'phone'=>$phone,'updated_at'=>current_time('mysql')
+                ], ['id'=>(int)$primary->id,'account_id'=>self::tenant_account_id()]);
+            }
+            $this->log($client_id,0,'updated','Kundeinformasjon oppdatert.',(int)$client->is_test);
         }
 
-        wp_safe_redirect(self::client_url($client_id) . '&message=client_updated');
+        wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
+            ? NLS1_Photographer_Workspace::url('customers',['customer_id'=>$client_id,'message'=>'client_updated'])
+            : self::client_url($client_id).'&message=client_updated');
         exit;
     }
 

@@ -1,5 +1,26 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.20-fix2
+- Run Fotoportal database upgrades automatically when the plugin version changes, so new customer billing columns are added on plugin replacement as well as fresh activation.
+- Fix native customer Edit form placement so Rediger opens the form on the customer profile.
+- Add customer registration date to the customer profile and customer register.
+- Make registration date sortable.
+- Show a sort indicator on every sortable customer-list heading, with active ascending/descending direction.
+
+## 0.7.1-dev.20-fix1
+- Fix customer register sorting on the actual table headings.
+- Fix the new customer/project wizard so step navigation works again.
+- Fix alternate billing fields so they are revealed when same-as-customer is disabled.
+- Add native customer editing for contact, address, organization and billing data.
+- Keep customer updates inside Photographer Workspace.
+
+## 0.7.1-dev.20
+- Sortable customer register columns.
+- Structured address and billing information.
+- Simplified customer type classification.
+- Horizontal Aurora creation stepper.
+- Optional project document upload.
+
 ## 0.7.1-dev.19-fix1
 - Fix Delivery workflow routing so step 5 opens the native Aurora Delivery view instead of falling back to Dashboard when the standalone delivery entitlement is not enabled.
 - Fix customer profile project links so they open the native Aurora project profile instead of the legacy Fotoportal admin.

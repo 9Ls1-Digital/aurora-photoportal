@@ -2,6 +2,16 @@
 if (!defined('ABSPATH')) exit;
 
 class NLS1_Fotoportal_Activator {
+    public static function maybe_upgrade() {
+        $installed = (string)get_option('9ls1_fotoportal_version', '');
+        if ($installed !== NLS1_FOTOPORTAL_VERSION) {
+            self::activate();
+            if (class_exists('NLS1_Aurora_Tenant_Context')) {
+                NLS1_Aurora_Tenant_Context::maybe_migrate();
+            }
+        }
+    }
+
     public static function activate() {
         if (class_exists('NLS1_Aurora_Account_Platform')) {
             NLS1_Aurora_Account_Platform::maybe_install();
@@ -37,6 +47,12 @@ class NLS1_Fotoportal_Activator {
             address TEXT NULL,
             postal_code VARCHAR(20) DEFAULT '',
             city VARCHAR(100) DEFAULT '',
+            billing_same_as_customer TINYINT(1) DEFAULT 1,
+            billing_name VARCHAR(190) DEFAULT '',
+            billing_address TEXT NULL,
+            billing_postal_code VARCHAR(20) DEFAULT '',
+            billing_city VARCHAR(100) DEFAULT '',
+            organization_number VARCHAR(50) DEFAULT '',
             profile_image_id BIGINT UNSIGNED NULL,
             notes LONGTEXT NULL,
             status VARCHAR(50) DEFAULT 'active',

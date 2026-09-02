@@ -98,6 +98,45 @@ $legacy_links = [
                     <div><span class="dashicons dashicons-download"></span><div><small>Til levering</small><strong>—</strong><em>Leveranser</em></div></div>
                 </section>
 
+                <?php if (!empty($_GET['edit'])) : ?>
+                    <section class="aurora-workspace-card aurora-customer-edit-card">
+                        <div class="aurora-workspace-cardhead">
+                            <div><span class="aurora-workspace-eyebrow">REDIGER KUNDE</span><h2>Kundeopplysninger</h2></div>
+                            <a class="aurora-text-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('customers',['customer_id'=>$customer_id])); ?>">Avbryt</a>
+                        </div>
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="nls1-form">
+                            <input type="hidden" name="action" value="9ls1_fotoportal_update_client">
+                            <input type="hidden" name="client_id" value="<?php echo (int)$customer_id; ?>">
+                            <input type="hidden" name="client_group" value="<?php echo esc_attr($customer->client_group ?? ''); ?>">
+                            <input type="hidden" name="aurora_workspace" value="1">
+                            <?php wp_nonce_field('9ls1_fotoportal_update_client'); ?>
+                            <div class="nls1-form-grid">
+                                <label>Kundenavn *<input type="text" name="client_name" required value="<?php echo esc_attr($customer->client_name); ?>"></label>
+                                <label>Kundetype<select name="client_type"><option value="private" <?php selected($customer->client_type,'private'); ?>>Privat</option><option value="business" <?php selected($customer->client_type,'business'); ?>>Bedrift</option><option value="artist" <?php selected($customer->client_type,'artist'); ?>>Artist/Band</option><option value="organization" <?php selected($customer->client_type,'organization'); ?>>Organisasjon</option></select></label>
+                                <label>Hovedkontakt fornavn<input type="text" name="first_name" value="<?php echo esc_attr($contact->first_name ?? ''); ?>"></label>
+                                <label>Hovedkontakt etternavn<input type="text" name="last_name" value="<?php echo esc_attr($contact->last_name ?? ''); ?>"></label>
+                                <label>E-post<input type="email" name="email" value="<?php echo esc_attr($customer->email); ?>"></label>
+                                <label>Telefon<input type="text" name="phone" value="<?php echo esc_attr($customer->phone); ?>"></label>
+                                <label>Adresse<input type="text" name="address" value="<?php echo esc_attr($customer->address); ?>"></label>
+                                <label>Postnummer<input type="text" name="postal_code" value="<?php echo esc_attr($customer->postal_code); ?>"></label>
+                                <label>Sted/by<input type="text" name="city" value="<?php echo esc_attr($customer->city); ?>"></label>
+                                <label>Organisasjonsnummer<input type="text" name="organization_number" value="<?php echo esc_attr($customer->organization_number); ?>"></label>
+                                <div class="nls1-full aurora-billing-box">
+                                    <strong>Fakturainformasjon</strong><p>Bruk kundeadressen eller oppgi egen fakturaadresse.</p>
+                                    <label class="nls1-checkbox"><input type="checkbox" name="billing_same_as_customer" value="1" <?php checked(!empty($customer->billing_same_as_customer)); ?> data-billing-toggle-edit> Bruk samme som kundeadresse</label>
+                                    <div class="aurora-billing-fields" data-billing-fields-edit <?php echo !empty($customer->billing_same_as_customer) ? 'hidden' : ''; ?>>
+                                        <label>Fakturanavn<input type="text" name="billing_name" value="<?php echo esc_attr($customer->billing_name); ?>"></label>
+                                        <label>Fakturaadresse<input type="text" name="billing_address" value="<?php echo esc_attr($customer->billing_address); ?>"></label>
+                                        <label>Postnummer<input type="text" name="billing_postal_code" value="<?php echo esc_attr($customer->billing_postal_code); ?>"></label>
+                                        <label>Sted<input type="text" name="billing_city" value="<?php echo esc_attr($customer->billing_city); ?>"></label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="aurora-step-actions"><span></span><button class="aurora-primary-action" type="submit">Lagre endringer</button></div>
+                        </form>
+                    </section>
+                <?php endif; ?>
+
                 <div class="aurora-workspace-grid">
                     <section class="aurora-workspace-card aurora-workspace-card-wide">
                         <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">ARBEIDSFLYT</span><h2>Kom raskt i gang</h2></div></div>
@@ -153,22 +192,69 @@ $legacy_links = [
                             </div>
                             <div class="aurora-customer-profile-actions">
                                 <?php if (!empty($customer->email)) : ?><a class="aurora-secondary-action" href="mailto:<?php echo esc_attr($customer->email); ?>"><span class="dashicons dashicons-email"></span>E-post</a><?php endif; ?>
+                                <a class="aurora-secondary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('customers',['customer_id'=>$customer_id,'edit'=>1])); ?>"><span class="dashicons dashicons-edit"></span>Rediger</a>
                                 <a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('new')); ?>"><span class="dashicons dashicons-plus-alt2"></span>Nytt prosjekt</a>
                             </div>
                         </div>
                     </div>
 
-                    <div class="aurora-workspace-grid">
+                    <?php if (!empty($_GET['edit'])) : ?>
+                    <section class="aurora-workspace-card aurora-customer-edit-card">
+                        <div class="aurora-workspace-cardhead">
+                            <div><span class="aurora-workspace-eyebrow">REDIGER KUNDE</span><h2>Kundeopplysninger</h2></div>
+                            <a class="aurora-text-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('customers',['customer_id'=>$customer_id])); ?>">Avbryt</a>
+                        </div>
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="nls1-form">
+                            <input type="hidden" name="action" value="9ls1_fotoportal_update_client">
+                            <input type="hidden" name="client_id" value="<?php echo (int)$customer_id; ?>">
+                            <input type="hidden" name="client_group" value="<?php echo esc_attr($customer->client_group ?? ''); ?>">
+                            <input type="hidden" name="aurora_workspace" value="1">
+                            <?php wp_nonce_field('9ls1_fotoportal_update_client'); ?>
+                            <div class="nls1-form-grid">
+                                <label>Kundenavn *<input type="text" name="client_name" required value="<?php echo esc_attr($customer->client_name); ?>"></label>
+                                <label>Kundetype<select name="client_type">
+                                    <option value="private" <?php selected($customer->client_type,'private'); ?>>Privat</option>
+                                    <option value="business" <?php selected($customer->client_type,'business'); ?>>Bedrift</option>
+                                    <option value="artist" <?php selected($customer->client_type,'artist'); ?>>Artist/Band</option>
+                                    <option value="organization" <?php selected($customer->client_type,'organization'); ?>>Organisasjon</option>
+                                </select></label>
+                                <label>Hovedkontakt fornavn<input type="text" name="first_name" value="<?php echo esc_attr($contact->first_name ?? ''); ?>"></label>
+                                <label>Hovedkontakt etternavn<input type="text" name="last_name" value="<?php echo esc_attr($contact->last_name ?? ''); ?>"></label>
+                                <label>E-post<input type="email" name="email" value="<?php echo esc_attr($customer->email); ?>"></label>
+                                <label>Telefon<input type="text" name="phone" value="<?php echo esc_attr($customer->phone); ?>"></label>
+                                <label>Adresse<input type="text" name="address" value="<?php echo esc_attr($customer->address); ?>"></label>
+                                <label>Postnummer<input type="text" name="postal_code" value="<?php echo esc_attr($customer->postal_code); ?>"></label>
+                                <label>Sted/by<input type="text" name="city" value="<?php echo esc_attr($customer->city); ?>"></label>
+                                <label>Organisasjonsnummer<input type="text" name="organization_number" value="<?php echo esc_attr($customer->organization_number); ?>"></label>
+                                <div class="nls1-full aurora-billing-box">
+                                    <strong>Fakturainformasjon</strong>
+                                    <p>Bruk kundeadressen eller oppgi egen fakturaadresse.</p>
+                                    <label class="nls1-checkbox"><input type="checkbox" name="billing_same_as_customer" value="1" <?php checked(!empty($customer->billing_same_as_customer)); ?> data-billing-toggle-edit> Bruk samme som kundeadresse</label>
+                                    <div class="aurora-billing-fields" data-billing-fields-edit <?php echo !empty($customer->billing_same_as_customer) ? 'hidden' : ''; ?>>
+                                        <label>Fakturanavn<input type="text" name="billing_name" value="<?php echo esc_attr($customer->billing_name); ?>"></label>
+                                        <label>Fakturaadresse<input type="text" name="billing_address" value="<?php echo esc_attr($customer->billing_address); ?>"></label>
+                                        <label>Postnummer<input type="text" name="billing_postal_code" value="<?php echo esc_attr($customer->billing_postal_code); ?>"></label>
+                                        <label>Sted<input type="text" name="billing_city" value="<?php echo esc_attr($customer->billing_city); ?>"></label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="aurora-step-actions"><span></span><button class="aurora-primary-action" type="submit">Lagre endringer</button></div>
+                        </form>
+                    </section>
+                <?php endif; ?>
+
+                <div class="aurora-workspace-grid">
                         <section class="aurora-workspace-card">
                             <span class="aurora-workspace-eyebrow">KONTAKT</span><h2>Kontaktinformasjon</h2>
                             <dl class="aurora-customer-details">
                                 <div><dt>Hovedkontakt</dt><dd><?php echo esc_html($contact ? NLS1_Fotoportal_Admin::format_contact_name($contact) : '—'); ?></dd></div>
                                 <div><dt>E-post</dt><dd><?php echo esc_html($customer->email ?: '—'); ?></dd></div>
                                 <div><dt>Telefon</dt><dd><?php echo esc_html($customer->phone ?: '—'); ?></dd></div>
-                                <div><dt>Sted/by</dt><dd><?php echo esc_html($customer->city ?: '—'); ?></dd></div>
+                                <div><dt>Sted/by</dt><dd><?php echo esc_html($customer->city ?: '—'); ?></dd></div><div><dt>Registrert</dt><dd><?php echo !empty($customer->created_at) ? esc_html(date_i18n('d.m.Y', strtotime($customer->created_at))) : '—'; ?></dd></div>
                             </dl>
                         </section>
-                        <section class="aurora-workspace-card aurora-workspace-card-wide">
+                        <section class="aurora-workspace-card"><span class="aurora-workspace-eyebrow">ADRESSE & FAKTURA</span><h2>Kundeinformasjon</h2><dl class="aurora-customer-details">
+<div><dt>Adresse</dt><dd><?php echo esc_html($customer->address ?: '—'); ?></dd></div><div><dt>Postnr. / sted</dt><dd><?php echo esc_html(trim(($customer->postal_code ?: '').' '.($customer->city ?: '')) ?: '—'); ?></dd></div><div><dt>Org.nr.</dt><dd><?php echo esc_html($customer->organization_number ?: '—'); ?></dd></div><div><dt>Fakturaadresse</dt><dd><?php echo !empty($customer->billing_same_as_customer)?'Samme som kundeadresse':esc_html(trim(($customer->billing_address ?: '').', '.($customer->billing_postal_code ?: '').' '.($customer->billing_city ?: ''),', ')); ?></dd></div></dl></section> <section class="aurora-workspace-card aurora-workspace-card-wide">
                             <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">PROSJEKTER</span><h2>Kundens prosjekter</h2></div><strong class="aurora-count-badge"><?php echo count($customer_projects); ?></strong></div>
                             <?php if ($customer_projects) : ?>
                                 <div class="aurora-project-mini-list">
@@ -190,9 +276,9 @@ $legacy_links = [
                 <?php else : ?>
                     <?php
                     $search = sanitize_text_field($_GET['s'] ?? '');
-                    $group = sanitize_text_field($_GET['group'] ?? '');
-                    $type = sanitize_key($_GET['ctype'] ?? '');
-                    $customers = NLS1_Fotoportal_Admin::get_clients(true, $search, $group, $type);
+                    $group=sanitize_text_field($_GET['group']??''); $type=sanitize_key($_GET['ctype']??''); $sort=sanitize_key($_GET['sort']??'created'); $order=strtolower(sanitize_key($_GET['order']??'desc'))==='asc'?'asc':'desc';
+                    $customers=NLS1_Fotoportal_Admin::get_clients(true,$search,$group,$type,$sort,$order);
+                    $sort_url=function($key)use($sort,$order){return add_query_arg(['sort'=>$key,'order'=>(($sort===$key&&$order==='asc')?'desc':'asc')]);}; $sort_arrow=function($key)use($sort,$order){return $sort===$key?($order==='asc'?' ↑':' ↓'):' ↕';};
                     ?>
                     <section class="aurora-workspace-card aurora-customers-toolbar">
                         <form method="get" class="aurora-customer-filters">
@@ -222,7 +308,14 @@ $legacy_links = [
                         <?php if ($customers) : ?>
                             <div class="aurora-customer-table-wrap">
                                 <table class="aurora-customer-table">
-                                    <thead><tr><th>Kunde</th><th>Kontakt</th><th>Type</th><th>Sted</th><th>Status</th><th></th></tr></thead>
+                                    <thead><tr>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($sort_url('customer')); ?>">Kunde<?php echo esc_html($sort_arrow('customer')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($sort_url('contact')); ?>">Kontakt<?php echo esc_html($sort_arrow('contact')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($sort_url('type')); ?>">Type<?php echo esc_html($sort_arrow('type')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($sort_url('city')); ?>">Sted<?php echo esc_html($sort_arrow('city')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($sort_url('status')); ?>">Status<?php echo esc_html($sort_arrow('status')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($sort_url('created')); ?>">Registrert<?php echo esc_html($sort_arrow('created')); ?></a></th>
+<th></th></tr></thead>
                                     <tbody>
                                     <?php foreach ($customers as $row) : ?>
                                         <?php $primary = NLS1_Fotoportal_Admin::get_primary_contact($row->id); ?>
@@ -243,6 +336,7 @@ $legacy_links = [
                                                     <span class="aurora-status-pill is-active">Aktiv</span>
                                                 <?php endif; ?>
                                             </td>
+                                            <td><?php echo !empty($row->created_at) ? esc_html(date_i18n('d.m.Y', strtotime($row->created_at))) : '—'; ?></td>
                                             <td class="aurora-row-actions">
                                                 <?php if ($row->email) : ?><a class="aurora-icon-link" title="Send e-post" href="mailto:<?php echo esc_attr($row->email); ?>"><span class="dashicons dashicons-email"></span></a><?php endif; ?>
                                                 <a class="aurora-icon-link" title="Åpne kunde" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('customers', ['customer_id'=>$row->id])); ?>"><span class="dashicons dashicons-arrow-right-alt2"></span></a>
@@ -276,7 +370,7 @@ $legacy_links = [
                         <div class="nls1-step" data-step-indicator="3"><span>3</span><strong>Bekreft</strong><small>Kontroller og opprett</small></div>
                     </div>
 
-                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="nls1-form aurora-step-form" id="aurora-new-project-form">
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="nls1-form aurora-step-form" id="aurora-new-project-form" enctype="multipart/form-data">
                         <input type="hidden" name="action" value="9ls1_fotoportal_save_client_project">
                         <input type="hidden" name="aurora_workspace" value="1">
                         <?php wp_nonce_field('9ls1_fotoportal_save_client_project'); ?>
@@ -285,14 +379,14 @@ $legacy_links = [
                             <div class="aurora-form-step-head"><div><span class="aurora-step-label">STEG 1 AV 3</span><h2>Kunde</h2><p>Hvem er kunden? Bruk personnavn, familienavn eller firmanavn.</p></div></div>
                             <div class="nls1-form-grid">
                                 <label>Kundenavn *<input type="text" name="client_name" required placeholder="f.eks. Ola Hansen eller Hansen-familien"></label>
-                                <label>Kundegruppe *<select name="client_group" required><option value="">Velg gruppe</option><option>Privatkunde</option><option>Bedrift</option><option>Artist/Band</option><option>Organisasjon</option><option>Annet</option></select></label>
+                                <input type="hidden" name="client_group" value="">
                                 <label>Kundetype<select name="client_type"><option value="private">Privat</option><option value="business">Bedrift</option><option value="artist">Artist/Band</option><option value="organization">Organisasjon</option></select></label>
                                 <div class="aurora-form-hint"><strong>Kundenavn</strong><span>Eksempel: «Ola Hansen». Prosjektnavn som «Bryllup Hansen 2027» legges inn i neste steg.</span></div>
                                 <label>Hovedkontakt fornavn *<input type="text" name="first_name" required placeholder="f.eks. Ola"></label>
                                 <label>Hovedkontakt etternavn<input type="text" name="last_name" placeholder="f.eks. Hansen"></label>
                                 <label>E-post *<input type="email" name="email" required placeholder="ola@eksempel.no"></label>
                                 <label>Telefon<input type="text" name="phone" placeholder="+47 ..."></label>
-                                <label>Sted/by<input type="text" name="city" placeholder="f.eks. Vestby"></label>
+                                <label>Adresse<input type="text" name="address" placeholder="Gateadresse"></label><label>Postnummer<input type="text" name="postal_code" placeholder="1540"></label><label>Sted/by<input type="text" name="city" placeholder="f.eks. Vestby"></label><label>Organisasjonsnummer<input type="text" name="organization_number" placeholder="Valgfritt"></label><div class="nls1-full aurora-billing-box"><strong>Fakturainformasjon</strong><p>Bruk kundeadressen eller oppgi egen fakturaadresse.</p><label class="nls1-checkbox"><input type="checkbox" name="billing_same_as_customer" value="1" checked data-billing-toggle> Bruk samme som kundeadresse</label><div class="aurora-billing-fields" data-billing-fields hidden><label>Fakturanavn<input type="text" name="billing_name"></label><label>Fakturaadresse<input type="text" name="billing_address"></label><label>Postnummer<input type="text" name="billing_postal_code"></label><label>Sted<input type="text" name="billing_city"></label></div></div>
                             </div>
                             <div class="aurora-step-actions"><span></span><button type="button" class="aurora-primary-action aurora-next-step" data-next="2">Neste: Prosjekt →</button></div>
                         </section>
@@ -305,7 +399,7 @@ $legacy_links = [
                                 <label>Dato<input type="date" name="project_date"></label>
                                 <label>Lokasjon<input type="text" name="location" placeholder="f.eks. Son Spa / Vestby"></label>
                                 <label class="nls1-full">Notater<textarea name="description" rows="5" placeholder="Praktiske notater, ønsker, tidspunkt eller annen prosjektinformasjon."></textarea></label>
-                                <label class="nls1-checkbox nls1-full"><input type="checkbox" name="is_test" value="1"> Merk som testdata</label>
+                                <div class="nls1-full aurora-optional-document"><span class="aurora-workspace-eyebrow">VALGFRITT</span><h3>Dokument</h3><p>Har du et dokument klart, kan det legges til nå. Du kan også gjøre dette senere.</p><div class="nls1-form-grid"><label>Tittel<input type="text" name="project_document_title"></label><label>Type<select name="project_document_type"><?php foreach(NLS1_Fotoportal_Admin::$document_types as $dtype):?><option><?php echo esc_html($dtype);?></option><?php endforeach;?></select></label><label class="nls1-full">Fil<input type="file" name="project_document"></label></div></div><label class="nls1-checkbox nls1-full"><input type="checkbox" name="is_test" value="1"> Merk som testdata</label>
                             </div>
                             <div class="aurora-step-actions"><button type="button" class="aurora-secondary-action aurora-prev-step" data-prev="1">← Tilbake</button><button type="button" class="aurora-primary-action aurora-next-step" data-next="3">Neste: Bekreft →</button></div>
                         </section>
@@ -895,3 +989,16 @@ $legacy_links = [
         </div>
     </main>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    function bindBilling(toggleSelector,fieldsSelector){
+        var t=document.querySelector(toggleSelector),f=document.querySelector(fieldsSelector);
+        if(!t||!f)return;
+        function sync(){ if(t.checked){f.setAttribute('hidden','hidden');}else{f.removeAttribute('hidden');} }
+        t.addEventListener('change',sync); sync();
+    }
+    bindBilling('[data-billing-toggle]','[data-billing-fields]');
+    bindBilling('[data-billing-toggle-edit]','[data-billing-fields-edit]');
+});
+</script>
