@@ -342,3 +342,13 @@
 - Move third-party WordPress admin notices out of the Aurora Fotoportal hero/header.
 - Preserve Fotoportal's own workflow/status notices in their existing locations.
 - Keep the dev.2 technical plugin folder for in-place WordPress replacement updates.
+
+## 0.7.1-dev.30 — Photographer Selection Workspace
+- Added a dedicated **Bildevalg** workspace for photographers.
+- Aggregates customer favorites, approved/selected images and comments across all tenant galleries.
+- Added quick filters for All, Favorites, Selected and Comments.
+- Added customer, project and gallery filters.
+- Image cards show interaction state, latest comment and direct link back to the source gallery.
+- Added lightbox access from the selection overview.
+- Added a Bildevalg navigation entry with unread gallery-activity badge.
+- All selection queries are scoped through the active photographer account via image/gallery/project/client joins.

@@ -20,6 +20,7 @@ $view_titles = [
     'contracts' => ['Kontrakter', 'Avtaler, utsending og signeringsstatus.'],
     'documents' => ['Dokumenter', 'Dokumenter og underlag knyttet til prosjektene.'],
     'galleries' => ['Gallerier', 'Bildegallerier, proof og kundeleveranser.'],
+    'selections' => ['Bildevalg', 'Samlet oversikt over kundenes favoritter, valgte bilder og kommentarer.'],
     'hq_delivery' => ['Leveranser', 'Ferdige leveranser og nedlastinger.'],
     'resources' => ['Ressurser', 'Maler, hjelp og arbeidsressurser.'],
     'shop' => ['Nettbutikk', 'Produkter og ordre.'],
@@ -59,6 +60,8 @@ $legacy_links = [
             ?>
                 <a class="<?php echo $view===$key?'is-active':''; ?>" href="<?php echo esc_url(NLS1_Photographer_Workspace::url($key)); ?>"><span class="dashicons <?php echo esc_attr($meta[1]); ?>"></span><?php echo esc_html($meta[0]); ?></a>
             <?php endforeach; ?>
+
+            <a class="<?php echo $view==='selections'?'is-active':''; ?>" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('selections')); ?>"><span class="dashicons dashicons-yes-alt"></span>Bildevalg<?php if($gallery_unread): ?><b class="aurora-menu-badge"><?php echo (int)$gallery_unread; ?></b><?php endif; ?></a>
 
             <span class="aurora-menu-label">KONTO</span>
             <a class="<?php echo $view==='resources'?'is-active':''; ?>" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('resources')); ?>"><span class="dashicons dashicons-book-alt"></span>Ressurser</a>
@@ -1054,6 +1057,42 @@ $legacy_links = [
                 <?php endif; ?>
 
 
+            <?php elseif ($view === 'selections') : ?>
+                <?php
+                $selection_items = NLS1_Fotoportal_Admin::photographer_selection_items((int)$account->id);
+                $selection_counts = ['all'=>count($selection_items),'favorites'=>0,'approved'=>0,'comments'=>0];
+                $selection_clients=[];$selection_projects=[];$selection_galleries=[];
+                foreach($selection_items as $si){
+                    if(!empty($si->is_favorite))$selection_counts['favorites']++;
+                    if(!empty($si->is_selected))$selection_counts['approved']++;
+                    if((int)$si->comment_count>0)$selection_counts['comments']++;
+                    if($si->client_id)$selection_clients[(int)$si->client_id]=$si->client_name;
+                    $selection_projects[(int)$si->project_id]=$si->project_name;
+                    $selection_galleries[(int)$si->gallery_id]=$si->gallery_title;
+                }
+                ?>
+                <section class="aurora-workspace-card aurora-selection-overview">
+                    <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">KUNDEAKTIVITET</span><h2>Bildevalg på tvers av gallerier</h2><p>Se raskt hvilke bilder kundene har favorisert, valgt eller kommentert.</p></div><strong class="aurora-selection-total"><?php echo (int)$selection_counts['all']; ?> bilder</strong></div>
+                    <div class="aurora-selection-filters" data-selection-filters>
+                        <button type="button" class="is-active" data-selection-kind="all">Alle <b><?php echo (int)$selection_counts['all']; ?></b></button>
+                        <button type="button" data-selection-kind="favorite">♡ Favoritter <b><?php echo (int)$selection_counts['favorites']; ?></b></button>
+                        <button type="button" data-selection-kind="approved">✓ Valgte <b><?php echo (int)$selection_counts['approved']; ?></b></button>
+                        <button type="button" data-selection-kind="comment">💬 Kommentarer <b><?php echo (int)$selection_counts['comments']; ?></b></button>
+                    </div>
+                    <div class="aurora-selection-selects">
+                        <label>Kunde<select data-selection-client><option value="">Alle kunder</option><?php foreach($selection_clients as $id=>$name): ?><option value="<?php echo (int)$id; ?>"><?php echo esc_html($name); ?></option><?php endforeach; ?></select></label>
+                        <label>Prosjekt<select data-selection-project><option value="">Alle prosjekter</option><?php foreach($selection_projects as $id=>$name): ?><option value="<?php echo (int)$id; ?>"><?php echo esc_html($name); ?></option><?php endforeach; ?></select></label>
+                        <label>Galleri<select data-selection-gallery><option value="">Alle gallerier</option><?php foreach($selection_galleries as $id=>$name): ?><option value="<?php echo (int)$id; ?>"><?php echo esc_html($name); ?></option><?php endforeach; ?></select></label>
+                    </div>
+                </section>
+                <?php if($selection_items): ?><div class="aurora-selection-grid" data-selection-grid><?php foreach($selection_items as $si): $img=$si->thumbnail_url?:$si->preview_url; if(!$img)continue; ?>
+                    <article class="aurora-selection-card" data-favorite="<?php echo !empty($si->is_favorite)?'1':'0'; ?>" data-approved="<?php echo !empty($si->is_selected)?'1':'0'; ?>" data-comment="<?php echo (int)$si->comment_count>0?'1':'0'; ?>" data-client="<?php echo (int)$si->client_id; ?>" data-project="<?php echo (int)$si->project_id; ?>" data-gallery="<?php echo (int)$si->gallery_id; ?>">
+                        <button type="button" class="aurora-selection-image" data-gallery-image="<?php echo esc_url($si->preview_url?:$img); ?>"><img loading="lazy" src="<?php echo esc_url($img); ?>" alt=""><span><?php if(!empty($si->is_favorite)): ?><i>♡</i><?php endif; ?><?php if(!empty($si->is_selected)): ?><i>✓</i><?php endif; ?><?php if((int)$si->comment_count): ?><i>💬 <?php echo (int)$si->comment_count; ?></i><?php endif; ?></span></button>
+                        <div class="aurora-selection-body"><strong><?php echo esc_html($si->original_filename); ?></strong><small><?php echo esc_html($si->client_name?:'Ukjent kunde'); ?> · <?php echo esc_html($si->project_name); ?></small><a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>(int)$si->project_id,'gallery_id'=>(int)$si->gallery_id])); ?>"><?php echo esc_html($si->gallery_title); ?> <span class="dashicons dashicons-arrow-right-alt2"></span></a><?php if(!empty($si->latest_comment)): ?><div class="aurora-selection-comment"><span class="dashicons dashicons-format-chat"></span><p><?php echo esc_html($si->latest_comment); ?></p></div><?php endif; ?></div>
+                    </article>
+                <?php endforeach; ?></div><div class="aurora-selection-empty-filter" data-selection-empty hidden>Ingen bilder matcher filteret.</div><?php else: ?><div class="aurora-empty-state"><span class="dashicons dashicons-yes-alt"></span><strong>Ingen kundeaktivitet ennå</strong><p>Favoritter, valgte bilder og kommentarer vil automatisk vises her.</p></div><?php endif; ?>
+                <div class="aurora-gallery-lightbox" data-gallery-lightbox><button type="button" class="aurora-gallery-lightbox-close" aria-label="Lukk">×</button><button type="button" class="aurora-gallery-lightbox-nav is-prev" aria-label="Forrige bilde">‹</button><img src="" alt=""><button type="button" class="aurora-gallery-lightbox-nav is-next" aria-label="Neste bilde">›</button></div>
+
             <?php elseif ($view === 'hq_delivery') : ?>
                 <?php
                 $project_id = absint($_GET['project_id'] ?? 0);
@@ -1268,5 +1307,16 @@ document.addEventListener('DOMContentLoaded',function(){
     dropdown.addEventListener('click',function(e){e.stopPropagation();});
     document.addEventListener('click',close);
     document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ var root=document.querySelector('[data-selection-grid]'); if(!root)return;
+ var cards=[].slice.call(root.querySelectorAll('.aurora-selection-card')), kind='all';
+ var c=document.querySelector('[data-selection-client]'),p=document.querySelector('[data-selection-project]'),g=document.querySelector('[data-selection-gallery]'),empty=document.querySelector('[data-selection-empty]');
+ function apply(){var shown=0;cards.forEach(function(x){var ok=(kind==='all'||x.dataset[kind]==='1')&&(!c.value||x.dataset.client===c.value)&&(!p.value||x.dataset.project===p.value)&&(!g.value||x.dataset.gallery===g.value);x.hidden=!ok;if(ok)shown++;});if(empty)empty.hidden=shown!==0;}
+ document.querySelectorAll('[data-selection-kind]').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('[data-selection-kind]').forEach(function(z){z.classList.remove('is-active')});b.classList.add('is-active');kind=b.dataset.selectionKind;apply();});});
+ [c,p,g].forEach(function(x){if(x)x.addEventListener('change',apply)});
 });
 </script>

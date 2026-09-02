@@ -850,6 +850,19 @@ class NLS1_Fotoportal_Admin {
 
     public static function gallery_interaction_counts($gallery_id,$account_id=0){global $wpdb;$gallery_id=(int)$gallery_id;$account_id=(int)($account_id?:self::tenant_account_id());$f=self::table('favorites');$c=self::table('image_comments');$i=self::table('images');return ['favorites'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT image_id) FROM $f WHERE gallery_id=%d",$gallery_id)),'approved'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $i WHERE gallery_id=%d AND account_id=%d AND is_selected=1",$gallery_id,$account_id)),'comments'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $c WHERE gallery_id=%d",$gallery_id))];}
 
+    public static function photographer_selection_items($account_id = 0) {
+        global $wpdb;
+        $account_id = (int)($account_id ?: self::tenant_account_id());
+        if (!$account_id) return [];
+        $images = self::table('images');
+        $galleries = self::table('galleries');
+        $projects = self::table('projects');
+        $clients = self::table('clients');
+        $favorites = self::table('favorites');
+        $comments = self::table('image_comments');
+        return $wpdb->get_results($wpdb->prepare("\n            SELECT i.id image_id, i.gallery_id, i.project_id, i.original_filename, i.preview_url, i.thumbnail_url, i.is_selected,\n                   g.gallery_title, p.project_name, c.id client_id, c.client_name,\n                   CASE WHEN EXISTS(SELECT 1 FROM $favorites f WHERE f.image_id=i.id AND f.gallery_id=i.gallery_id) THEN 1 ELSE 0 END is_favorite,\n                   (SELECT COUNT(*) FROM $comments cm WHERE cm.image_id=i.id AND cm.gallery_id=i.gallery_id) comment_count,\n                   (SELECT cm2.comment_text FROM $comments cm2 WHERE cm2.image_id=i.id AND cm2.gallery_id=i.gallery_id ORDER BY cm2.created_at DESC, cm2.id DESC LIMIT 1) latest_comment,\n                   (SELECT cm3.created_at FROM $comments cm3 WHERE cm3.image_id=i.id AND cm3.gallery_id=i.gallery_id ORDER BY cm3.created_at DESC, cm3.id DESC LIMIT 1) latest_comment_at\n            FROM $images i\n            INNER JOIN $galleries g ON g.id=i.gallery_id AND g.account_id=i.account_id\n            INNER JOIN $projects p ON p.id=i.project_id AND p.account_id=i.account_id\n            LEFT JOIN $clients c ON c.id=g.client_id AND c.account_id=i.account_id\n            WHERE i.account_id=%d AND (i.is_selected=1 OR EXISTS(SELECT 1 FROM $favorites f2 WHERE f2.image_id=i.id AND f2.gallery_id=i.gallery_id) OR EXISTS(SELECT 1 FROM $comments cm4 WHERE cm4.image_id=i.id AND cm4.gallery_id=i.gallery_id))\n            ORDER BY COALESCE((SELECT MAX(cm5.created_at) FROM $comments cm5 WHERE cm5.image_id=i.id AND cm5.gallery_id=i.gallery_id), i.updated_at, i.created_at) DESC, i.id DESC\n        ", $account_id));
+    }
+
     public static function get_gallery_images($gallery_id, $limit = 80) {
         global $wpdb;
         $images = self::table('images');
