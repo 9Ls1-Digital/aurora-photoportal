@@ -478,21 +478,30 @@ class NLS1_Fotoportal_Admin {
 
 
 
-    public static function get_contracts($include_test = true) {
+    public static function get_contracts($include_test = true, $search = '', $status = '', $source = '', $sort = 'created', $order = 'desc') {
         global $wpdb;
         $contracts = self::table('contracts');
         $projects = self::table('projects');
         $clients = self::table('clients');
-        $where = $wpdb->prepare('ct.account_id = %d', self::tenant_account_id()) . ($include_test ? '' : ' AND ct.is_test = 0');
-        return $wpdb->get_results("
-            SELECT ct.*, p.project_name, p.project_number, p.project_type, c.client_name
+        $where = ['ct.account_id = %d'];
+        $params = [self::tenant_account_id()];
+        if (!$include_test) $where[] = 'ct.is_test = 0';
+        if ($search) {
+            $like = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = '(ct.contract_name LIKE %s OR p.project_name LIKE %s OR p.project_number LIKE %s OR c.client_name LIKE %s OR ct.signer_email LIKE %s)';
+            $params = array_merge($params, [$like,$like,$like,$like,$like]);
+        }
+        if ($status) { $where[] = 'ct.status = %s'; $params[] = $status; }
+        if ($source) { $where[] = 'ct.contract_source = %s'; $params[] = $source; }
+        $sort_map = ['contract'=>'ct.contract_name','project'=>'p.project_name','customer'=>'c.client_name','source'=>'ct.contract_source','status'=>'ct.status','created'=>'ct.created_at'];
+        $sort_sql = $sort_map[$sort] ?? $sort_map['created'];
+        $order_sql = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
+        $sql = "SELECT ct.*, p.project_name, p.project_number, p.project_type, c.client_name
             FROM $contracts ct
-            LEFT JOIN $projects p ON p.id = ct.project_id
-            LEFT JOIN $clients c ON c.id = p.client_id
-            WHERE $where
-            ORDER BY ct.created_at DESC
-            LIMIT 200
-        ");
+            LEFT JOIN $projects p ON p.id = ct.project_id AND p.account_id = ct.account_id
+            LEFT JOIN $clients c ON c.id = p.client_id AND c.account_id = ct.account_id
+            WHERE " . implode(' AND ', $where) . " ORDER BY $sort_sql $order_sql, ct.id DESC LIMIT 200";
+        return $wpdb->get_results($wpdb->prepare($sql, $params));
     }
 
     public static function get_project_contracts($project_id) {
@@ -1590,7 +1599,7 @@ class NLS1_Fotoportal_Admin {
         @rmdir($dir);
     }
 
-    public static function get_documents($project_id = 0, $include_test = true) {
+    public static function get_documents($project_id = 0, $include_test = true, $search = '', $type = '', $sort = 'created', $order = 'desc') {
         global $wpdb;
         $documents = self::table('documents');
         $projects = self::table('projects');
@@ -1600,16 +1609,24 @@ class NLS1_Fotoportal_Admin {
             return $wpdb->get_results($wpdb->prepare("SELECT * FROM $documents WHERE project_id = %d AND account_id = %d ORDER BY created_at DESC", $project_id,self::tenant_account_id()));
         }
 
-        $where = $wpdb->prepare('d.account_id = %d', self::tenant_account_id()) . ($include_test ? '' : ' AND d.is_test = 0');
-        return $wpdb->get_results("
-            SELECT d.*, p.project_name, p.project_number, c.client_name
+        $where = ['d.account_id = %d'];
+        $params = [self::tenant_account_id()];
+        if (!$include_test) $where[] = 'd.is_test = 0';
+        if ($search) {
+            $like = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = '(d.document_title LIKE %s OR d.document_type LIKE %s OR p.project_name LIKE %s OR p.project_number LIKE %s OR c.client_name LIKE %s)';
+            $params = array_merge($params, [$like,$like,$like,$like,$like]);
+        }
+        if ($type) { $where[] = 'd.document_type = %s'; $params[] = $type; }
+        $sort_map = ['document'=>'d.document_title','project'=>'p.project_name','customer'=>'c.client_name','type'=>'d.document_type','created'=>'d.created_at'];
+        $sort_sql = $sort_map[$sort] ?? $sort_map['created'];
+        $order_sql = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
+        $sql = "SELECT d.*, p.project_name, p.project_number, c.client_name
             FROM $documents d
-            LEFT JOIN $projects p ON p.id = d.project_id
-            LEFT JOIN $clients c ON c.id = d.client_id
-            WHERE $where
-            ORDER BY d.created_at DESC
-            LIMIT 300
-        ");
+            LEFT JOIN $projects p ON p.id = d.project_id AND p.account_id = d.account_id
+            LEFT JOIN $clients c ON c.id = p.client_id AND c.account_id = d.account_id
+            WHERE " . implode(' AND ', $where) . " ORDER BY $sort_sql $order_sql, d.id DESC LIMIT 300";
+        return $wpdb->get_results($wpdb->prepare($sql, $params));
     }
 
     public static function get_document_templates($include_test = true) {

@@ -682,3 +682,8 @@ body.admin_page_aurora-photographer-workspace #wpcontent{margin-left:0}
 .aurora-or-divider{display:flex;align-items:center;gap:10px;color:#958e9d;font-size:11px}.aurora-or-divider:before,.aurora-or-divider:after{content:"";height:1px;background:#ece8f0;flex:1}
 .aurora-icon-link.is-pdf-ready{color:#6d43dd;border-color:#d8cafa;background:#f6f2ff}
 .aurora-project-table th .aurora-sort-heading{white-space:nowrap}
+
+/* dev.22 — Contracts & Documents overview */
+.aurora-overview-filters{margin:-8px -8px 24px;padding:8px 8px 24px;border-bottom:1px solid #eceaf2}
+.aurora-overview-head{margin-bottom:8px}
+.aurora-customer-table td small{display:block;margin-top:4px;color:#9994a5}

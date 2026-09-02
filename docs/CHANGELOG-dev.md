@@ -1,5 +1,13 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.22
+- Turn the top-level Contracts menu into a tenant-scoped photographer-wide contract register.
+- Add search, status/type filters and sortable Contract, Project, Customer, Type, Created and Status columns.
+- Turn the top-level Documents menu into a tenant-scoped photographer-wide document register.
+- Add search, document-type filtering and sortable Document, Project, Customer, Type and Created columns.
+- Keep project-scoped Contract and Document workflow screens unchanged when opened from a project.
+- Add direct actions from overview rows back into the correct project workflow step.
+
 ## 0.7.1-dev.21
 - Add sortable Project, Customer, Type, Date and Status columns to the project register.
 - Add colored project status/readiness treatment and a status legend on the project profile.
