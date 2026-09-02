@@ -26,7 +26,6 @@ $title = $view_titles[$view] ?? $view_titles['dashboard'];
 
 $legacy_links = [
 
-    'galleries' => NLS1_Fotoportal_Admin::fotoportal_url('galleries'),
     'hq_delivery' => NLS1_Fotoportal_Admin::fotoportal_url('galleries'),
 ];
 ?>
@@ -106,7 +105,7 @@ $legacy_links = [
                         <div class="aurora-workspace-shortcuts">
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('new')); ?>"><span class="dashicons dashicons-plus-alt2"></span><strong>Ny kunde / prosjekt</strong><small>Start ny fotografering</small></a>
                             <?php if (!empty($enabled['contracts'])) : ?><a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts')); ?>"><span class="dashicons dashicons-media-document"></span><strong>Kontrakter</strong><small>Se avtaler og status</small></a><?php endif; ?>
-                            <?php if (!empty($enabled['galleries'])) : ?><a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries')); ?>"><span class="dashicons dashicons-format-gallery"></span><strong>Gallerier</strong><small>Administrer bilder</small></a><?php endif; ?>
+                            <?php if (!empty($enabled['galleries'])) : ?><a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span class="dashicons dashicons-format-gallery"></span><strong>Gallerier</strong><small>Administrer bilder</small></a><?php endif; ?>
                         </div>
                     </section>
 
@@ -409,7 +408,7 @@ $legacy_links = [
                             <div class="is-current"><span>1</span><strong>Prosjekt</strong><small>Detaljer og status</small></div>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>"><span>2</span><strong>Kontrakt</strong><small><?php echo count($contracts); ?> registrert</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id])); ?>"><span>3</span><strong>Dokumenter</strong><small><?php echo count($documents); ?> filer</small></a>
-                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries')); ?>"><span>4</span><strong>Galleri</strong><small><?php echo count($galleries); ?> gallerier</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span>4</span><strong>Galleri</strong><small><?php echo count($galleries); ?> gallerier</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
                         </div>
                     </section>
@@ -557,7 +556,7 @@ $legacy_links = [
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id])); ?>"><span>1</span><strong>Prosjekt</strong><small>Detaljer og status</small></a>
                             <div class="is-current"><span>2</span><strong>Kontrakt</strong><small><?php echo count($contracts); ?> registrert</small></div>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id])); ?>"><span>3</span><strong>Dokumenter</strong><small>Neste steg</small></a>
-                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries')); ?>"><span>4</span><strong>Galleri</strong><small>Senere</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span>4</span><strong>Galleri</strong><small>Senere</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
                         </div>
                     </section>
@@ -635,12 +634,146 @@ $legacy_links = [
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id])); ?>"><span>1</span><strong>Prosjekt</strong><small>Detaljer og status</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>"><span>2</span><strong>Kontrakt</strong><small>Avtaler</small></a>
                             <div class="is-current"><span>3</span><strong>Dokumenter</strong><small><?php echo count($documents); ?> registrert</small></div>
-                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries')); ?>"><span>4</span><strong>Galleri</strong><small>Neste steg</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span>4</span><strong>Galleri</strong><small>Neste steg</small></a>
                             <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Sluttlevering</small></a>
                         </div>
                     </section>
                 <?php else : ?>
                     <section class="aurora-workspace-card"><div class="aurora-empty-state"><span class="dashicons dashicons-media-document"></span><strong>Velg et prosjekt først</strong><p>Dokumenter administreres fra prosjektets arbeidsflyt.</p><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects')); ?>">Gå til Prosjekter</a></div></section>
+                <?php endif; ?>
+
+
+            <?php elseif ($view === 'galleries') : ?>
+                <?php
+                $project_id = absint($_GET['project_id'] ?? 0);
+                $project = $project_id ? NLS1_Fotoportal_Admin::get_project($project_id) : null;
+                $galleries = $project ? NLS1_Fotoportal_Admin::get_galleries($project_id, true) : NLS1_Fotoportal_Admin::get_galleries(0, true);
+                $gallery_unlocked = $project ? NLS1_Fotoportal_Admin::has_signed_contract($project_id) : false;
+                ?>
+
+                <?php if ($project) : ?>
+                    <a class="aurora-back-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id])); ?>"><span class="dashicons dashicons-arrow-left-alt2"></span>Tilbake til prosjekt</a>
+                    <div class="aurora-project-profile-card">
+                        <div class="aurora-project-mark"><span class="dashicons dashicons-format-gallery"></span></div>
+                        <div class="aurora-customer-profile-main">
+                            <span class="aurora-workspace-eyebrow"><?php echo esc_html($project->project_number); ?></span>
+                            <h2><?php echo esc_html($project->project_name); ?></h2>
+                            <div class="aurora-customer-meta"><span><?php echo esc_html($project->client_name ?: '—'); ?></span><span class="aurora-status-pill"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span></div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php
+                $gallery_message = sanitize_key($_GET['message'] ?? '');
+                $message_map = [
+                    'gallery_uploaded' => ['Galleri lastet opp', 'ZIP-filen er pakket ut og preview/thumbnails er generert.'],
+                    'gallery_deleted' => ['Galleri slettet', 'Galleriet er fjernet.'],
+                    'gallery_regenerated' => ['Galleri regenerert', 'Preview og thumbnails er generert på nytt.'],
+                    'proof_pdf_generated' => ['PDF generert', 'Premium Proof PDF er generert.'],
+                ];
+                if (isset($message_map[$gallery_message])) :
+                ?>
+                    <div class="aurora-workspace-alert is-success"><span class="dashicons dashicons-yes-alt"></span><div><strong><?php echo esc_html($message_map[$gallery_message][0]); ?></strong><p><?php echo esc_html($message_map[$gallery_message][1]); ?></p></div></div>
+                <?php elseif ($gallery_message === 'gallery_contract_required') : ?>
+                    <div class="aurora-workspace-alert"><span class="dashicons dashicons-lock"></span><div><strong>Signert kontrakt kreves</strong><p>Galleri kan først opprettes når prosjektet har minst én signert kontrakt.</p></div></div>
+                <?php endif; ?>
+
+                <section class="aurora-workspace-card aurora-gallery-toolbar">
+                    <div class="aurora-workspace-cardhead">
+                        <div><span class="aurora-workspace-eyebrow">GALLERIER</span><h2><?php echo $project ? 'Prosjektgallerier' : 'Alle gallerier'; ?></h2></div>
+                        <?php if ($project && $gallery_unlocked) : ?><a class="aurora-primary-action" href="#aurora-new-gallery"><span class="dashicons dashicons-plus-alt2"></span>Nytt galleri</a><?php endif; ?>
+                    </div>
+                    <?php if (!$project) : ?><p>Velg et prosjekt for å opprette et nytt galleri. Oversikten nedenfor viser gallerier på denne fotografkontoen.</p><?php endif; ?>
+                </section>
+
+                <section class="aurora-workspace-card">
+                    <?php if ($galleries) : ?>
+                        <div class="aurora-gallery-list">
+                            <?php foreach ($galleries as $gal) :
+                                $thumbs = NLS1_Fotoportal_Admin::get_gallery_images((int)$gal->id, 1);
+                                $thumb = !empty($thumbs[0]->thumbnail_url) ? $thumbs[0]->thumbnail_url : '';
+                                $gal_project_id = (int)$gal->project_id;
+                                $remaining = '';
+                                if (!empty($gal->downloadable_until)) {
+                                    $days = (int)floor((strtotime($gal->downloadable_until . ' 23:59:59') - current_time('timestamp')) / DAY_IN_SECONDS);
+                                    $remaining = $days >= 0 ? $days . ' dager igjen' : 'Utløpt';
+                                }
+                                $status_label = $gal->status === 'preview_generated' ? 'Klar' : ($gal->status === 'uploaded' ? 'Lastet opp' : ucfirst(str_replace('_',' ',$gal->status)));
+                            ?>
+                                <article class="aurora-gallery-row">
+                                    <div class="aurora-gallery-thumb">
+                                        <?php if ($thumb) : ?><img src="<?php echo esc_url($thumb); ?>" alt=""><?php else : ?><span class="dashicons dashicons-format-gallery"></span><?php endif; ?>
+                                    </div>
+                                    <div class="aurora-gallery-main">
+                                        <div class="aurora-gallery-titleline"><strong><?php echo esc_html($gal->gallery_title); ?></strong><?php if (!empty($gal->is_test)) : ?><span class="aurora-test-badge">Test</span><?php endif; ?></div>
+                                        <small><?php echo esc_html($gal->gallery_number); ?> · <?php echo (int)$gal->original_count; ?> bilder</small>
+                                        <?php if (!$project) : ?><a class="aurora-gallery-projectlink" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$gal_project_id])); ?>"><?php echo esc_html(($gal->project_number ?? '') . ' · ' . ($gal->project_name ?? '')); ?></a><?php endif; ?>
+                                    </div>
+                                    <div class="aurora-gallery-meta"><span>Nedlastbar til</span><strong><?php echo !empty($gal->downloadable_until) ? esc_html(date_i18n('d.m.Y',strtotime($gal->downloadable_until))) : 'Ikke satt'; ?></strong><small><?php echo esc_html($remaining); ?></small></div>
+                                    <div class="aurora-gallery-meta"><span>Status</span><strong class="aurora-status-pill is-active"><?php echo esc_html($status_label); ?></strong><small><?php echo (int)$gal->preview_count; ?> preview · <?php echo (int)$gal->thumbnail_count; ?> thumbnails</small></div>
+                                    <div class="aurora-row-actions aurora-gallery-actions">
+                                        <?php if ($thumb) : ?><a class="aurora-icon-link" href="<?php echo esc_url($thumbs[0]->preview_url ?: $thumb); ?>" target="_blank" rel="noopener" title="Vis preview"><span class="dashicons dashicons-visibility"></span></a><?php endif; ?>
+                                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-inline-form">
+                                            <input type="hidden" name="action" value="9ls1_fotoportal_regenerate_gallery"><input type="hidden" name="gallery_id" value="<?php echo (int)$gal->id; ?>"><input type="hidden" name="project_id" value="<?php echo $gal_project_id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_regenerate_gallery'); ?>
+                                            <button class="aurora-icon-link" type="submit" title="Regenerer preview"><span class="dashicons dashicons-update"></span></button>
+                                        </form>
+                                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-inline-form">
+                                            <input type="hidden" name="action" value="9ls1_fotoportal_generate_proof_pdf"><input type="hidden" name="gallery_id" value="<?php echo (int)$gal->id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_generate_proof_pdf'); ?>
+                                            <button class="aurora-icon-link" type="submit" title="Generer Premium Proof PDF"><span class="dashicons dashicons-pdf"></span></button>
+                                        </form>
+                                        <details class="aurora-more-actions"><summary class="aurora-icon-link" title="Flere handlinger"><span class="dashicons dashicons-ellipsis"></span></summary>
+                                            <div class="aurora-more-menu">
+                                                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('Slette galleriet?');">
+                                                    <input type="hidden" name="action" value="9ls1_fotoportal_delete_gallery"><input type="hidden" name="gallery_id" value="<?php echo (int)$gal->id; ?>"><input type="hidden" name="project_id" value="<?php echo $gal_project_id; ?>"><input type="hidden" name="delete_files" value="0"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_delete_gallery'); ?>
+                                                    <button type="submit" class="is-danger">Slett galleri</button>
+                                                </form>
+                                            </div>
+                                        </details>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else : ?>
+                        <div class="aurora-empty-state"><span class="dashicons dashicons-format-gallery"></span><strong>Ingen gallerier ennå</strong><p><?php echo $project ? 'Opprett prosjektets første galleri når kontrakten er signert.' : 'Ingen gallerier er registrert på fotografkontoen.'; ?></p></div>
+                    <?php endif; ?>
+                </section>
+
+                <?php if ($project) : ?>
+                    <?php if ($gallery_unlocked) : ?>
+                        <section id="aurora-new-gallery" class="aurora-workspace-card aurora-gallery-upload-card">
+                            <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">NYTT GALLERI</span><h2>Last opp bilder</h2></div><span class="aurora-status-pill is-active">Kontrakt signert</span></div>
+                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="aurora-gallery-upload-form">
+                                <input type="hidden" name="action" value="9ls1_fotoportal_upload_gallery_zip"><input type="hidden" name="project_id" value="<?php echo (int)$project_id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_upload_gallery_zip'); ?>
+                                <div class="aurora-form-grid">
+                                    <label>Gallerinavn<input type="text" name="gallery_title" placeholder="f.eks. Hovedgalleri"></label>
+                                    <label>ZIP-fil<input type="file" name="gallery_zip" accept=".zip" required></label>
+                                    <label>Nedlastbar til<input type="date" name="downloadable_until"></label>
+                                    <label>Automatisk slettedato<input type="date" name="auto_delete_at"></label>
+                                </div>
+                                <div class="aurora-gallery-options">
+                                    <label><input type="checkbox" name="local_backup_confirmed" value="1">Lokal backup er bekreftet</label>
+                                    <label><input type="checkbox" name="watermark_enabled" value="1" checked>Vannmerke på preview</label>
+                                    <label><input type="checkbox" name="download_enabled" value="1">Aktiver nedlasting</label>
+                                </div>
+                                <p class="aurora-form-help">Aurora oppretter original, preview, thumbnails, ZIP og export automatisk.</p>
+                                <button class="aurora-primary-action" type="submit"><span class="dashicons dashicons-upload"></span>Last opp og opprett galleri</button>
+                            </form>
+                        </section>
+                    <?php else : ?>
+                        <section class="aurora-workspace-card aurora-gallery-locked">
+                            <span class="dashicons dashicons-lock"></span><div><span class="aurora-workspace-eyebrow">GALLERI LÅST</span><h2>Kontrakten må være signert først</h2><p>Dette er håndhevet både i arbeidsflaten og i opplastingshandleren.</p><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>">Gå til Kontrakt</a></div>
+                        </section>
+                    <?php endif; ?>
+
+                    <section class="aurora-workspace-card aurora-project-workflow">
+                        <div class="aurora-project-steps">
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id])); ?>"><span>1</span><strong>Prosjekt</strong><small>Detaljer og status</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>"><span>2</span><strong>Kontrakt</strong><small>Avtaler</small></a>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id])); ?>"><span>3</span><strong>Dokumenter</strong><small>Underlag</small></a>
+                            <div class="is-current"><span>4</span><strong>Galleri</strong><small><?php echo count($galleries); ?> gallerier</small></div>
+                            <a href="<?php echo esc_url(NLS1_Photographer_Workspace::url('hq_delivery')); ?>"><span>5</span><strong>Leveranse</strong><small>Neste steg</small></a>
+                        </div>
+                    </section>
                 <?php endif; ?>
 
 <?php elseif ($view === 'settings') : ?>

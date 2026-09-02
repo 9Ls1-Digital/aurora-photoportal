@@ -1,5 +1,15 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.18
+- Move Galleries into the native Aurora Photographer Workspace.
+- Add photographer-wide gallery overview and project-scoped gallery workflow.
+- Show gallery thumbnail, image counts, availability date, remaining days and status.
+- Add compact actions for preview, derivative regeneration, Premium Proof PDF and deletion.
+- Add native ZIP gallery upload with watermark, download and retention options.
+- Enforce signed-contract gating in both Workspace UI and the existing backend upload handler.
+- Preserve Workspace/project context after gallery actions.
+- Leave Delivery as the final legacy workflow step.
+
 ## 0.7.1-dev.17
 - Move project Documents into the native Aurora Photographer Workspace.
 - Keep document navigation scoped to the active project.

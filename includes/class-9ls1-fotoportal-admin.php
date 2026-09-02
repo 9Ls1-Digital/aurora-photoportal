@@ -1104,6 +1104,7 @@ class NLS1_Fotoportal_Admin {
     public function handle_generate_proof_pdf() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_generate_proof_pdf');
+        $workspace = !empty($_POST['aurora_workspace']);
 
         $gallery_id = (int)($_POST['gallery_id'] ?? 0);
         $gallery = self::get_gallery($gallery_id);
@@ -1287,9 +1288,13 @@ class NLS1_Fotoportal_Admin {
 
         if ($ok) {
             $this->log((int)$project->client_id, (int)$project->id, 'pdf', 'Premium PDF Preview Sheet generert: ' . $safe_name, (int)$gallery->is_test);
-            wp_safe_redirect(self::project_url((int)$project->id) . '&message=proof_pdf_generated');
+            wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+                ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>(int)$project->id,'message'=>'proof_pdf_generated'])
+                : self::project_url((int)$project->id) . '&message=proof_pdf_generated');
         } else {
-            wp_safe_redirect(self::project_url((int)$project->id) . '&message=proof_pdf_failed');
+            wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+                ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>(int)$project->id,'message'=>'proof_pdf_failed'])
+                : self::project_url((int)$project->id) . '&message=proof_pdf_failed');
         }
         exit;
     }
@@ -1297,6 +1302,7 @@ class NLS1_Fotoportal_Admin {
     public function handle_regenerate_gallery() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_regenerate_gallery');
+        $workspace = !empty($_POST['aurora_workspace']);
 
         $gallery_id = (int)($_POST['gallery_id'] ?? 0);
         $project_id = (int)($_POST['project_id'] ?? 0);
@@ -1311,13 +1317,16 @@ class NLS1_Fotoportal_Admin {
             }
         }
 
-        wp_safe_redirect(self::project_url($project_id) . '&message=gallery_regenerated');
+        wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+            ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>$project_id,'message'=>'gallery_regenerated'])
+            : self::project_url($project_id) . '&message=gallery_regenerated');
         exit;
     }
 
     public function handle_upload_gallery_zip() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_upload_gallery_zip');
+        $workspace = !empty($_POST['aurora_workspace']);
 
         global $wpdb;
 
@@ -1330,10 +1339,9 @@ class NLS1_Fotoportal_Admin {
 
         // Aurora workflow gate: gallery production starts after a signed contract.
         if (!self::has_signed_contract($project_id)) {
-            wp_safe_redirect(add_query_arg([
-                'project_step' => 'gallery',
-                'message' => 'gallery_contract_required',
-            ], self::project_url($project_id)));
+            wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+                ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>$project_id,'message'=>'gallery_contract_required'])
+                : add_query_arg(['project_step'=>'gallery','message'=>'gallery_contract_required'], self::project_url($project_id)));
             exit;
         }
 
@@ -1493,13 +1501,16 @@ class NLS1_Fotoportal_Admin {
         $wpdb->update(self::table('projects'), ['status' => 'images_uploaded', 'updated_at' => current_time('mysql')], ['id' => $project_id, 'account_id' => self::tenant_account_id()]);
 
         $this->log((int)$project->client_id, $project_id, 'gallery', 'Galleri lastet opp: ' . $gallery_title . ' (' . $original_count . ' bilder). Preview: ' . $derivatives['preview'] . ', thumbnails: ' . $derivatives['thumbs'] . '.', (int)$project->is_test);
-        wp_safe_redirect(self::project_url($project_id) . '&message=gallery_uploaded');
+        wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+            ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>$project_id,'message'=>'gallery_uploaded'])
+            : self::project_url($project_id) . '&message=gallery_uploaded');
         exit;
     }
 
     public function handle_delete_gallery() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_delete_gallery');
+        $workspace = !empty($_POST['aurora_workspace']);
 
         global $wpdb;
 
@@ -1520,7 +1531,9 @@ class NLS1_Fotoportal_Admin {
             $wpdb->delete(self::table('galleries'), ['id' => $gallery_id, 'account_id' => self::tenant_account_id()], ['%d']);
         }
 
-        wp_safe_redirect(self::project_url($project_id) . '&message=gallery_deleted');
+        wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+            ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>$project_id,'message'=>'gallery_deleted'])
+            : self::project_url($project_id) . '&message=gallery_deleted');
         exit;
     }
 
