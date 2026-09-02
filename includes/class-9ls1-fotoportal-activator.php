@@ -99,6 +99,9 @@ class NLS1_Fotoportal_Activator {
             location VARCHAR(190) DEFAULT '',
             description LONGTEXT NULL,
             status VARCHAR(80) DEFAULT 'created',
+            payment_status VARCHAR(30) DEFAULT 'unpaid',
+            payment_marked_at DATETIME NULL,
+            portal_released_at DATETIME NULL,
             is_test TINYINT(1) DEFAULT 0,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NULL,
@@ -107,6 +110,7 @@ class NLS1_Fotoportal_Activator {
             KEY project_number (project_number),
             KEY project_type (project_type),
             KEY status (status),
+            KEY payment_status (payment_status),
             KEY is_test (is_test)
         ) $charset_collate;");
 
@@ -244,6 +248,10 @@ class NLS1_Fotoportal_Activator {
             gallery_number VARCHAR(50) DEFAULT '',
             gallery_title VARCHAR(190) NOT NULL,
             gallery_description TEXT NULL,
+            selection_status VARCHAR(32) DEFAULT 'open',
+            selection_submitted_at DATETIME NULL,
+            selection_processing_at DATETIME NULL,
+            selection_ready_at DATETIME NULL,
             public_token VARCHAR(64) DEFAULT '',
             base_dir TEXT NOT NULL,
             base_url TEXT NOT NULL,
@@ -264,6 +272,7 @@ class NLS1_Fotoportal_Activator {
             KEY client_id (client_id),
             KEY project_id (project_id),
             KEY gallery_number (gallery_number),
+            KEY selection_status (selection_status),
             KEY public_token (public_token),
             KEY status (status),
             KEY is_test (is_test)

@@ -245,6 +245,7 @@ class NLS1_Aurora_Account_Platform {
             'support_email' => get_option('9ls1_aurora_support_email', get_option('admin_email')),
             'logo_url' => get_option('9ls1_aurora_logo_url', ''),
             'accent' => get_option('9ls1_aurora_accent', '#6f4bf2'),
+            'watermark_preview_url' => get_option('9ls1_aurora_watermark_preview_url', NLS1_FOTOPORTAL_PLUGIN_URL . 'assets/aurora-watermark-preview.jpg'),
         ];
     }
 
@@ -334,6 +335,11 @@ class NLS1_Aurora_Account_Platform {
         update_option('9ls1_aurora_company_name', sanitize_text_field($_POST['company_name'] ?? '9Ls1 Digital'), false);
         update_option('9ls1_aurora_support_email', sanitize_email($_POST['support_email'] ?? ''), false);
         update_option('9ls1_aurora_logo_url', esc_url_raw($_POST['logo_url'] ?? ''), false);
+        if (!empty($_FILES['watermark_preview_image']['name'])) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            $upload = wp_handle_upload($_FILES['watermark_preview_image'], ['test_form' => false]);
+            if (empty($upload['error']) && !empty($upload['url'])) update_option('9ls1_aurora_watermark_preview_url', esc_url_raw($upload['url']), false);
+        }
 
         $accent = sanitize_hex_color($_POST['accent'] ?? '');
         if ($accent) update_option('9ls1_aurora_accent', $accent, false);

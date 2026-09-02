@@ -1,3 +1,72 @@
+## 0.7.1-dev.31-fix19
+- Korrigert Workspace-branding slik at engelsk `Photo Portal` ikke dobles med norsk `Fotoportal`.
+- Utvidet vannmerkeplassering til syv valg: topp venstre/senter/høyre, bunn venstre/senter/høyre og midt.
+- Vannmerkevalgene vises i tre rader og støttes i både preview, dashboard og genererte preview-bilder.
+
+## 0.7.1-dev.31-fix18
+- Make Photographer Workspace sidebar branding fully dynamic from Aurora Admin platform branding.
+- Use the configured Aurora logo in the dark brand card.
+- Show `<Platform name> Fotoportal` with `Developed by <Company>` beneath it.
+- Keep mobile workspace branding synchronized with the configured platform name/logo.
+
+## 0.7.1-dev.31-fix17
+- Repaired watermark preview/upload UX and configurable platform test image.
+- Restored photographer settings access.
+- Added aggregate delivery overview and unpaid filter.
+- Added resource category routing/filtering.
+
+## 0.7.1-dev.31-fix16 – Dashboard & Watermark Repair
+- Repaired the critical runtime error introduced in fix15 by restoring gallery activity, selection status, hero and customer-login handlers that were accidentally replaced.
+- Rebuilt Photographer Workspace dashboard with live KPI cards, follow-up tasks, resources and customer-experience preview.
+- Redesigns watermark settings to match the approved two-column Aurora layout with upload, position, size, transparency and live preview.
+- Adds per-photographer resource uploads without removing existing gallery interaction methods.
+- Redigeringsønske notifications now open Bildevalg rather than the gallery.
+- Photographer watermark is applied to regenerated preview images only; original files remain untouched.
+- Added top-left and top-right watermark rendering support.
+
+## 0.7.1-dev.31-fix14 – Customer Status Sync & Portal Layout Cleanup
+
+- Synkroniserer kundens Status-visning med samme prosjektdata som Fotograf Workspace.
+- Viser korrekt kontrakt-, betalings-, galleri- og leveransestatus per prosjekt.
+- Dokumenter vises som valgfri tilleggsinformasjon når de finnes.
+- Oppdaterer statusforklaringen og flytter den inn under «Fra prosjekt til leveranse».
+- Flytter «Kundens faste portal» og portal-URL inn i Kundeportal/Hero Designer-kortet.
+
+## 0.7.1-dev.31-fix13 – Customer Account Views
+- Added dedicated customer-facing Min profil view.
+- Added dedicated per-project Status view for contract, payment, gallery and delivery.
+- Customer account menu now routes to real views; project/gallery link returns to portal overview.
+- Removed duplicated profile/status card from the main customer portal.
+
+## 0.7.1-dev.31-fix8
+- Added customer account/profile menu to private portal header with profile, status, projects/galleries, password and logout shortcuts.
+- Added compact customer profile and delivery status overview in the portal.
+- Renamed gallery comments to comments for requested editing throughout customer and photographer interaction UI.
+
+# dev.31-fix6
+- Added self-healing customer login creation/linking from the customer contact email.
+- Added visible customer-login status and manual Create login action on the customer card.
+- Existing WordPress users with the same email are linked instead of duplicated.
+- Password recovery now repairs legacy customers that have an email but no portal user.
+
+# 0.7.1-dev.31-fix5
+- Added targeted password-reset mail diagnostics: customer email, matched WordPress user, subject, timestamp, wp_mail result and wp_mail_failed detail are logged server-side.
+- Keeps WP Mail SMTP/Brevo as the mail transport via WordPress wp_mail().
+
+
+## 0.7.1-dev.31-fix4
+- Added an Aurora-branded customer password recovery flow.
+- Replaced the WordPress lost-password link in customer login with a portal-specific reset route.
+- Password reset messages are sent with photographer/studio branding and a secure WordPress reset key.
+- Customers set the new password inside Aurora rather than the default WordPress login UI.
+- Failed reset-mail attempts are surfaced to the customer and logged server-side for SMTP diagnostics.
+
+
+## 0.7.1-dev.31-fix3
+- Reordered the customer detail workspace for a clearer information hierarchy.
+- Contact and customer information now appear before the customer Hero Designer.
+- Customer projects now follow the Hero Designer.
+- The permanent customer portal URL card now appears below the project section.
 # 0.7.1-dev.29-fix2 – Gallery activity, optimistic UI and metadata
 
 - Immediate optimistic visual feedback for favorite and approved image actions.
@@ -352,3 +421,26 @@
 - Added lightbox access from the selection overview.
 - Added a Bildevalg navigation entry with unread gallery-activity badge.
 - All selection queries are scoped through the active photographer account via image/gallery/project/client joins.
+## 0.7.1-dev.31 — Selection Workflow & Delivery Foundation
+
+- Add explicit **Send bildevalg til fotograf** action in public customer galleries.
+- Require at least one selected image before submission.
+- Add gallery selection states: Pågår, Innsendt, Under behandling and Klar.
+- Lock customer image interactions after a selection is submitted.
+- Aggregate submitted-selection activity into the photographer notification bell.
+- Add selection-status controls and status filtering to Photographer Selection Workspace.
+- Show selection status on customer portal gallery cards.
+- Add additive gallery schema fields and timestamps for the workflow.
+- Add ADR-026 for the selection workflow architecture.
+
+
+## 0.7.1-dev.31-fix1 — Project Workflow & Secure Access Foundation
+- Added explicit project gates for project created, contract registered, contract signed, optional documents, gallery created and invoice paid.
+- Added project-level payment state and a dedicated **Mark invoice as paid** delivery action.
+- Customer portal delivery is released only when a signed contract, at least one gallery and paid invoice are present.
+- Customer portals and gallery URLs now require an authenticated WordPress customer account; token URLs alone are no longer sufficient access.
+- Gallery interaction AJAX endpoints now enforce the same authenticated customer/project access checks.
+- When a project becomes delivery-ready, Aurora provisions a customer login when needed and sends the customer a link to the permanent portal.
+- Simplified contracts to one Aurora Digital Signering (ADS) workflow.
+- ADS now uses editable standard contract text and supports an optional uploaded attachment instead of a separate upload-only contract type.
+- Digital signing continues to update the contract to Signed automatically after the customer completes the signing page.

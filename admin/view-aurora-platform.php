@@ -186,7 +186,7 @@ $branding = NLS1_Aurora_Account_Platform::platform_branding();
         <section class="aurora-platform-card">
             <span class="aurora-kicker">PLATTFORMBRANDING</span><h2>Aurora Admin</h2>
             <p>Dette er din plattformbranding. Fotografens egen logo/farger blir senere lagret på fotografkontoen.</p>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-platform-form aurora-branding-form">
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-platform-form aurora-branding-form" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="aurora_save_platform_branding">
                 <?php wp_nonce_field('aurora_save_platform_branding'); ?>
                 <label>Plattformnavn<input type="text" name="platform_name" value="<?php echo esc_attr($branding['platform_name']); ?>"></label>
@@ -194,6 +194,8 @@ $branding = NLS1_Aurora_Account_Platform::platform_branding();
                 <label>Support e-post<input type="email" name="support_email" value="<?php echo esc_attr($branding['support_email']); ?>"></label>
                 <label>Logo URL<input type="url" name="logo_url" value="<?php echo esc_attr($branding['logo_url']); ?>" placeholder="https://..."></label>
                 <label>Accent-farge<input type="color" name="accent" value="<?php echo esc_attr($branding['accent']); ?>"></label>
+                <label>Testbilde for vannmerke<input type="file" name="watermark_preview_image" accept="image/*"><small>Brukes i fotografens vannmerke-preview og på Dashboard.</small></label>
+                <?php if(!empty($branding['watermark_preview_url'])):?><div class="aurora-branding-preview"><img src="<?php echo esc_url($branding['watermark_preview_url']); ?>" alt="Testbilde" style="max-width:420px;width:100%;height:auto;border-radius:12px"></div><?php endif;?>
                 <p><button class="button button-primary">Lagre Aurora-branding</button></p>
             </form>
         </section>
