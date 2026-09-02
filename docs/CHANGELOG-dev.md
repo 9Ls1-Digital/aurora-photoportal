@@ -1,5 +1,12 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.24
+- Add “Legg til flere bilder” to existing galleries.
+- Append ZIP archives and/or multiple individual image files without deleting existing originals.
+- Resolve filename collisions automatically and continue existing image sort order.
+- Reuse Aurora preview/thumbnail processing and refresh gallery counts.
+- Enforce tenant ownership and signed-contract gating in the append handler.
+
 ## 0.7.1-dev.23-fix1
 - Fix mobile navigation controls being hidden by a later CSS rule.
 - Ensure hamburger button, menu close button and overlay are visible on mobile widths.

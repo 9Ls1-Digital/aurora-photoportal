@@ -58,6 +58,7 @@ class NLS1_Fotoportal_Admin {
         add_action('admin_post_9ls1_fotoportal_save_template', [$this, 'handle_save_template']);
         add_action('admin_post_9ls1_fotoportal_delete_template', [$this, 'handle_delete_template']);
         add_action('admin_post_9ls1_fotoportal_upload_gallery_zip', [$this, 'handle_upload_gallery_zip']);
+        add_action('admin_post_9ls1_fotoportal_add_gallery_images', [$this, 'handle_add_gallery_images']);
         add_action('admin_post_9ls1_fotoportal_delete_gallery', [$this, 'handle_delete_gallery']);
         add_action('admin_post_9ls1_fotoportal_save_branding', [$this, 'handle_save_branding']);
         add_action('admin_post_9ls1_fotoportal_regenerate_gallery', [$this, 'handle_regenerate_gallery']);
@@ -1553,6 +1554,106 @@ class NLS1_Fotoportal_Admin {
         wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
             ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>$project_id,'message'=>'gallery_uploaded'])
             : self::project_url($project_id) . '&message=gallery_uploaded');
+        exit;
+    }
+
+
+    public function handle_add_gallery_images() {
+        if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
+        check_admin_referer('9ls1_fotoportal_add_gallery_images');
+        $workspace = !empty($_POST['aurora_workspace']);
+        global $wpdb;
+
+        $gallery_id = (int)($_POST['gallery_id'] ?? 0);
+        $gallery = self::get_gallery($gallery_id);
+        if (!$gallery) { wp_safe_redirect(self::fotoportal_url('galleries')); exit; }
+
+        $project_id = (int)$gallery->project_id;
+        $project = self::get_project($project_id);
+        if (!$project || !self::has_signed_contract($project_id)) {
+            wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+                ? NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'message'=>'gallery_contract_required'])
+                : self::project_url($project_id).'&message=gallery_contract_required');
+            exit;
+        }
+
+        $original_dir=trailingslashit($gallery->base_dir).'original/';
+        $zip_dir=trailingslashit($gallery->base_dir).'zip/';
+        wp_mkdir_p($original_dir); wp_mkdir_p($zip_dir);
+        $registered=[];
+
+        $unique_target=static function($filename) use($original_dir){
+            $basename=sanitize_file_name(basename((string)$filename));
+            if(!$basename) return [null,null];
+            $name=pathinfo($basename,PATHINFO_FILENAME); $ext=pathinfo($basename,PATHINFO_EXTENSION);
+            $candidate=$basename; $counter=1;
+            while(file_exists($original_dir.$candidate)){
+                $candidate=sanitize_file_name($name.'-'.$counter.($ext?'.'.$ext:''));
+                $counter++;
+            }
+            return [$candidate,$original_dir.$candidate];
+        };
+
+        if(!empty($_FILES['gallery_zip']['name']) && is_uploaded_file($_FILES['gallery_zip']['tmp_name'])){
+            $zf=$_FILES['gallery_zip'];
+            if(strtolower(pathinfo($zf['name'],PATHINFO_EXTENSION))==='zip'){
+                $zip_name=sanitize_file_name(date('Ymd-His').'-'.$zf['name']);
+                $zip_path=$zip_dir.$zip_name;
+                if(move_uploaded_file($zf['tmp_name'],$zip_path) && class_exists('ZipArchive')){
+                    $zip=new ZipArchive();
+                    if($zip->open($zip_path)===true){
+                        for($i=0;$i<$zip->numFiles;$i++){
+                            $entry=$zip->getNameIndex($i);
+                            if(!$entry || substr($entry,-1)==='/' || !self::is_allowed_image_file($entry)) continue;
+                            $norm=str_replace('\\','/',strtolower($entry));
+                            if(strpos($norm,'__macosx/')!==false || strpos($norm,'preview/')!==false || strpos($norm,'thumbnails/')!==false || strpos($norm,'export/')!==false) continue;
+                            [$filename,$target]=$unique_target($entry); if(!$target) continue;
+                            $stream=$zip->getStream($entry); if(!$stream) continue;
+                            $out=fopen($target,'w'); if(!$out){fclose($stream);continue;}
+                            while(!feof($stream)) fwrite($out,fread($stream,8192));
+                            fclose($out); fclose($stream);
+                            if(file_exists($target)) $registered[]=['filename'=>$filename,'path'=>$target,'url'=>trailingslashit($gallery->base_url).'original/'.rawurlencode($filename),'ext'=>strtolower(pathinfo($filename,PATHINFO_EXTENSION)),'size'=>filesize($target)];
+                        }
+                        $zip->close();
+                    }
+                }
+            }
+        }
+
+        if(!empty($_FILES['gallery_images']['name']) && is_array($_FILES['gallery_images']['name'])){
+            foreach($_FILES['gallery_images']['name'] as $i=>$original_name){
+                if(!$original_name || !self::is_allowed_image_file($original_name)) continue;
+                $tmp=$_FILES['gallery_images']['tmp_name'][$i]??'';
+                $error=(int)($_FILES['gallery_images']['error'][$i]??UPLOAD_ERR_NO_FILE);
+                if($error!==UPLOAD_ERR_OK || !$tmp || !is_uploaded_file($tmp)) continue;
+                [$filename,$target]=$unique_target($original_name);
+                if(!$target || !move_uploaded_file($tmp,$target)) continue;
+                $registered[]=['filename'=>$filename,'path'=>$target,'url'=>trailingslashit($gallery->base_url).'original/'.rawurlencode($filename),'ext'=>strtolower(pathinfo($filename,PATHINFO_EXTENSION)),'size'=>filesize($target)];
+            }
+        }
+
+        if(!$registered){
+            wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+                ? NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'add_images'=>$gallery_id,'message'=>'gallery_images_missing'])
+                : self::project_url($project_id).'&message=gallery_images_missing');
+            exit;
+        }
+
+        $images=self::table('images');
+        $sort=(int)$wpdb->get_var($wpdb->prepare("SELECT COALESCE(MAX(sort_order),-1)+1 FROM $images WHERE gallery_id=%d AND account_id=%d",$gallery_id,self::tenant_account_id()));
+        foreach($registered as $img){
+            $wpdb->insert($images,['account_id'=>self::tenant_account_id(),'gallery_id'=>$gallery_id,'project_id'=>$project_id,
+                'original_filename'=>$img['filename'],'original_path'=>$img['path'],'original_url'=>$img['url'],'file_ext'=>$img['ext'],
+                'file_size'=>(int)$img['size'],'sort_order'=>$sort++,'status'=>'original_uploaded','is_test'=>(int)$project->is_test,'created_at'=>current_time('mysql')]);
+        }
+        $total=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $images WHERE gallery_id=%d AND account_id=%d",$gallery_id,self::tenant_account_id()));
+        $wpdb->update(self::table('galleries'),['original_count'=>$total,'status'=>'uploaded','updated_at'=>current_time('mysql')],['id'=>$gallery_id,'account_id'=>self::tenant_account_id()]);
+        $derivatives=self::generate_gallery_derivatives($gallery_id);
+        $this->log((int)$project->client_id,$project_id,'gallery','La til '.count($registered).' bilder i '.$gallery->gallery_title.'. Totalt: '.$total.' bilder. Preview: '.$derivatives['preview'].', thumbnails: '.$derivatives['thumbs'].'.',(int)$project->is_test);
+
+        wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+            ? NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'message'=>'gallery_images_added'])
+            : self::project_url($project_id).'&message=gallery_images_added');
         exit;
     }
 

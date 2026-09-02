@@ -751,3 +751,8 @@ html.aurora-menu-lock,html.aurora-menu-lock body{overflow:hidden}
     .aurora-mobile-menu-close{display:flex}
     .aurora-mobile-menu-overlay{display:block}
 }
+
+/* dev.24 — Gallery Upload Workflow */
+.aurora-icon-link.is-add-images{color:#6f3fc5;background:#f7f2ff;border-color:#e7dafb}
+.aurora-gallery-upload-card small{font-weight:500;color:#8a8190}
+.aurora-gallery-upload-card input[type=file]{padding:10px;background:#fff;border:1px dashed #cfc5d8;border-radius:10px}

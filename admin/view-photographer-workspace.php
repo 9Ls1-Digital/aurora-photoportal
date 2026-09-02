@@ -878,6 +878,7 @@ $legacy_links = [
                                     <div class="aurora-gallery-meta"><span>Status</span><strong class="aurora-status-pill is-active"><?php echo esc_html($status_label); ?></strong><small><?php echo (int)$gal->preview_count; ?> preview · <?php echo (int)$gal->thumbnail_count; ?> thumbnails</small></div>
                                     <div class="aurora-row-actions aurora-gallery-actions">
                                         <?php if ($thumb) : ?><a class="aurora-icon-link" href="<?php echo esc_url($thumbs[0]->preview_url ?: $thumb); ?>" target="_blank" rel="noopener" title="Vis preview"><span class="dashicons dashicons-visibility"></span></a><?php endif; ?>
+                                        <a class="aurora-icon-link is-add-images" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$gal_project_id,'add_images'=>(int)$gal->id])); ?>" title="Legg til flere bilder"><span class="dashicons dashicons-images-alt2"></span></a>
                                         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-inline-form">
                                             <input type="hidden" name="action" value="9ls1_fotoportal_regenerate_gallery"><input type="hidden" name="gallery_id" value="<?php echo (int)$gal->id; ?>"><input type="hidden" name="project_id" value="<?php echo $gal_project_id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_regenerate_gallery'); ?>
                                             <button class="aurora-icon-link" type="submit" title="Regenerer preview"><span class="dashicons dashicons-update"></span></button>
@@ -905,7 +906,28 @@ $legacy_links = [
                 </section>
 
                 <?php if ($project) : ?>
-                    <?php if ($gallery_unlocked && !empty($_GET['new_gallery'])) : ?>
+                    <?php
+                    $append_gallery=null;
+                    $append_gallery_id=(int)($_GET['add_images']??0);
+                    if($append_gallery_id){
+                        $candidate_gallery=NLS1_Fotoportal_Admin::get_gallery($append_gallery_id);
+                        if($candidate_gallery && (int)$candidate_gallery->project_id===(int)$project_id) $append_gallery=$candidate_gallery;
+                    }
+                    ?>
+                    <?php if ($gallery_unlocked && $append_gallery) : ?>
+                        <section id="aurora-add-gallery-images" class="aurora-workspace-card aurora-gallery-upload-card">
+                            <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">LEGG TIL BILDER</span><h2><?php echo esc_html($append_gallery->gallery_title); ?></h2><p>Eksisterende bilder beholdes. Nye filer legges til i samme galleri og behandles av Aurora.</p></div><span class="aurora-status-pill is-active"><?php echo (int)$append_gallery->original_count; ?> bilder</span></div>
+                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="aurora-gallery-upload-form">
+                                <input type="hidden" name="action" value="9ls1_fotoportal_add_gallery_images"><input type="hidden" name="gallery_id" value="<?php echo (int)$append_gallery->id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_add_gallery_images'); ?>
+                                <div class="aurora-form-grid">
+                                    <label>ZIP-fil <small>Valgfritt</small><input type="file" name="gallery_zip" accept=".zip"></label>
+                                    <label>Enkeltbilder <small>Velg flere samtidig</small><input type="file" name="gallery_images[]" accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,image/jpeg,image/png,image/webp,image/tiff" multiple></label>
+                                </div>
+                                <p class="aurora-form-help">Velg ZIP, flere enkeltbilder eller begge deler. Eksisterende originaler slettes ikke, og like filnavn får automatisk et unikt navn.</p>
+                                <div class="aurora-step-actions"><button class="aurora-primary-action" type="submit"><span class="dashicons dashicons-upload"></span>Legg til bilder</button><a class="aurora-secondary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>">Avbryt</a></div>
+                            </form>
+                        </section>
+                    <?php elseif ($gallery_unlocked && !empty($_GET['new_gallery'])) : ?>
                         <section id="aurora-new-gallery" class="aurora-workspace-card aurora-gallery-upload-card">
                             <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">NYTT GALLERI</span><h2>Last opp bilder</h2></div><span class="aurora-status-pill is-active">Kontrakt signert</span></div>
                             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="aurora-gallery-upload-form">
