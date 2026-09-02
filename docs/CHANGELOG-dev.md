@@ -1,5 +1,15 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.28
+- Add Hero Designer Foundation for customer portals and individual galleries.
+- Choose a gallery/customer hero from available customer images.
+- Configure Small, Medium or Large hero height.
+- Configure focal X/Y point for responsive cropping.
+- Configure overlay color and opacity.
+- Provide live Hero Designer preview in Photographer Workspace.
+- Persist hero configuration per tenant/customer and per tenant/gallery with ownership validation.
+- Apply saved hero design to public customer portals and galleries.
+
 ## 0.7.1-dev.27-fix1
 - Show the saved photographer cover/hero image as a preview in Profile settings.
 - Use the photographer cover image as a large photographic hero on the customer main portal.
