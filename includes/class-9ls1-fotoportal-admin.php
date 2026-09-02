@@ -205,7 +205,7 @@ class NLS1_Fotoportal_Admin {
         return $wpdb->get_results($wpdb->prepare($sql,$params));
     }
 
-    public static function get_projects($include_test = false, $search = '', $project_type = '', $status = '') {
+    public static function get_projects($include_test = false, $search = '', $project_type = '', $status = '', $sort = 'created', $order = 'desc') {
         global $wpdb;
         $projects = self::table('projects');
         $clients = self::table('clients');
@@ -215,9 +215,19 @@ class NLS1_Fotoportal_Admin {
         if ($search) { $where[] = '(p.project_name LIKE %s OR p.project_number LIKE %s OR c.client_name LIKE %s)'; $like = '%' . $wpdb->esc_like($search) . '%'; $params = array_merge($params, [$like, $like, $like]); }
         if ($project_type) { $where[] = 'p.project_type = %s'; $params[] = $project_type; }
         if ($status) { $where[] = 'p.status = %s'; $params[] = $status; }
+        $sort_map = [
+            'project' => 'p.project_name',
+            'customer' => 'c.client_name',
+            'type' => 'p.project_type',
+            'date' => 'p.project_date',
+            'status' => 'p.status',
+            'created' => 'p.created_at',
+        ];
+        $sort_sql = $sort_map[$sort] ?? $sort_map['created'];
+        $order_sql = strtolower($order) === 'asc' ? 'ASC' : 'DESC';
         $sql = "SELECT p.*, c.client_name FROM $projects p LEFT JOIN $clients c ON c.id = p.client_id AND c.account_id = p.account_id";
         if ($where) $sql .= " WHERE " . implode(' AND ', $where);
-        $sql .= " ORDER BY p.created_at DESC LIMIT 200";
+        $sql .= " ORDER BY $sort_sql $order_sql, p.id DESC LIMIT 200";
         return $params ? $wpdb->get_results($wpdb->prepare($sql, $params)) : $wpdb->get_results($sql);
     }
 
@@ -421,7 +431,9 @@ class NLS1_Fotoportal_Admin {
             $wpdb->update(self::table('projects'), ['status' => $status, 'updated_at' => current_time('mysql')], ['id' => $project_id, 'account_id' => self::tenant_account_id()]);
             $this->log((int)$project->client_id, $project_id, 'status', 'Prosjektstatus endret til: ' . self::status_label($status), (int)$project->is_test);
         }
-        wp_safe_redirect(self::project_url($project_id));
+        wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
+            ? NLS1_Photographer_Workspace::url('hq_delivery', ['project_id'=>$project_id,'message'=>'status_updated'])
+            : self::project_url($project_id));
         exit;
     }
 
@@ -556,25 +568,43 @@ class NLS1_Fotoportal_Admin {
         $project_id = (int)($_POST['project_id'] ?? 0);
         $project = self::get_project($project_id);
         if (!$project) {
-            if ($workspace && class_exists('NLS1_Photographer_Workspace')) {
-            wp_safe_redirect(NLS1_Photographer_Workspace::url('contracts', [
-                'project_id' => (int)$project_id,
-                'message' => 'contract_created',
-            ]));
-        } else {
-            wp_safe_redirect(self::project_url($project_id) . '&message=contract_created');
-        }
-        exit;
+            wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
+                ? NLS1_Photographer_Workspace::url('contracts')
+                : self::fotoportal_url('contracts'));
+            exit;
         }
 
-        $contract_name = sanitize_text_field($_POST['contract_name'] ?? '');
+        $source = sanitize_key($_POST['contract_source'] ?? 'aurora');
+        if (!in_array($source, ['aurora','upload'], true)) $source = 'aurora';
+        $contract_name = sanitize_text_field($_POST['contract_name'] ?? $_POST['contract_title'] ?? 'Kontrakt');
         $contract_version = sanitize_text_field($_POST['contract_version'] ?? '1.0');
         $contract_text = wp_kses_post($_POST['contract_text'] ?? '');
+        $notes = sanitize_textarea_field($_POST['notes'] ?? '');
         $signer_name = sanitize_text_field($_POST['signer_name'] ?? '');
         $signer_email = sanitize_email($_POST['signer_email'] ?? '');
+        $attachment_id = 0;
+        $file_url = '';
 
-        if (!$contract_name || !$contract_text || !$signer_email) {
-            wp_safe_redirect(self::project_url($project_id) . '&message=contract_missing');
+        if ($source === 'upload' && !empty($_FILES['contract_file']['name']) && empty($_FILES['contract_file']['error'])) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            $attachment_id = media_handle_upload('contract_file', 0);
+            if (!is_wp_error($attachment_id)) {
+                $file_url = (string)wp_get_attachment_url($attachment_id);
+            } else {
+                $attachment_id = 0;
+            }
+        }
+
+        $missing = !$contract_name
+            || ($source === 'aurora' && (!$contract_text || !$signer_email))
+            || ($source === 'upload' && !$file_url);
+
+        if ($missing) {
+            wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
+                ? NLS1_Photographer_Workspace::url('contracts', ['project_id'=>$project_id,'message'=>'contract_missing'])
+                : self::project_url($project_id) . '&message=contract_missing');
             exit;
         }
 
@@ -583,7 +613,11 @@ class NLS1_Fotoportal_Admin {
             'project_id' => $project_id,
             'contract_name' => $contract_name,
             'contract_version' => $contract_version ?: '1.0',
-            'contract_text' => $contract_text,
+            'contract_text' => $source === 'aurora' ? $contract_text : ($notes ?: 'Ekstern kontrakt lastet opp.'),
+            'contract_source' => $source,
+            'attachment_id' => $attachment_id ?: null,
+            'file_url' => $file_url ?: null,
+            'notes' => $notes,
             'signer_name' => $signer_name,
             'signer_email' => $signer_email,
             'status' => 'draft',
@@ -592,51 +626,51 @@ class NLS1_Fotoportal_Admin {
         ]);
 
         $contract_id = (int)$wpdb->insert_id;
-        self::create_signing_token($contract_id);
-        $wpdb->update(self::table('projects'), ['status' => 'contract_created', 'updated_at' => current_time('mysql')], ['id' => $project_id, 'account_id' => self::tenant_account_id()]);
-        $this->log((int)$project->client_id, $project_id, 'contract', 'Kontrakt opprettet: ' . $contract_name, (int)$project->is_test);
+        if ($source === 'aurora') self::create_signing_token($contract_id);
+        $wpdb->update(self::table('projects'), ['status'=>'contract_created','updated_at'=>current_time('mysql')], ['id'=>$project_id,'account_id'=>self::tenant_account_id()]);
+        $this->log((int)$project->client_id, $project_id, 'contract', ($source === 'upload' ? 'Ekstern kontrakt lastet opp: ' : 'Kontrakt opprettet: ') . $contract_name, (int)$project->is_test);
 
-        wp_safe_redirect(self::project_url($project_id) . '&message=contract_created');
+        wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
+            ? NLS1_Photographer_Workspace::url('contracts', ['project_id'=>$project_id,'message'=>'contract_created'])
+            : self::project_url($project_id) . '&message=contract_created');
         exit;
     }
 
     public function handle_mark_contract_sent() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
-        check_admin_referer('9ls1_fotoportal_mark_contract_sent');
+        $contract_id = (int)($_POST['contract_id'] ?? 0);
+        check_admin_referer('9ls1_fotoportal_mark_contract_sent_' . $contract_id);
         $workspace = !empty($_POST['aurora_workspace']);
         global $wpdb;
 
-        $contract_id = (int)($_POST['contract_id'] ?? 0);
         $contract = self::get_contract($contract_id);
         if (!$contract) {
-            if ($workspace && class_exists('NLS1_Photographer_Workspace') && $project_id) {
-            wp_safe_redirect(NLS1_Photographer_Workspace::url('contracts', [
-                'project_id' => $project_id,
-                'message' => 'contract_sent',
-            ]));
-        } else {
-            wp_safe_redirect($project_id ? self::project_url($project_id) . '&message=contract_sent' : self::fotoportal_url('contracts'));
-        }
-        exit;
+            wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
+                ? NLS1_Photographer_Workspace::url('contracts')
+                : self::fotoportal_url('contracts'));
+            exit;
         }
 
-        $project = self::get_project((int)$contract->project_id);
+        $project_id = (int)$contract->project_id;
+        $project = self::get_project($project_id);
+        if (($contract->contract_source ?? 'aurora') === 'upload') {
+            wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
+                ? NLS1_Photographer_Workspace::url('contracts', ['project_id'=>$project_id,'message'=>'external_contract'])
+                : self::project_url($project_id));
+            exit;
+        }
 
-        $wpdb->update(self::table('contracts'), [
-            'status' => 'sent',
-            'sent_at' => current_time('mysql'),
-        ], ['id' => $contract_id, 'account_id' => self::tenant_account_id()]);
-
+        $wpdb->update(self::table('contracts'), ['status'=>'sent','sent_at'=>current_time('mysql')], ['id'=>$contract_id,'account_id'=>self::tenant_account_id()]);
         if ($project) {
-            $wpdb->update(self::table('projects'), ['status' => 'contract_sent', 'updated_at' => current_time('mysql')], ['id' => (int)$project->id, 'account_id' => self::tenant_account_id()]);
-            $this->log((int)$project->client_id, (int)$project->id, 'contract', 'Kontrakt markert som sendt: ' . $contract->contract_name, (int)$project->is_test);
+            $wpdb->update(self::table('projects'), ['status'=>'contract_sent','updated_at'=>current_time('mysql')], ['id'=>$project_id,'account_id'=>self::tenant_account_id()]);
+            $this->log((int)$project->client_id,$project_id,'contract','Kontrakt markert som sendt: '.$contract->contract_name,(int)$project->is_test);
         }
 
-        wp_safe_redirect(self::project_url((int)$contract->project_id) . '&message=contract_sent');
+        wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
+            ? NLS1_Photographer_Workspace::url('contracts', ['project_id'=>$project_id,'message'=>'contract_sent'])
+            : self::project_url($project_id).'&message=contract_sent');
         exit;
     }
-
-
 
 
 
@@ -1621,35 +1655,49 @@ class NLS1_Fotoportal_Admin {
         $document_title = sanitize_text_field($_POST['document_title'] ?? '');
         $document_type = sanitize_text_field($_POST['document_type'] ?? 'Annet');
         $file_url = esc_url_raw($_POST['file_url'] ?? '');
-        $attachment_id = (int)($_POST['attachment_id'] ?? 0);
+        $attachment_id = 0;
         $notes = sanitize_textarea_field($_POST['notes'] ?? '');
 
+        if (!empty($_FILES['document_file']['name']) && empty($_FILES['document_file']['error'])) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            $attachment_id = media_handle_upload('document_file', 0);
+            if (!is_wp_error($attachment_id)) {
+                $file_url = (string)wp_get_attachment_url($attachment_id);
+                if (!$document_title) $document_title = get_the_title($attachment_id) ?: basename($file_url);
+            } else {
+                $attachment_id = 0;
+            }
+        }
+
         if (!$document_title || !$file_url) {
-            wp_safe_redirect(self::project_url($project_id) . '&message=document_missing');
+            wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
+                ? NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id,'message'=>'document_missing'])
+                : self::project_url($project_id).'&message=document_missing');
             exit;
         }
 
         $wpdb->insert(self::table('documents'), [
-            'account_id' => self::tenant_account_id(),
-            'client_id' => (int)$project->client_id,
-            'project_id' => $project_id,
-            'attachment_id' => $attachment_id ?: null,
-            'document_title' => $document_title,
-            'document_type' => $document_type,
-            'file_url' => $file_url,
-            'notes' => $notes,
-            'status' => 'active',
-            'is_test' => (int)$project->is_test,
-            'created_at' => current_time('mysql'),
+            'account_id'=>self::tenant_account_id(),
+            'client_id'=>(int)$project->client_id,
+            'project_id'=>$project_id,
+            'attachment_id'=>$attachment_id ?: null,
+            'document_title'=>$document_title,
+            'document_type'=>$document_type,
+            'file_url'=>$file_url,
+            'notes'=>$notes,
+            'status'=>'active',
+            'is_test'=>(int)$project->is_test,
+            'created_at'=>current_time('mysql'),
         ]);
 
-        $this->log((int)$project->client_id, $project_id, 'document', 'Dokument lagt til: ' . $document_title, (int)$project->is_test);
+        $this->log((int)$project->client_id,$project_id,'document','Dokument lagt til: '.$document_title,(int)$project->is_test);
         wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
-            ? NLS1_Photographer_Workspace::url('documents', ['project_id'=>$project_id,'message'=>'document_added'])
-            : self::project_url($project_id) . '&message=document_added');
+            ? NLS1_Photographer_Workspace::url('documents',['project_id'=>$project_id,'message'=>'document_added'])
+            : self::project_url($project_id).'&message=document_added');
         exit;
     }
-
     public function handle_delete_document() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_delete_document');

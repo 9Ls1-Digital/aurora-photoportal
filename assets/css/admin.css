@@ -665,3 +665,20 @@ body.admin_page_aurora-photographer-workspace #wpcontent{margin-left:0}
 .aurora-customer-table th .aurora-sort-heading{transition:color .15s ease}
 .aurora-customer-table th .aurora-sort-heading:hover{color:#6842d8}
 .aurora-customer-edit-card{margin:0 0 16px}
+
+/* dev.21 — Project Workflow UX */
+.aurora-project-health{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:700}
+.aurora-health-dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.aurora-project-health.is-complete,.aurora-project-health.is-ready{background:#e7f7ed;color:#24804b}
+.aurora-project-health.is-progress{background:#eee9ff;color:#6842d8}
+.aurora-project-health.is-waiting{background:#fff2d8;color:#9a6411}
+.aurora-project-health.is-neutral,.aurora-project-health.is-muted{background:#efedf2;color:#746d7b}
+.aurora-status-legend{display:flex;gap:18px;flex-wrap:wrap;padding:13px 0 2px;font-size:11px;color:#746d7b}
+.aurora-status-legend span{display:inline-flex;align-items:center;gap:6px}
+.aurora-status-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}.aurora-status-legend .is-green{background:#35a566}.aurora-status-legend .is-blue{background:#7751dc}.aurora-status-legend .is-yellow{background:#dda539}.aurora-status-legend .is-gray{background:#99929f}
+.aurora-contract-preview{position:relative}.aurora-contract-preview summary{list-style:none}.aurora-contract-preview summary::-webkit-details-marker{display:none}
+.aurora-contract-preview-panel{position:absolute;right:0;top:42px;z-index:30;width:min(520px,70vw);max-height:430px;overflow:auto;background:#fff;border:1px solid #e5e0ec;border-radius:12px;box-shadow:0 16px 44px rgba(30,20,50,.16);padding:18px;text-align:left}
+.aurora-contract-preview-panel>div{margin:12px 0;color:#4d4656;line-height:1.55}.aurora-contract-form [hidden]{display:none!important}
+.aurora-or-divider{display:flex;align-items:center;gap:10px;color:#958e9d;font-size:11px}.aurora-or-divider:before,.aurora-or-divider:after{content:"";height:1px;background:#ece8f0;flex:1}
+.aurora-icon-link.is-pdf-ready{color:#6d43dd;border-color:#d8cafa;background:#f6f2ff}
+.aurora-project-table th .aurora-sort-heading{white-space:nowrap}

@@ -262,7 +262,7 @@ $legacy_links = [
                                         <div>
                                             <span class="dashicons dashicons-portfolio"></span>
                                             <div><strong><?php echo esc_html($project->project_name); ?></strong><small><?php echo esc_html($project->project_number); ?><?php if ($project->project_date) echo ' · ' . esc_html(date_i18n('d.m.Y', strtotime($project->project_date))); ?></small></div>
-                                            <span class="aurora-status-pill"><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span>
+                                            <span class="aurora-project-health <?php echo esc_attr($status_class); ?>" title="<?php echo esc_attr($status_help); ?>"><span class="aurora-health-dot"></span><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></span>
                                             <a class="aurora-icon-link" title="Åpne prosjekt" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects',['project_id'=>(int)$project->id])); ?>"><span class="dashicons dashicons-arrow-right-alt2"></span></a>
                                         </div>
                                     <?php endforeach; ?>
@@ -464,6 +464,18 @@ $legacy_links = [
                     $contracts = NLS1_Fotoportal_Admin::get_project_contracts($project_id);
                     $documents = NLS1_Fotoportal_Admin::get_documents($project_id, true);
                     $galleries = NLS1_Fotoportal_Admin::get_galleries($project_id, true);
+                    $has_signed_contract = NLS1_Fotoportal_Admin::has_signed_contract($project_id);
+                    $gallery_ready = false;
+                    foreach ($galleries as $rg) {
+                        if (in_array($rg->status, ['preview_generated','ready'], true)) { $gallery_ready = true; break; }
+                    }
+                    $status_class = 'is-neutral';
+                    $status_help = 'Prosjektet er opprettet og ikke ferdigstilt.';
+                    if ($project->status === 'delivered') { $status_class='is-complete'; $status_help='Prosjektet er markert som levert.'; }
+                    elseif ($project->status === 'archived') { $status_class='is-muted'; $status_help='Prosjektet er arkivert.'; }
+                    elseif ($has_signed_contract && $gallery_ready) { $status_class='is-ready'; $status_help='Kontrakt er signert og minst ett galleri er klart. Betaling spores ikke i Aurora ennå.'; }
+                    elseif (in_array($project->status,['contract_signed','images_uploaded','client_selecting','delivery_ready'],true)) { $status_class='is-progress'; $status_help='Prosjektet er i aktiv produksjon/leveranse.'; }
+                    elseif (in_array($project->status,['contract_created','contract_sent','shoot_done'],true)) { $status_class='is-waiting'; $status_help='Prosjektet venter på neste steg.'; }
                     ?>
                     <div class="aurora-customer-profile-head">
                         <a class="aurora-back-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('projects')); ?>"><span class="dashicons dashicons-arrow-left-alt2"></span>Alle prosjekter</a>
@@ -492,7 +504,13 @@ $legacy_links = [
                             <div><span>Status</span><strong><?php echo esc_html(NLS1_Fotoportal_Admin::status_label($project->status)); ?></strong></div>
                             <div><span>Kunde</span><strong><?php echo esc_html($project_client ? $project_client->client_name : '—'); ?></strong></div>
                         </div>
-                        <?php if (!empty($project->description)) : ?><div class="aurora-project-notes"><span>NOTATER</span><p><?php echo nl2br(esc_html($project->description)); ?></p></div><?php endif; ?>
+                        <?php if (!empty($project->description)) : ?><div class="aurora-status-legend">
+                            <span><i class="is-green"></i>Grønn: leveringsklar/levert</span>
+                            <span><i class="is-blue"></i>Blå/lilla: aktiv produksjon</span>
+                            <span><i class="is-yellow"></i>Gul: venter på neste steg</span>
+                            <span><i class="is-gray"></i>Grå: opprettet/arkivert</span>
+                        </div>
+                        <div class="aurora-project-notes"><span>NOTATER</span><p><?php echo nl2br(esc_html($project->description)); ?></p></div><?php endif; ?>
                     </section>
 
                     <section class="aurora-workspace-card aurora-project-workflow">
@@ -511,7 +529,15 @@ $legacy_links = [
                     $search = sanitize_text_field($_GET['s'] ?? '');
                     $ptype = sanitize_text_field($_GET['ptype'] ?? '');
                     $status = sanitize_key($_GET['status'] ?? '');
-                    $projects = NLS1_Fotoportal_Admin::get_projects(true, $search, $ptype, $status);
+                    $sort = sanitize_key($_GET['sort'] ?? 'created');
+                    $order = strtolower(sanitize_key($_GET['order'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+                    $projects = NLS1_Fotoportal_Admin::get_projects(true, $search, $ptype, $status, $sort, $order);
+                    $project_sort_url = function($key) use ($sort,$order) {
+                        return add_query_arg(['sort'=>$key,'order'=>(($sort===$key && $order==='asc')?'desc':'asc')]);
+                    };
+                    $project_sort_arrow = function($key) use ($sort,$order) {
+                        return $sort===$key ? ($order==='asc' ? ' ↑' : ' ↓') : ' ↕';
+                    };
                     ?>
                     <section class="aurora-workspace-card aurora-customers-toolbar">
                         <form method="get" class="aurora-customer-filters">
@@ -539,7 +565,13 @@ $legacy_links = [
                         <?php if ($projects) : ?>
                             <div class="aurora-customer-table-wrap">
                                 <table class="aurora-customer-table aurora-project-table">
-                                    <thead><tr><th>Prosjekt</th><th>Kunde</th><th>Type</th><th>Dato</th><th>Status</th><th></th></tr></thead>
+                                    <thead><tr>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($project_sort_url('project')); ?>">Prosjekt<?php echo esc_html($project_sort_arrow('project')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($project_sort_url('customer')); ?>">Kunde<?php echo esc_html($project_sort_arrow('customer')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($project_sort_url('type')); ?>">Type<?php echo esc_html($project_sort_arrow('type')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($project_sort_url('date')); ?>">Dato<?php echo esc_html($project_sort_arrow('date')); ?></a></th>
+<th><a class="aurora-sort-heading" href="<?php echo esc_url($project_sort_url('status')); ?>">Status<?php echo esc_html($project_sort_arrow('status')); ?></a></th>
+<th></th></tr></thead>
                                     <tbody>
                                     <?php foreach ($projects as $row) : ?>
                                         <tr>
@@ -599,7 +631,7 @@ $legacy_links = [
                                         <div class="aurora-contract-item">
                                             <div class="aurora-contract-icon"><span class="dashicons dashicons-media-document"></span></div>
                                             <div class="aurora-contract-main">
-                                                <strong><?php echo esc_html($contract->contract_title ?: 'Kontrakt'); ?></strong>
+                                                <strong><?php echo esc_html($contract->contract_name ?: 'Kontrakt'); ?></strong>
                                                 <small>Opprettet <?php echo !empty($contract->created_at) ? esc_html(date_i18n('d.m.Y', strtotime($contract->created_at))) : '—'; ?></small>
                                             </div>
                                             <div class="aurora-contract-status">
@@ -612,7 +644,14 @@ $legacy_links = [
                                                 <?php if ($cstatus === 'signed' && !empty($contract->signed_at)) : ?><small><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($contract->signed_at))); ?></small><?php endif; ?>
                                             </div>
                                             <div class="aurora-row-actions">
-                                                <?php if ($cstatus === 'draft') : ?>
+                                                <?php if (!empty($contract->file_url)) : ?>
+                                                    <a class="aurora-icon-link" href="<?php echo esc_url($contract->file_url); ?>" target="_blank" rel="noopener" title="Se opplastet kontrakt"><span class="dashicons dashicons-visibility"></span></a>
+                                                <?php else : ?>
+                                                    <details class="aurora-contract-preview"><summary class="aurora-icon-link" title="Se kontrakt"><span class="dashicons dashicons-visibility"></span></summary>
+                                                        <div class="aurora-contract-preview-panel"><strong><?php echo esc_html($contract->contract_name); ?></strong><div><?php echo wp_kses_post(wpautop($contract->contract_text)); ?></div><?php if (!empty($contract->signer_email)) : ?><small>Signerer: <?php echo esc_html($contract->signer_email); ?></small><?php endif; ?></div>
+                                                    </details>
+                                                <?php endif; ?>
+                                                <?php if ($cstatus === 'draft' && (($contract->contract_source ?? 'aurora') !== 'upload')) : ?>
                                                     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                                                         <input type="hidden" name="action" value="9ls1_fotoportal_mark_contract_sent">
                                                         <input type="hidden" name="contract_id" value="<?php echo (int)$contract->id; ?>">
@@ -632,13 +671,26 @@ $legacy_links = [
 
                         <section class="aurora-workspace-card">
                             <span class="aurora-workspace-eyebrow">NY KONTRAKT</span><h2>Opprett avtale</h2>
-                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-contract-form">
+                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-contract-form" enctype="multipart/form-data">
                                 <input type="hidden" name="action" value="9ls1_fotoportal_create_contract">
                                 <input type="hidden" name="project_id" value="<?php echo (int)$project_id; ?>">
                                 <input type="hidden" name="aurora_workspace" value="1">
                                 <?php wp_nonce_field('9ls1_fotoportal_create_contract'); ?>
-                                <label>Tittel<input type="text" name="contract_title" value="Kontrakt" required></label>
-                                <label>Avtaletekst<textarea name="contract_text" rows="9" required placeholder="Skriv eller lim inn kontraktstekst..."></textarea></label>
+                                <label>Type avtale<select name="contract_source" data-contract-source>
+                                    <option value="aurora">Aurora digital signering</option>
+                                    <option value="upload">Last opp egen kontrakt</option>
+                                </select></label>
+                                <label>Tittel<input type="text" name="contract_name" value="Kontrakt" required></label>
+                                <div data-contract-digital>
+                                    <label>Signerer<input type="text" name="signer_name" placeholder="Navn"></label>
+                                    <label>E-post til signerer<input type="email" name="signer_email" placeholder="kunde@epost.no"></label>
+                                    <label>Kontraktstekst<textarea name="contract_text" rows="8" placeholder="Skriv eller lim inn kontraktsteksten som kunden skal signere..."></textarea></label>
+                                    <p class="aurora-form-help">Aurora oppretter en signeringslenke som kan sendes til kunden.</p>
+                                </div>
+                                <div data-contract-upload hidden>
+                                    <label>Kontraktfil<input type="file" name="contract_file" accept=".pdf,.doc,.docx,.odt,.txt"></label>
+                                    <label>Notat<textarea name="notes" rows="5" placeholder="Valgfritt notat om den opplastede kontrakten."></textarea></label>
+                                </div>
                                 <button class="aurora-primary-action" type="submit"><span class="dashicons dashicons-plus-alt2"></span>Opprett kontrakt</button>
                             </form>
                         </section>
@@ -711,11 +763,13 @@ $legacy_links = [
 
                         <section class="aurora-workspace-card">
                             <span class="aurora-workspace-eyebrow">NYTT DOKUMENT</span><h2>Legg til dokument</h2>
-                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-contract-form">
+                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-contract-form" enctype="multipart/form-data">
                                 <input type="hidden" name="action" value="9ls1_fotoportal_add_document"><input type="hidden" name="project_id" value="<?php echo (int)$project_id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_add_document'); ?>
-                                <label>Tittel<input type="text" name="document_title" required placeholder="f.eks. Shot List"></label>
+                                <label>Tittel<input type="text" name="document_title" placeholder="f.eks. Shot List"></label>
                                 <label>Type<select name="document_type"><?php foreach (NLS1_Fotoportal_Admin::$document_types as $dtype): ?><option><?php echo esc_html($dtype); ?></option><?php endforeach; ?></select></label>
-                                <label>Fil-URL<input type="url" name="file_url" required placeholder="https://..."></label>
+                                <label>Last opp fil<input type="file" name="document_file"></label>
+                                <div class="aurora-or-divider"><span>eller</span></div>
+                                <label>Fil-URL<input type="url" name="file_url" placeholder="https://..."></label>
                                 <label>Notater<textarea name="notes" rows="5"></textarea></label>
                                 <button class="aurora-primary-action" type="submit"><span class="dashicons dashicons-plus-alt2"></span>Legg til dokument</button>
                             </form>
@@ -774,7 +828,7 @@ $legacy_links = [
                 <section class="aurora-workspace-card aurora-gallery-toolbar">
                     <div class="aurora-workspace-cardhead">
                         <div><span class="aurora-workspace-eyebrow">GALLERIER</span><h2><?php echo $project ? 'Prosjektgallerier' : 'Alle gallerier'; ?></h2></div>
-                        <?php if ($project && $gallery_unlocked) : ?><a class="aurora-primary-action" href="#aurora-new-gallery"><span class="dashicons dashicons-plus-alt2"></span>Nytt galleri</a><?php endif; ?>
+                        <?php if ($project && $gallery_unlocked) : ?><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'new_gallery'=>1])); ?>"><span class="dashicons dashicons-plus-alt2"></span>Nytt galleri</a><?php endif; ?>
                     </div>
                     <?php if (!$project) : ?><p>Velg et prosjekt for å opprette et nytt galleri. Oversikten nedenfor viser gallerier på denne fotografkontoen.</p><?php endif; ?>
                 </section>
@@ -792,6 +846,8 @@ $legacy_links = [
                                     $remaining = $days >= 0 ? $days . ' dager igjen' : 'Utløpt';
                                 }
                                 $status_label = $gal->status === 'preview_generated' ? 'Klar' : ($gal->status === 'uploaded' ? 'Lastet opp' : ucfirst(str_replace('_',' ',$gal->status)));
+                                $gallery_pdfs = NLS1_Fotoportal_Admin::get_gallery_export_pdfs($gal);
+                                $latest_pdf = $gallery_pdfs ? end($gallery_pdfs) : null;
                             ?>
                                 <article class="aurora-gallery-row">
                                     <div class="aurora-gallery-thumb">
@@ -814,6 +870,7 @@ $legacy_links = [
                                             <input type="hidden" name="action" value="9ls1_fotoportal_generate_proof_pdf"><input type="hidden" name="gallery_id" value="<?php echo (int)$gal->id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_generate_proof_pdf'); ?>
                                             <button class="aurora-icon-link" type="submit" title="Generer Premium Proof PDF"><span class="dashicons dashicons-pdf"></span></button>
                                         </form>
+                                        <?php if ($latest_pdf) : ?><a class="aurora-icon-link is-pdf-ready" href="<?php echo esc_url($latest_pdf['url']); ?>" target="_blank" rel="noopener" title="Se sist genererte Premium Proof PDF"><span class="dashicons dashicons-pdf"></span></a><?php endif; ?>
                                         <details class="aurora-more-actions"><summary class="aurora-icon-link" title="Flere handlinger"><span class="dashicons dashicons-ellipsis"></span></summary>
                                             <div class="aurora-more-menu">
                                                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('Slette galleriet?');">
@@ -832,7 +889,7 @@ $legacy_links = [
                 </section>
 
                 <?php if ($project) : ?>
-                    <?php if ($gallery_unlocked) : ?>
+                    <?php if ($gallery_unlocked && !empty($_GET['new_gallery'])) : ?>
                         <section id="aurora-new-gallery" class="aurora-workspace-card aurora-gallery-upload-card">
                             <div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">NYTT GALLERI</span><h2>Last opp bilder</h2></div><span class="aurora-status-pill is-active">Kontrakt signert</span></div>
                             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="aurora-gallery-upload-form">
@@ -852,7 +909,7 @@ $legacy_links = [
                                 <button class="aurora-primary-action" type="submit"><span class="dashicons dashicons-upload"></span>Last opp og opprett galleri</button>
                             </form>
                         </section>
-                    <?php else : ?>
+                    <?php elseif (!$gallery_unlocked) : ?>
                         <section class="aurora-workspace-card aurora-gallery-locked">
                             <span class="dashicons dashicons-lock"></span><div><span class="aurora-workspace-eyebrow">GALLERI LÅST</span><h2>Kontrakten må være signert først</h2><p>Dette er håndhevet både i arbeidsflaten og i opplastingshandleren.</p><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>">Gå til Kontrakt</a></div>
                         </section>
@@ -1000,5 +1057,22 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     bindBilling('[data-billing-toggle]','[data-billing-fields]');
     bindBilling('[data-billing-toggle-edit]','[data-billing-fields-edit]');
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    var source=document.querySelector('[data-contract-source]');
+    var digital=document.querySelector('[data-contract-digital]');
+    var upload=document.querySelector('[data-contract-upload]');
+    if(source&&digital&&upload){
+        function syncContract(){
+            var own=source.value==='upload';
+            digital.hidden=own;
+            upload.hidden=!own;
+        }
+        source.addEventListener('change',syncContract);
+        syncContract();
+    }
 });
 </script>

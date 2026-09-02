@@ -1,5 +1,16 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.21
+- Add sortable Project, Customer, Type, Date and Status columns to the project register.
+- Add colored project status/readiness treatment and a status legend on the project profile.
+- Keep green reserved for delivered or tracked workflow readiness; payment is not yet tracked by Aurora.
+- Allow existing contracts to be viewed in Workspace.
+- Support Aurora digital-signing contracts and uploaded external contract files as separate contract modes.
+- Add real file upload to Documents while retaining URL as an optional alternative.
+- Surface generated Premium Proof PDFs directly on each gallery with a View PDF action.
+- Hide the New Gallery form until + New Gallery is selected.
+- Fix Delivery project-status updates so they return to the native Aurora Delivery view.
+
 ## 0.7.1-dev.20-fix2
 - Run Fotoportal database upgrades automatically when the plugin version changes, so new customer billing columns are added on plugin replacement as well as fresh activation.
 - Fix native customer Edit form placement so Rediger opens the form on the customer profile.
