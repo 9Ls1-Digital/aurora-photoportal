@@ -902,3 +902,51 @@ html.aurora-menu-lock,html.aurora-menu-lock body{overflow:hidden}
 @media(max-width:900px){
     .aurora-workspace-brand-card{padding-right:48px}
 }
+
+/* Aurora Platform product control center - dev.31-fix21 */
+.aurora-product-center{margin-bottom:14px}
+.aurora-product-center .aurora-card-head p{margin:4px 0 0;color:#756d7b}
+.aurora-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.aurora-product-card{display:flex;gap:15px;padding:17px;border:1px solid #e6e1e9;border-radius:14px;background:#fbfafd}
+.aurora-product-icon{flex:0 0 44px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#17151d;color:#fff;font-weight:800;font-size:18px}
+.aurora-product-body{min-width:0;flex:1}
+.aurora-product-title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.aurora-product-title h3{margin:0;font-size:16px}
+.aurora-product-body>p{margin:6px 0 12px;color:#746c79;font-size:12px;min-height:32px}
+.aurora-product-state{display:inline-flex;padding:4px 8px;border-radius:999px;background:#ece9ef;color:#665e6b;font-size:10px;font-weight:750}
+.aurora-product-state.is-active{background:#e5f6eb;color:#187c46}
+.aurora-product-meta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:10px;color:#8a8290}
+.aurora-product-meta strong{color:#4b4350}
+.aurora-license-embedded{margin-top:0}
+@media(max-width:900px){.aurora-product-grid{grid-template-columns:1fr}}
+
+/* dev.31-fix23: strict separation between Control Center and product admin shells */
+.aurora-product-admin-topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    margin:0 0 14px;padding:10px 4px;color:#716977;font-size:12px
+}
+.aurora-product-admin-topbar a{color:var(--aurora-accent,#6d49ff);text-decoration:none;font-weight:700}
+.aurora-product-admin-topbar span{font-weight:700;color:#4f4755}
+.aurora-fotoportal-admin-nav{position:relative}
+.aurora-fotoportal-admin-nav .aurora-nav-back{margin-left:auto;color:#716977}
+@media(max-width:900px){
+  .aurora-fotoportal-admin-nav .aurora-nav-back{margin-left:0;width:100%}
+}
+
+/* dev.31-fix24: global Aurora plugin menu + product split-button shortcuts */
+.aurora-product-actions{display:flex;align-items:stretch;position:relative;width:max-content}
+.aurora-product-actions .aurora-product-open{border-radius:4px 0 0 4px;margin:0}
+.aurora-product-open-menu{position:relative}
+.aurora-product-menu-trigger{height:100%;min-width:38px;margin:0!important;border-radius:0 4px 4px 0!important;border-left:1px solid rgba(255,255,255,.25)!important}
+.aurora-product-actions .button-primary+.aurora-product-open-menu .aurora-product-menu-trigger{
+    background:var(--aurora-accent,#6d49ff);border-color:var(--aurora-accent,#6d49ff);color:#fff
+}
+.aurora-product-dropdown{
+    display:none;position:absolute;z-index:40;left:auto;right:0;top:calc(100% + 6px);
+    min-width:190px;padding:6px;background:#fff;border:1px solid #e1dce5;border-radius:10px;
+    box-shadow:0 12px 30px rgba(31,24,37,.14)
+}
+.aurora-product-dropdown a{display:block;padding:9px 10px;border-radius:7px;color:#3f3745;text-decoration:none;font-size:12px;font-weight:650}
+.aurora-product-dropdown a:hover,.aurora-product-dropdown a:focus{background:#f4f1f8;color:var(--aurora-accent,#6d49ff);outline:none}
+.aurora-product-open-menu:hover .aurora-product-dropdown,
+.aurora-product-open-menu:focus-within .aurora-product-dropdown{display:block}
