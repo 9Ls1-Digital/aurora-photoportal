@@ -1,3 +1,9 @@
+## 0.7.1-dev.31-fix20 – Blueprint Baseline
+- Added the first complete `docs/Aurora-Fotoportal-Blueprint.docx` baseline documentation.
+- Documents architecture, tenant model, roles, customer auth, project workflow, ADS contracts, galleries, Hero Designer, interactions, Bildevalg, notifications, delivery foundation, watermarking, dashboard, resources, branding, data model, technical debt and roadmap.
+- Establishes a permanent release rule: every future Aurora Fotoportal ZIP must include an updated Blueprint document.
+- No functional application behavior changed from dev.31-fix19.
+
 ## 0.7.1-dev.31-fix19
 - Korrigert Workspace-branding slik at engelsk `Photo Portal` ikke dobles med norsk `Fotoportal`.
 - Utvidet vannmerkeplassering til syv valg: topp venstre/senter/høyre, bunn venstre/senter/høyre og midt.
