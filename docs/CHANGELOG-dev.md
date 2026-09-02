@@ -1,5 +1,27 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.26
+- Add permanent customer portal URL with all customer projects and galleries.
+- Add Send URL to customer with editable tenant email template.
+- Add photographer portal branding: studio/name, contact details, logo, profile image, cover image and accent color.
+- Keep direct gallery URLs and discreet Aurora/9Ls1 footer attribution.
+
+## 0.7.1-dev.25-fix1
+- Add previous/next arrows to the photographer gallery lightbox.
+- Add previous/next arrows to the customer gallery lightbox.
+- Support keyboard ArrowLeft and ArrowRight navigation in both gallery views.
+- Fix customer gallery 404 after plugin replacement by using the registered query-var URL directly instead of depending on rewrite rules being flushed.
+
+## 0.7.1-dev.25
+- Add a native Gallery Detail view inside Photographer Workspace.
+- Render all gallery images in a masonry layout that preserves each image's natural aspect ratio.
+- Open gallery images in a large lightbox from the photographer view.
+- Change the gallery row preview action to open the full native gallery instead of only the first image.
+- Add a secure random customer-gallery URL for each gallery.
+- Show and copy the customer gallery URL from the gallery detail page.
+- Add a clean public read-only customer gallery using the same masonry presentation foundation.
+- Keep public gallery lookup token-based and fetch images using the gallery's own tenant account id.
+
 ## 0.7.1-dev.24
 - Add “Legg til flere bilder” to existing galleries.
 - Append ZIP archives and/or multiple individual image files without deleting existing originals.

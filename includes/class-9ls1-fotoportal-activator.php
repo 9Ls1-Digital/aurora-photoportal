@@ -40,6 +40,7 @@ class NLS1_Fotoportal_Activator {
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             customer_number VARCHAR(50) DEFAULT '',
             client_name VARCHAR(190) NOT NULL,
+            portal_token VARCHAR(64) DEFAULT '',
             client_group VARCHAR(80) DEFAULT '',
             client_type VARCHAR(80) DEFAULT 'private',
             email VARCHAR(190) DEFAULT '',
@@ -61,6 +62,7 @@ class NLS1_Fotoportal_Activator {
             updated_at DATETIME NULL,
             PRIMARY KEY (id),
             KEY customer_number (customer_number),
+            KEY portal_token (portal_token),
             KEY client_group (client_group),
             KEY client_type (client_type),
             KEY email (email),
@@ -241,6 +243,7 @@ class NLS1_Fotoportal_Activator {
             project_id BIGINT UNSIGNED NOT NULL,
             gallery_number VARCHAR(50) DEFAULT '',
             gallery_title VARCHAR(190) NOT NULL,
+            public_token VARCHAR(64) DEFAULT '',
             base_dir TEXT NOT NULL,
             base_url TEXT NOT NULL,
             zip_filename VARCHAR(255) DEFAULT '',
@@ -260,6 +263,7 @@ class NLS1_Fotoportal_Activator {
             KEY client_id (client_id),
             KEY project_id (project_id),
             KEY gallery_number (gallery_number),
+            KEY public_token (public_token),
             KEY status (status),
             KEY is_test (is_test)
         ) $charset_collate;");

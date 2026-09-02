@@ -810,6 +810,13 @@ $legacy_links = [
                 <?php
                 $project_id = absint($_GET['project_id'] ?? 0);
                 $project = $project_id ? NLS1_Fotoportal_Admin::get_project($project_id) : null;
+                $gallery_id = absint($_GET['gallery_id'] ?? 0);
+                $detail_gallery = $gallery_id ? NLS1_Fotoportal_Admin::get_gallery($gallery_id) : null;
+                if ($detail_gallery && !$project_id) {
+                    $project_id = (int)$detail_gallery->project_id;
+                    $project = NLS1_Fotoportal_Admin::get_project($project_id);
+                }
+                if ($detail_gallery && (int)$detail_gallery->project_id !== (int)$project_id) $detail_gallery = null;
                 $galleries = $project ? NLS1_Fotoportal_Admin::get_galleries($project_id, true) : NLS1_Fotoportal_Admin::get_galleries(0, true);
                 $gallery_unlocked = $project ? NLS1_Fotoportal_Admin::has_signed_contract($project_id) : false;
                 ?>
@@ -840,6 +847,57 @@ $legacy_links = [
                 <?php elseif ($gallery_message === 'gallery_contract_required') : ?>
                     <div class="aurora-workspace-alert"><span class="dashicons dashicons-lock"></span><div><strong>Signert kontrakt kreves</strong><p>Galleri kan først opprettes når prosjektet har minst én signert kontrakt.</p></div></div>
                 <?php endif; ?>
+
+                <?php if ($detail_gallery) :
+                    $detail_images = NLS1_Fotoportal_Admin::get_gallery_images((int)$detail_gallery->id, 10000);
+                    $customer_gallery_url = NLS1_Fotoportal_Admin::gallery_public_url($detail_gallery);
+                ?>
+                    <a class="aurora-back-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id])); ?>"><span class="dashicons dashicons-arrow-left-alt2"></span>Tilbake til gallerier</a>
+                    <section class="aurora-workspace-card aurora-gallery-detail-head">
+                        <div>
+                            <span class="aurora-workspace-eyebrow">GALLERI</span>
+                            <h2><?php echo esc_html($detail_gallery->gallery_title); ?></h2>
+                            <p><?php echo (int)$detail_gallery->original_count; ?> bilder · <?php echo esc_html($detail_gallery->gallery_number); ?></p>
+                        </div>
+                        <div class="aurora-gallery-detail-actions">
+                            <a class="aurora-secondary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'add_images'=>(int)$detail_gallery->id])); ?>"><span class="dashicons dashicons-images-alt2"></span>Legg til bilder</a>
+                            <a class="aurora-primary-action" href="<?php echo esc_url($customer_gallery_url); ?>" target="_blank" rel="noopener"><span class="dashicons dashicons-external"></span>Se kundegalleri</a><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-inline-form"><input type="hidden" name="action" value="9ls1_fotoportal_send_customer_portal"><input type="hidden" name="gallery_id" value="<?php echo (int)$detail_gallery->id; ?>"><?php wp_nonce_field('9ls1_fotoportal_send_customer_portal'); ?><button class="aurora-secondary-action" type="submit"><span class="dashicons dashicons-email-alt"></span>Send URL til kunde</button></form>
+                        </div>
+                    </section>
+
+                    <section class="aurora-workspace-card aurora-gallery-share-card">
+                        <div><span class="aurora-workspace-eyebrow">KUNDEGALLERI</span><strong>Delbar URL</strong><p>Denne lenken åpner kundens rene galleri uten Aurora-administrasjonen.</p></div>
+                        <?php $customer_portal_url=NLS1_Fotoportal_Admin::customer_portal_url((int)$detail_gallery->client_id); ?>
+                        <div class="aurora-gallery-url-row">
+                            <input type="text" readonly value="<?php echo esc_attr($customer_gallery_url); ?>" aria-label="URL til kundegalleri">
+                            <button type="button" class="aurora-secondary-action" data-copy-gallery-url="<?php echo esc_attr($customer_gallery_url); ?>"><span class="dashicons dashicons-admin-page"></span>Kopier</button>
+                        </div><div class="aurora-gallery-url-row aurora-customer-portal-row"><input type="text" readonly value="<?php echo esc_attr($customer_portal_url); ?>"><button type="button" class="aurora-secondary-action" data-copy-gallery-url="<?php echo esc_attr($customer_portal_url); ?>">Kopier hovedportal</button></div>
+                    </section>
+
+                    <section class="aurora-gallery-masonry-card">
+                        <?php if ($detail_images) : ?>
+                            <div class="aurora-gallery-masonry">
+                                <?php foreach ($detail_images as $image) :
+                                    $display_url = $image->preview_url ?: ($image->thumbnail_url ?: '');
+                                    if (!$display_url) continue;
+                                ?>
+                                    <button type="button" class="aurora-masonry-item" data-gallery-image="<?php echo esc_url($display_url); ?>" aria-label="Åpne bilde">
+                                        <img loading="lazy" src="<?php echo esc_url($display_url); ?>" alt="">
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else : ?>
+                            <div class="aurora-empty-state"><span class="dashicons dashicons-format-gallery"></span><strong>Ingen bilder å vise</strong><p>Legg til bilder i galleriet først.</p></div>
+                        <?php endif; ?>
+                    </section>
+
+                    <div class="aurora-gallery-lightbox" data-gallery-lightbox>
+                        <button type="button" class="aurora-gallery-lightbox-close" aria-label="Lukk">×</button>
+                        <button type="button" class="aurora-gallery-lightbox-nav is-prev" aria-label="Forrige bilde">‹</button>
+                        <img src="" alt="">
+                        <button type="button" class="aurora-gallery-lightbox-nav is-next" aria-label="Neste bilde">›</button>
+                    </div>
+                <?php else : ?>
 
                 <section class="aurora-workspace-card aurora-gallery-toolbar">
                     <div class="aurora-workspace-cardhead">
@@ -877,7 +935,7 @@ $legacy_links = [
                                     <div class="aurora-gallery-meta"><span>Nedlastbar til</span><strong><?php echo !empty($gal->downloadable_until) ? esc_html(date_i18n('d.m.Y',strtotime($gal->downloadable_until))) : 'Ikke satt'; ?></strong><small><?php echo esc_html($remaining); ?></small></div>
                                     <div class="aurora-gallery-meta"><span>Status</span><strong class="aurora-status-pill is-active"><?php echo esc_html($status_label); ?></strong><small><?php echo (int)$gal->preview_count; ?> preview · <?php echo (int)$gal->thumbnail_count; ?> thumbnails</small></div>
                                     <div class="aurora-row-actions aurora-gallery-actions">
-                                        <?php if ($thumb) : ?><a class="aurora-icon-link" href="<?php echo esc_url($thumbs[0]->preview_url ?: $thumb); ?>" target="_blank" rel="noopener" title="Vis preview"><span class="dashicons dashicons-visibility"></span></a><?php endif; ?>
+                                        <a class="aurora-icon-link" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$gal_project_id,'gallery_id'=>(int)$gal->id])); ?>" title="Åpne galleri"><span class="dashicons dashicons-visibility"></span></a>
                                         <a class="aurora-icon-link is-add-images" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$gal_project_id,'add_images'=>(int)$gal->id])); ?>" title="Legg til flere bilder"><span class="dashicons dashicons-images-alt2"></span></a>
                                         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-inline-form">
                                             <input type="hidden" name="action" value="9ls1_fotoportal_regenerate_gallery"><input type="hidden" name="gallery_id" value="<?php echo (int)$gal->id; ?>"><input type="hidden" name="project_id" value="<?php echo $gal_project_id; ?>"><input type="hidden" name="aurora_workspace" value="1"><?php wp_nonce_field('9ls1_fotoportal_regenerate_gallery'); ?>
@@ -952,6 +1010,8 @@ $legacy_links = [
                             <span class="dashicons dashicons-lock"></span><div><span class="aurora-workspace-eyebrow">GALLERI LÅST</span><h2>Kontrakten må være signert først</h2><p>Dette er håndhevet både i arbeidsflaten og i opplastingshandleren.</p><a class="aurora-primary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('contracts',['project_id'=>$project_id])); ?>">Gå til Kontrakt</a></div>
                         </section>
                     <?php endif; ?>
+
+                <?php endif; // gallery detail/list ?>
 
                     <section class="aurora-workspace-card aurora-project-workflow">
                         <div class="aurora-project-steps">
@@ -1045,25 +1105,8 @@ $legacy_links = [
                 <?php endif; ?>
 
 <?php elseif ($view === 'settings') : ?>
-                <div class="aurora-workspace-grid">
-                    <section class="aurora-workspace-card aurora-workspace-card-wide">
-                        <span class="aurora-workspace-eyebrow">FOTOGRAFKONTO</span><h2><?php echo esc_html($account->account_name); ?></h2>
-                        <div class="aurora-workspace-settingsgrid">
-                            <div><small>Kontostatus</small><strong><?php echo esc_html(ucfirst($account->status)); ?></strong></div>
-                            <div><small>Plan</small><strong><?php echo esc_html($account->plan_name); ?></strong></div>
-                            <div><small>Kontakt</small><strong><?php echo esc_html($account->contact_name ?: 'Ikke satt'); ?></strong></div>
-                            <div><small>E-post</small><strong><?php echo esc_html($account->contact_email ?: 'Ikke satt'); ?></strong></div>
-                        </div>
-                    </section>
-                    <section class="aurora-workspace-card">
-                        <span class="aurora-workspace-eyebrow">MODULER</span><h2>Din tilgang</h2>
-                        <div class="aurora-workspace-modulelist">
-                            <?php foreach (NLS1_Aurora_Account_Platform::module_catalog() as $key=>$meta) : ?>
-                                <div class="<?php echo !empty($enabled[$key])?'is-enabled':'is-disabled'; ?>"><span></span><strong><?php echo esc_html($meta[0]); ?></strong><small><?php echo !empty($enabled[$key])?'Aktiv':'Ikke i lisensen'; ?></small></div>
-                            <?php endforeach; ?>
-                        </div>
-                    </section>
-                </div>
+<?php $ps=NLS1_Fotoportal_Admin::photographer_portal_settings(); ?>
+<div class="aurora-workspace-grid"><section class="aurora-workspace-card aurora-workspace-card-wide"><span class="aurora-workspace-eyebrow">FOTOGRAFKONTO</span><h2><?php echo esc_html($account->account_name); ?></h2></section><section class="aurora-workspace-card aurora-workspace-card-wide"><span class="aurora-workspace-eyebrow">PROFIL & BRANDING</span><h2>Kundeportal</h2><p>Dette er informasjonen kundene dine ser. Aurora og 9Ls1 vises kun diskret i footeren.</p><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="aurora-portal-settings-form"><input type="hidden" name="action" value="9ls1_fotoportal_save_portal_settings"><?php wp_nonce_field('9ls1_fotoportal_save_portal_settings'); ?><div class="aurora-form-grid"><label>Studio / firmanavn<input name="studio_name" value="<?php echo esc_attr($ps['studio_name']); ?>"></label><label>Fotografens navn<input name="photographer_name" value="<?php echo esc_attr($ps['photographer_name']); ?>"></label><label>E-post<input type="email" name="portal_email" value="<?php echo esc_attr($ps['email']); ?>"></label><label>Telefon<input name="portal_phone" value="<?php echo esc_attr($ps['phone']); ?>"></label><label>Nettside<input type="url" name="portal_website" value="<?php echo esc_attr($ps['website']); ?>"></label><label>Profilfarge<input type="color" name="accent_color" value="<?php echo esc_attr($ps['accent_color']); ?>"></label><label class="aurora-span-2">Adresse<textarea name="portal_address"><?php echo esc_textarea($ps['address']); ?></textarea></label><label class="aurora-span-2">Kort presentasjon<textarea name="portal_about"><?php echo esc_textarea($ps['about']); ?></textarea></label><label>Logo<input type="file" name="portal_logo" accept="image/*"></label><label>Profilbilde<input type="file" name="portal_profile_image" accept="image/*"></label><label class="aurora-span-2">Cover / hero-bilde<input type="file" name="portal_cover_image" accept="image/*"></label></div><hr><h3>E-postmal – Send URL til kunde</h3><p>Variabler: {customer_name}, {project_name}, {gallery_name}, {customer_portal_url}, {gallery_url}, {photographer_name}, {studio_name}</p><label>E-postemne<input name="portal_email_subject" value="<?php echo esc_attr($ps['email_subject']); ?>"></label><label>E-posttekst<textarea name="portal_email_body" rows="9"><?php echo esc_textarea($ps['email_body']); ?></textarea></label><p><button class="aurora-primary-action" type="submit">Lagre portalinnstillinger</button></p></form></section></div>
 
             <?php elseif ($view === 'resources') : ?>
                 <section class="aurora-workspace-card">
@@ -1139,5 +1182,43 @@ document.addEventListener('DOMContentLoaded',function(){
     sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',closeMenu);});
     document.addEventListener('keydown',function(event){if(event.key==='Escape')closeMenu();});
     window.addEventListener('resize',function(){if(window.innerWidth>782)closeMenu();});
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('[data-copy-gallery-url]').forEach(function(button){
+        button.addEventListener('click',function(){
+            var url=button.getAttribute('data-copy-gallery-url')||'';
+            if(navigator.clipboard&&url){navigator.clipboard.writeText(url).then(function(){var old=button.innerHTML;button.textContent='Kopiert';setTimeout(function(){button.innerHTML=old;},1400);});}
+        });
+    });
+    var lightbox=document.querySelector('[data-gallery-lightbox]');
+    if(lightbox){
+        var image=lightbox.querySelector('img');
+        var galleryItems=Array.prototype.slice.call(document.querySelectorAll('[data-gallery-image]'));
+        var galleryIndex=0;
+        function showGalleryImage(index){
+            if(!galleryItems.length)return;
+            galleryIndex=(index+galleryItems.length)%galleryItems.length;
+            image.src=galleryItems[galleryIndex].getAttribute('data-gallery-image');
+            lightbox.classList.add('is-open');
+        }
+        function closeLightbox(){lightbox.classList.remove('is-open');image.src='';}
+        galleryItems.forEach(function(item,index){
+            item.addEventListener('click',function(){showGalleryImage(index);});
+        });
+        var prev=lightbox.querySelector('.is-prev');
+        var next=lightbox.querySelector('.is-next');
+        if(prev)prev.addEventListener('click',function(event){event.stopPropagation();showGalleryImage(galleryIndex-1);});
+        if(next)next.addEventListener('click',function(event){event.stopPropagation();showGalleryImage(galleryIndex+1);});
+        lightbox.addEventListener('click',function(event){if(event.target===lightbox||event.target.classList.contains('aurora-gallery-lightbox-close'))closeLightbox();});
+        document.addEventListener('keydown',function(event){
+            if(!lightbox.classList.contains('is-open'))return;
+            if(event.key==='Escape')closeLightbox();
+            if(event.key==='ArrowLeft')showGalleryImage(galleryIndex-1);
+            if(event.key==='ArrowRight')showGalleryImage(galleryIndex+1);
+        });
+    }
 });
 </script>
