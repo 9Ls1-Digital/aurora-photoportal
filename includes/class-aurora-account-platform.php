@@ -153,12 +153,38 @@ class NLS1_Aurora_Account_Platform {
             58
         );
 
-        add_submenu_page(self::MENU_SLUG, 'Aurora Admin', 'Dashboard', 'manage_options', self::MENU_SLUG, [$this, 'render_page']);
-        add_submenu_page(self::MENU_SLUG, 'Fotografkontoer', 'Fotografkontoer', 'manage_options', self::MENU_SLUG . '-accounts', [$this, 'render_page']);
-        add_submenu_page(self::MENU_SLUG, 'Lisenser', 'Lisenser', 'manage_options', self::MENU_SLUG . '-licenses', [$this, 'render_page']);
-        add_submenu_page(self::MENU_SLUG, 'Moduler', 'Moduler', 'manage_options', self::MENU_SLUG . '-modules', [$this, 'render_page']);
-        add_submenu_page(self::MENU_SLUG, 'Branding', 'Branding', 'manage_options', self::MENU_SLUG . '-branding', [$this, 'render_page']);
-        add_submenu_page(self::MENU_SLUG, 'System', 'System', 'manage_options', self::MENU_SLUG . '-system', [$this, 'render_page']);
+        // Visible WordPress submenu = Aurora Control Center + installed Aurora products.
+        // Product-internal sections are registered as hidden routes and belong to each
+        // product's own admin navigation, not to the global Aurora WordPress submenu.
+        add_submenu_page(self::MENU_SLUG, 'Aurora Control Center', 'Dashboard', 'manage_options', self::MENU_SLUG, [$this, 'render_page']);
+        add_submenu_page(self::MENU_SLUG, 'Aurora Fotoportal Admin', 'Fotoportal', 'manage_options', self::MENU_SLUG . '-fotoportal', [$this, 'render_page']);
+
+        // Hidden Fotoportal product routes.
+        add_submenu_page(null, 'Fotografkontoer', 'Fotografkontoer', 'manage_options', self::MENU_SLUG . '-accounts', [$this, 'render_page']);
+        add_submenu_page(null, 'Moduler', 'Moduler', 'manage_options', self::MENU_SLUG . '-modules', [$this, 'render_page']);
+        add_submenu_page(null, 'Branding', 'Branding', 'manage_options', self::MENU_SLUG . '-branding', [$this, 'render_page']);
+        add_submenu_page(null, 'System', 'System', 'manage_options', self::MENU_SLUG . '-system', [$this, 'render_page']);
+
+        // Aurora License is a separate Aurora product/service.
+        if (class_exists('Aurora_License_Service') || function_exists('aurora_license_render_platform_page')) {
+            add_submenu_page(self::MENU_SLUG, 'Aurora License', 'License', 'manage_options', self::MENU_SLUG . '-licenses', [$this, 'render_page']);
+        } else {
+            add_submenu_page(null, 'Aurora License', 'License', 'manage_options', self::MENU_SLUG . '-licenses', [$this, 'render_page']);
+        }
+
+        // Other Aurora plugins can add themselves to the global submenu through
+        // the registry without exposing their internal section navigation.
+        global $submenu;
+        $products = self::installed_aurora_products();
+        foreach ($products as $product) {
+            if (in_array($product['id'], ['fotoportal','license'], true)) continue;
+            if (empty($product['installed']) || empty($product['admin_url'])) continue;
+            $submenu[self::MENU_SLUG][] = [
+                esc_html($product['name']),
+                'manage_options',
+                esc_url($product['admin_url'])
+            ];
+        }
     }
 
     public function enqueue_assets($hook) {
@@ -172,6 +198,7 @@ class NLS1_Aurora_Account_Platform {
 
         $page = sanitize_key($_GET['page'] ?? self::MENU_SLUG);
         $section = 'dashboard';
+        if ($page === self::MENU_SLUG . '-fotoportal') $section = 'fotoportal';
         if ($page === self::MENU_SLUG . '-accounts') $section = 'accounts';
         if ($page === self::MENU_SLUG . '-licenses') $section = 'licenses';
         if ($page === self::MENU_SLUG . '-modules') $section = 'modules';
@@ -236,6 +263,78 @@ class NLS1_Aurora_Account_Platform {
     public static function is_module_enabled($account_id, $module_key) {
         $modules = self::get_account_modules((int)$account_id);
         return !empty($modules[sanitize_key($module_key)]);
+    }
+
+    /**
+     * Shared Aurora product registry.
+     *
+     * Aurora plugins can register richer metadata through the
+     * `aurora_platform_products` filter. We also discover installed plugins
+     * whose plugin name identifies them as Aurora/9Ls1 product components.
+     */
+    public static function installed_aurora_products() {
+        if (!function_exists('get_plugins')) require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        $all = get_plugins();
+        $active = (array)get_option('active_plugins', []);
+        $network_active = is_multisite() ? array_keys((array)get_site_option('active_sitewide_plugins', [])) : [];
+
+        $products = [
+            'fotoportal' => [
+                'id' => 'fotoportal',
+                'name' => 'Aurora Fotoportal',
+                'description' => 'Kunder, prosjekter, kontrakter, gallerier og kundeportal.',
+                'version' => defined('NLS1_FOTOPORTAL_VERSION') ? NLS1_FOTOPORTAL_VERSION : '',
+                'active' => true,
+                'installed' => true,
+                'admin_url' => self::url('fotoportal'),
+                'license_status' => class_exists('Aurora_License_Service') ? 'Tilkoblet License' : 'License ikke tilkoblet',
+                'quick_links' => [
+                    ['label' => 'Fotoportal Admin', 'url' => self::url('fotoportal')],
+                    ['label' => 'Fotografkontoer', 'url' => self::url('accounts')],
+                    ['label' => 'Moduler', 'url' => self::url('modules')],
+                    ['label' => 'Branding', 'url' => self::url('branding')],
+                    ['label' => 'System', 'url' => self::url('system')],
+                ],
+            ],
+        ];
+
+        foreach ($all as $plugin_file => $data) {
+            $name = trim((string)($data['Name'] ?? ''));
+            if (!$name) continue;
+            $haystack = strtolower($name . ' ' . $plugin_file);
+            if (strpos($haystack, 'aurora') === false && strpos($haystack, 'project showcase') === false) continue;
+
+            $id = sanitize_key(str_replace(['aurora','9ls1'], '', $name));
+            if (strpos($haystack, 'license') !== false) $id = 'license';
+            elseif (strpos($haystack, 'fotoportal') !== false || strpos($haystack, 'photo portal') !== false) $id = 'fotoportal';
+            elseif (strpos($haystack, 'project showcase') !== false) $id = 'project_showcase';
+            elseif (strpos($haystack, 'booking') !== false) $id = 'booking';
+            if (!$id) $id = sanitize_key(dirname($plugin_file));
+
+            $is_active = in_array($plugin_file, $active, true) || in_array($plugin_file, $network_active, true);
+            $existing = $products[$id] ?? [];
+            $products[$id] = array_merge([
+                'id' => $id,
+                'name' => $name,
+                'description' => trim(wp_strip_all_tags((string)($data['Description'] ?? ''))),
+                'version' => (string)($data['Version'] ?? ''),
+                'installed' => true,
+                'active' => $is_active,
+                'admin_url' => '',
+                'license_status' => '',
+                'plugin_file' => $plugin_file,
+                'quick_links' => [],
+            ], $existing, ['active' => $is_active, 'version' => (string)($data['Version'] ?? ($existing['version'] ?? ''))]);
+        }
+
+        $products = apply_filters('aurora_platform_products', $products);
+
+        // Stable, product-oriented order.
+        $order = ['fotoportal'=>10,'license'=>20,'project_showcase'=>30,'booking'=>40];
+        uasort($products, function($a,$b) use ($order) {
+            return ($order[$a['id']] ?? 100) <=> ($order[$b['id']] ?? 100);
+        });
+        return $products;
     }
 
     public static function platform_branding() {

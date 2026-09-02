@@ -1,3 +1,37 @@
+# dev.31-fix24 – Global Aurora Product Navigation
+- Changed WordPress Aurora submenu to show Control Center and installed Aurora products only.
+- Hid Fotoportal-internal sections from the global WordPress submenu.
+- Kept Fotoportal internal navigation inside Aurora Fotoportal Admin.
+- Added Aurora License as a peer product menu item when active.
+- Added reusable product quick_links metadata.
+- Added split Open button with hover/focus dropdown shortcuts on product cards.
+- Updated Blueprint documentation.
+
+# dev.31-fix23 – Separate Aurora Product Admin Shells
+- Removed Fotoportal admin navigation from Aurora Control Center.
+- Removed Fotoportal header/navigation from Aurora License administration.
+- Added dedicated Aurora Control Center header.
+- Kept Fotoportal-specific navigation only inside Aurora Fotoportal Admin.
+- Removed License from the Fotoportal admin navigation.
+- Added back-navigation from product admins to Aurora Control Center.
+- Updated Blueprint documentation.
+
+# dev.31-fix22 – Aurora Product Admin Hierarchy
+- Cleaned the shared Aurora Control Center dashboard.
+- Moved Fotoportal-specific account/tenant content out of the platform dashboard.
+- Added dedicated Aurora Fotoportal Admin product layer.
+- Changed Aurora Fotoportal product card to open Fotoportal Admin, not Photographer Workspace.
+- Locked navigation hierarchy: Control Center > Fotoportal Admin > Photographer Account > Workspace.
+- Updated Blueprint documentation.
+
+# dev.31-fix21 – Aurora Platform Control Center
+- Added installed Aurora product/plugin dashboard.
+- Added direct product/workspace navigation.
+- Added shared product registry/filter.
+- Embedded Aurora License administration under Aurora > Lisenser when available.
+- Deprecated the legacy Fotoportal license UI as primary license management.
+- Updated Blueprint.
+
 # Changelog
 
 ## 0.7.1-dev.31-fix12
