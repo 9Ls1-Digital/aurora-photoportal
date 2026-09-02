@@ -31,6 +31,7 @@ $legacy_links = [
 <div class="aurora-workspace">
     <aside class="aurora-workspace-sidebar">
         <div class="aurora-workspace-brand">
+            <button type="button" class="aurora-mobile-menu-close" data-aurora-menu-close aria-label="Lukk meny"><span class="dashicons dashicons-no-alt"></span></button>
             <?php if (!empty($branding['logo_url'])) : ?>
                 <span class="aurora-workspace-logo is-image"><img src="<?php echo esc_url($branding['logo_url']); ?>" alt="Aurora"></span>
             <?php else : ?>
@@ -67,10 +68,14 @@ $legacy_links = [
             <small>9Ls1 Digital</small>
         </div>
     </aside>
+    <button type="button" class="aurora-mobile-menu-overlay" data-aurora-menu-close aria-label="Lukk meny"></button>
 
     <main class="aurora-workspace-main">
         <header class="aurora-workspace-topbar">
-            <div class="aurora-workspace-mobilebrand"><?php if (!empty($branding['logo_url'])) : ?><span class="aurora-workspace-logo is-image"><img src="<?php echo esc_url($branding['logo_url']); ?>" alt="Aurora"></span><?php else : ?><span class="aurora-workspace-logo">A</span><?php endif; ?><strong>Aurora Fotoportal</strong></div>
+            <div class="aurora-workspace-mobilebrand">
+                <button type="button" class="aurora-mobile-menu-toggle" data-aurora-menu-open aria-label="Åpne meny" aria-expanded="false"><span class="dashicons dashicons-menu-alt"></span></button>
+                <?php if (!empty($branding['logo_url'])) : ?><span class="aurora-workspace-logo is-image"><img src="<?php echo esc_url($branding['logo_url']); ?>" alt="Aurora"></span><?php else : ?><span class="aurora-workspace-logo">A</span><?php endif; ?><strong>Aurora Fotoportal</strong>
+            </div>
             <div class="aurora-workspace-topactions">
                 <button type="button" class="aurora-icon-button" title="Hjelp"><span class="dashicons dashicons-editor-help"></span></button>
                 <button type="button" class="aurora-icon-button" title="Varsler"><span class="dashicons dashicons-bell"></span><i></i></button>
@@ -1085,5 +1090,32 @@ document.addEventListener('DOMContentLoaded',function(){
         source.addEventListener('change',syncContract);
         syncContract();
     }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    var workspace=document.querySelector('.aurora-workspace');
+    var sidebar=document.querySelector('.aurora-workspace-sidebar');
+    var openButton=document.querySelector('[data-aurora-menu-open]');
+    var closeButtons=document.querySelectorAll('[data-aurora-menu-close]');
+    if(!workspace||!sidebar||!openButton)return;
+
+    function openMenu(){
+        workspace.classList.add('is-mobile-menu-open');
+        document.documentElement.classList.add('aurora-menu-lock');
+        openButton.setAttribute('aria-expanded','true');
+    }
+    function closeMenu(){
+        workspace.classList.remove('is-mobile-menu-open');
+        document.documentElement.classList.remove('aurora-menu-lock');
+        openButton.setAttribute('aria-expanded','false');
+    }
+
+    openButton.addEventListener('click',openMenu);
+    closeButtons.forEach(function(button){button.addEventListener('click',closeMenu);});
+    sidebar.querySelectorAll('a').forEach(function(link){link.addEventListener('click',closeMenu);});
+    document.addEventListener('keydown',function(event){if(event.key==='Escape')closeMenu();});
+    window.addEventListener('resize',function(){if(window.innerWidth>782)closeMenu();});
 });
 </script>

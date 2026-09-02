@@ -1,5 +1,17 @@
 # Aurora Fotoportal development changelog
 
+## 0.7.1-dev.23-fix1
+- Fix mobile navigation controls being hidden by a later CSS rule.
+- Ensure hamburger button, menu close button and overlay are visible on mobile widths.
+
+## 0.7.1-dev.23
+- Replace the collapsed mobile sidebar with a true off-canvas Aurora navigation.
+- Add mobile hamburger button, close button, overlay, Escape handling and automatic close after navigation.
+- Keep photographer account identity, module navigation and footer available inside the mobile menu.
+- Make the Workspace top bar sticky on mobile and allow content to use the full viewport width.
+- Improve mobile title bars, cards, forms, workflow navigation and customer/project actions.
+- Make register tables horizontally scrollable instead of compressing their content into an unusable layout.
+
 ## 0.7.1-dev.22
 - Turn the top-level Contracts menu into a tenant-scoped photographer-wide contract register.
 - Add search, status/type filters and sortable Contract, Project, Customer, Type, Created and Status columns.

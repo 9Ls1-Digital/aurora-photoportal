@@ -427,7 +427,49 @@ body.admin_page_aurora-photographer-workspace #wpcontent{margin-left:0}
 .aurora-workspace-modulelist{display:flex;flex-direction:column;gap:6px;margin-top:10px}.aurora-workspace-modulelist>div{display:grid;grid-template-columns:7px 1fr auto;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0edf1}.aurora-workspace-modulelist>div>span{width:7px;height:7px;border-radius:50%}.aurora-workspace-modulelist .is-enabled>span{background:#2ca66a}.aurora-workspace-modulelist .is-disabled>span{background:#c8c2cb}.aurora-workspace-modulelist strong{font-size:9px}.aurora-workspace-modulelist small{font-size:8px;color:#9b939f}
 .aurora-module-placeholder{min-height:260px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}.aurora-module-placeholder h2{font-size:21px}.aurora-module-placeholder p{max-width:650px;margin-bottom:15px}
 @media(max-width:1100px){.aurora-workspace-kpis{grid-template-columns:repeat(2,1fr)}.aurora-workspace-shortcuts{grid-template-columns:1fr}}
-@media(max-width:782px){.aurora-workspace-sidebar{position:static;width:100%;padding-bottom:8px}.aurora-workspace{display:block}.aurora-workspace-sidebar .aurora-workspace-account,.aurora-workspace-sidebar .aurora-workspace-menu,.aurora-workspace-sidebar-footer{display:none}.aurora-workspace-brand{padding-bottom:5px}.aurora-workspace-main{width:100%;margin-left:0}.aurora-workspace-topbar{height:55px;padding:0 15px}.aurora-workspace-user div{display:none}.aurora-workspace-content{padding:20px 15px 35px}.aurora-workspace-titlebar{align-items:flex-start;flex-direction:column}.aurora-workspace-kpis,.aurora-workspace-grid,.aurora-workspace-settingsgrid{grid-template-columns:1fr}}
+@media(max-width:782px){
+.aurora-workspace{display:block;min-width:0}
+.aurora-workspace-sidebar{position:fixed;inset:0 auto 0 0;width:min(86vw,310px);padding:18px 14px 14px;transform:translateX(-105%);transition:transform .22s ease;box-shadow:18px 0 50px rgba(31,23,42,.18);z-index:1002}
+.aurora-workspace.is-mobile-menu-open .aurora-workspace-sidebar{transform:translateX(0)}
+.aurora-workspace-sidebar .aurora-workspace-account,.aurora-workspace-sidebar .aurora-workspace-menu,.aurora-workspace-sidebar-footer{display:flex}
+.aurora-workspace-brand{position:relative;padding:0 46px 18px 9px}
+.aurora-mobile-menu-close{display:flex}
+.aurora-mobile-menu-overlay{display:block;position:fixed;inset:0;border:0;padding:0;background:rgba(25,20,31,.38);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease;z-index:1001}
+.aurora-workspace.is-mobile-menu-open .aurora-mobile-menu-overlay{opacity:1;visibility:visible;pointer-events:auto}
+.aurora-workspace-main{width:100%;margin-left:0;min-width:0}
+.aurora-workspace-topbar{position:sticky;top:0;z-index:900;height:58px;padding:0 12px;justify-content:space-between}
+.aurora-workspace-mobilebrand{display:flex;align-items:center;gap:8px;min-width:0}
+.aurora-workspace-mobilebrand .aurora-workspace-logo{width:30px;height:30px;border-radius:9px;flex:0 0 auto}
+.aurora-workspace-mobilebrand strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aurora-mobile-menu-toggle{display:flex}
+.aurora-workspace-topactions{gap:5px}
+.aurora-workspace-user{margin-left:1px;padding-left:7px}
+.aurora-workspace-user div{display:none}
+.aurora-workspace-content{width:100%;max-width:none;padding:18px 12px 32px;overflow:hidden}
+.aurora-workspace-titlebar{align-items:flex-start;flex-direction:column;gap:13px;margin-bottom:16px}
+.aurora-workspace-titlebar>div{min-width:0;width:100%}
+.aurora-workspace-titlebar h1{font-size:22px}
+.aurora-workspace-titlebar>.aurora-primary-action{width:100%}
+.aurora-workspace-kpis,.aurora-workspace-grid,.aurora-workspace-settingsgrid{grid-template-columns:1fr}
+.aurora-workspace-card{padding:15px;border-radius:12px}
+.aurora-workspace-cardhead{gap:10px;flex-wrap:wrap}
+.aurora-customer-profile-card{padding:15px}
+.aurora-customer-profile-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.aurora-customer-profile-actions .aurora-primary-action,.aurora-customer-profile-actions .aurora-secondary-action{width:100%}
+.aurora-project-workflow{overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
+.aurora-project-workflow>a,.aurora-project-workflow>div{min-width:118px}
+.aurora-customer-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-left:-15px;margin-right:-15px}
+.aurora-customer-table{min-width:720px}
+.aurora-customer-list-card>.aurora-workspace-cardhead{padding-left:15px;padding-right:15px}
+.aurora-customer-filters{align-items:stretch}
+.aurora-customer-filters input,.aurora-customer-filters select,.aurora-customer-filters button{width:100%;max-width:none}
+.aurora-search-field{min-width:100%}
+.aurora-native-wizard{padding:16px}
+.aurora-native-wizard .nls1-form-grid,.nls1-form-grid,.aurora-billing-fields{grid-template-columns:1fr!important}
+.aurora-step-actions{gap:8px}
+.aurora-step-actions .aurora-primary-action,.aurora-step-actions .aurora-secondary-action{min-height:42px}
+}
+
 
 
 /* dev.11-fix2 — anchor photographer workspace content to sidebar */
@@ -687,3 +729,25 @@ body.admin_page_aurora-photographer-workspace #wpcontent{margin-left:0}
 .aurora-overview-filters{margin:-8px -8px 24px;padding:8px 8px 24px;border-bottom:1px solid #eceaf2}
 .aurora-overview-head{margin-bottom:8px}
 .aurora-customer-table td small{display:block;margin-top:4px;color:#9994a5}
+
+/* dev.23 — Responsive Workspace & Mobile Navigation */
+.aurora-mobile-menu-toggle,.aurora-mobile-menu-close,.aurora-mobile-menu-overlay{display:none}
+.aurora-mobile-menu-toggle,.aurora-mobile-menu-close{align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:1px solid #e5e0e9;border-radius:10px;background:#fff;color:#625a67;cursor:pointer}
+.aurora-mobile-menu-toggle .dashicons,.aurora-mobile-menu-close .dashicons{width:18px;height:18px;font-size:18px}
+.aurora-mobile-menu-close{position:absolute;right:8px;top:0}
+html.aurora-menu-lock,html.aurora-menu-lock body{overflow:hidden}
+@media(max-width:520px){
+.aurora-workspace-topactions .aurora-icon-button:first-child{display:none}
+.aurora-workspace-mobilebrand strong{max-width:118px}
+.aurora-workspace-kpis{grid-template-columns:1fr}
+.aurora-customer-profile-actions{grid-template-columns:1fr}
+.aurora-workspace-shortcuts{grid-template-columns:1fr}
+}
+
+
+/* dev.23-fix1 — keep mobile navigation controls visible at mobile widths */
+@media(max-width:782px){
+    .aurora-mobile-menu-toggle,
+    .aurora-mobile-menu-close{display:flex}
+    .aurora-mobile-menu-overlay{display:block}
+}
