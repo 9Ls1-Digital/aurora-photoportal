@@ -414,6 +414,8 @@ class NLS1_Aurora_Account_Platform {
             'watermark_preview_url' => get_option('9ls1_aurora_watermark_preview_url', NLS1_FOTOPORTAL_PLUGIN_URL . 'assets/aurora-watermark-preview.jpg'),
             'photographer_login_bg_desktop' => get_option('9ls1_aurora_photographer_login_bg_desktop', NLS1_FOTOPORTAL_PLUGIN_URL . 'assets/aurora-login-background.png'),
             'photographer_login_bg_mobile' => get_option('9ls1_aurora_photographer_login_bg_mobile', ''),
+            'customer_login_bg_desktop' => get_option('9ls1_aurora_customer_login_bg_desktop', ''),
+            'customer_login_bg_mobile' => get_option('9ls1_aurora_customer_login_bg_mobile', ''),
         ];
     }
 
@@ -757,6 +759,8 @@ class NLS1_Aurora_Account_Platform {
         foreach ([
             'photographer_login_bg_desktop' => '9ls1_aurora_photographer_login_bg_desktop',
             'photographer_login_bg_mobile' => '9ls1_aurora_photographer_login_bg_mobile',
+            'customer_login_bg_desktop' => '9ls1_aurora_customer_login_bg_desktop',
+            'customer_login_bg_mobile' => '9ls1_aurora_customer_login_bg_mobile',
         ] as $field => $option) {
             if (!empty($_FILES[$field]['name'])) {
                 require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -768,6 +772,12 @@ class NLS1_Aurora_Account_Platform {
         }
         if (!empty($_POST['remove_mobile_login_bg'])) {
             delete_option('9ls1_aurora_photographer_login_bg_mobile');
+        }
+        if (!empty($_POST['remove_customer_login_bg_desktop'])) {
+            delete_option('9ls1_aurora_customer_login_bg_desktop');
+        }
+        if (!empty($_POST['remove_customer_login_bg_mobile'])) {
+            delete_option('9ls1_aurora_customer_login_bg_mobile');
         }
 
         $accent = sanitize_hex_color($_POST['accent'] ?? '');

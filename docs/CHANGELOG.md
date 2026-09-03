@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.1-dev.31-fix38 - Central login branding and customer login backgrounds
+
+- Photographer authentication now uses the Aurora Admin `Logo URL` as the authoritative Aurora logo, with the previous generated wordmark only as fallback.
+- Aurora Admin Branding now has separate desktop and mobile background uploads for photo-customer login.
+- Customer login backgrounds are platform-owned and fall back safely to photographer-login backgrounds until dedicated customer artwork is uploaded.
+- Customer login/password screens now use a dedicated full-screen, responsive glass-style authentication shell.
+- Customer-facing authentication prioritizes the photographer/studio logo; Aurora platform logo is used only as fallback.
+- Customer authentication remains isolated from photographer and WordPress admin authentication.
+
 ## 0.7.1-dev.31-fix37 - Invitation email login link correction
 - Removed the direct wp-admin Photographer Workspace URL from photographer invitation emails.
 - Invitation emails now point to Aurora's dedicated Photographer Login surface.

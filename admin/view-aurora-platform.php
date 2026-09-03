@@ -379,6 +379,22 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
                         </div>
                     </div>
                 </div>
+
+                <div class="aurora-branding-login-backgrounds">
+                    <div class="aurora-module-section-head is-addons">
+                        <div><span class="aurora-kicker">FOTOKUNDEINNLOGGING</span><h3>Bakgrunnsbilder</h3><p>Disse bildene brukes på den sikre innloggingen for fotografens kunder. Velg gjerne et motiv som illustrerer album, print eller ferdige fotografier.</p></div>
+                    </div>
+                    <div class="aurora-platform-grid">
+                        <div>
+                            <label>Desktop / PC<input type="file" name="customer_login_bg_desktop" accept="image/jpeg,image/png,image/webp"><small>Anbefalt minst 1920×1080. Hvis feltet er tomt brukes fotograf-loginens desktop-bakgrunn som fallback.</small></label>
+                            <?php if(!empty($branding['customer_login_bg_desktop'])):?><div class="aurora-login-bg-preview is-desktop"><img src="<?php echo esc_url($branding['customer_login_bg_desktop']); ?>" alt="Fotokunde desktop login-bakgrunn"></div><label class="aurora-inline-check"><input type="checkbox" name="remove_customer_login_bg_desktop" value="1"> Fjern eget kundebilde og bruk fallback</label><?php endif;?>
+                        </div>
+                        <div>
+                            <label>Mobil<input type="file" name="customer_login_bg_mobile" accept="image/jpeg,image/png,image/webp"><small>Anbefalt stående bilde, minst 1080×1920. Hvis tomt brukes kundens desktop-bilde, deretter fotograf-loginens bakgrunn.</small></label>
+                            <?php if(!empty($branding['customer_login_bg_mobile'])):?><div class="aurora-login-bg-preview is-mobile"><img src="<?php echo esc_url($branding['customer_login_bg_mobile']); ?>" alt="Fotokunde mobil login-bakgrunn"></div><label class="aurora-inline-check"><input type="checkbox" name="remove_customer_login_bg_mobile" value="1"> Fjern eget mobilbilde og bruk fallback</label><?php endif;?>
+                        </div>
+                    </div>
+                </div>
                 <p><button class="button button-primary">Lagre Aurora-branding</button></p>
             </form>
         </section>

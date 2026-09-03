@@ -225,28 +225,77 @@ class NLS1_Fotoportal_Frontend {
             wp_safe_redirect($canonical?:$return_url); exit;
         }
 
-        status_header(200); nocache_headers();
-        echo '<!doctype html><html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Logg inn – '.esc_html($studio).'</title><style>:root{--a:'.esc_attr($accent).'}'.$this->brand_css().'.login-shell{min-height:78vh;display:grid;place-items:center;padding:30px}.login-card{width:min(430px,100%);background:#fff;border:1px solid #e8e2eb;border-radius:18px;padding:28px;box-shadow:0 16px 45px rgba(45,35,55,.08)}.login-card h1{margin:0 0 8px}.login-card p{color:#746a7a}.login-card label{display:block;margin:14px 0 5px;font-weight:700}.login-card input[type=text],.login-card input[type=password]{width:100%;padding:12px;border:1px solid #dcd5df;border-radius:9px}.login-card input[type=submit]{width:100%;margin-top:16px;border:0;border-radius:10px;padding:12px;background:var(--a);color:#fff;font-weight:800;cursor:pointer}.login-card .login-remember label{font-weight:400}.wrong{background:#fff4f4;border:1px solid #f2cccc;padding:12px;border-radius:9px;margin-bottom:14px}</style></head><body>';
-        $this->brand_head($settings,$studio);
-        echo '<main class="login-shell"><section class="login-card"><h1>Kundeinnlogging</h1><p>Logg inn for å åpne din private bildeportal.</p>';
-        if($login_error)echo '<div class="wrong">'.esc_html($login_error).'</div>';
+        ob_start();
+        echo '<p>Logg inn for å åpne din private bildeportal.</p>';
+        if($login_error) echo '<div class="notice err">'.esc_html($login_error).'</div>';
         echo '<form method="post" action="'.esc_url($return_url).'">';
         wp_nonce_field('aurora_customer_login','aurora_customer_login_nonce');
-        echo '<input type="hidden" name="aurora_customer_login" value="1"><label for="aurora-log">E-post / brukernavn</label><input id="aurora-log" type="text" name="log" autocomplete="username" required><label for="aurora-pwd">Passord</label><input id="aurora-pwd" type="password" name="pwd" autocomplete="current-password" required><p class="login-remember"><label><input type="checkbox" name="rememberme" value="forever"> Husk meg</label></p><input type="submit" value="Logg inn"></form>';
+        echo '<input type="hidden" name="aurora_customer_login" value="1"><label for="aurora-log">E-post / brukernavn</label><input id="aurora-log" type="text" name="log" autocomplete="username" required><label for="aurora-pwd">Passord</label><input id="aurora-pwd" type="password" name="pwd" autocomplete="current-password" required><label class="auth-check"><input type="checkbox" name="rememberme" value="forever"> Husk meg</label><button class="aurora-btn" type="submit">Logg inn</button></form>';
         $reset_url=add_query_arg(['fotoportal_password'=>1,'token'=>rawurlencode((string)$client->portal_token)],home_url('/'));
-        echo '<p><a href="'.esc_url($reset_url).'">Glemt passord?</a></p></section></main>';
-        $this->brand_foot($settings,$studio); echo '</body></html>'; exit;
+        echo '<a class="back" href="'.esc_url($reset_url).'">Glemt passord?</a>';
+        $content=ob_get_clean();
+        $this->customer_auth_shell($client,'Kundeinnlogging',$content);
     }
 
     private function customer_password_page_shell($client,$title,$content){
+        $this->customer_auth_shell($client,$title,$content);
+    }
+
+    private function customer_auth_shell($client,$title,$content){
         $settings=NLS1_Fotoportal_Admin::photographer_portal_settings((int)$client->account_id);
         $studio=$settings['studio_name']?:($settings['photographer_name']?:get_bloginfo('name'));
         $accent=sanitize_hex_color($settings['accent_color'])?:'#6f4bf2';
+        $branding=class_exists('NLS1_Aurora_Account_Platform') ? NLS1_Aurora_Account_Platform::platform_branding() : [];
+        $fallback_desktop=$branding['photographer_login_bg_desktop']??(NLS1_FOTOPORTAL_PLUGIN_URL.'assets/aurora-login-background.png');
+        $fallback_mobile=$branding['photographer_login_bg_mobile']??'';
+        $bg_desktop=!empty($branding['customer_login_bg_desktop'])?$branding['customer_login_bg_desktop']:$fallback_desktop;
+        $bg_mobile=!empty($branding['customer_login_bg_mobile'])?$branding['customer_login_bg_mobile']:(!empty($branding['customer_login_bg_desktop'])?$branding['customer_login_bg_desktop']:($fallback_mobile?:$bg_desktop));
+        $logo_url=!empty($settings['logo_url'])?$settings['logo_url']:(!empty($branding['logo_url'])?$branding['logo_url']:'');
+        $photographer=!empty($settings['photographer_name'])?$settings['photographer_name']:'';
+
         status_header(200); nocache_headers();
-        echo '<!doctype html><html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.esc_html($title).' – '.esc_html($studio).'</title><style>:root{--a:'.esc_attr($accent).'}'.$this->brand_css().'.login-shell{min-height:78vh;display:grid;place-items:center;padding:30px}.login-card{width:min(460px,100%);background:#fff;border:1px solid #e8e2eb;border-radius:18px;padding:28px;box-shadow:0 16px 45px rgba(45,35,55,.08)}.login-card h1{margin:0 0 8px}.login-card p{color:#746a7a;line-height:1.55}.login-card label{display:block;margin:14px 0 5px;font-weight:700}.login-card input[type=password]{width:100%;padding:12px;border:1px solid #dcd5df;border-radius:9px}.aurora-btn{display:inline-block;width:100%;margin-top:14px;border:0;border-radius:10px;padding:12px;background:var(--a);color:#fff;font-weight:800;cursor:pointer;text-align:center;text-decoration:none}.notice{padding:12px 14px;border-radius:10px;margin:14px 0}.notice.ok{background:#f0fbf5;border:1px solid #c8ead7;color:#17613b}.notice.err{background:#fff4f4;border:1px solid #f2cccc;color:#8d2929}.back{display:inline-block;margin-top:16px;color:var(--a);font-weight:700;text-decoration:none}</style></head><body>';
-        $this->brand_head($settings,$studio);
-        echo '<main class="login-shell"><section class="login-card"><h1>'.esc_html($title).'</h1>'.$content.'</section></main>';
-        $this->brand_foot($settings,$studio); echo '</body></html>'; exit;
+        echo '<!doctype html><html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.esc_html($title).' – '.esc_html($studio).'</title><style>
+        :root{--a:'.esc_attr($accent).'}
+        *{box-sizing:border-box}
+        html,body{margin:0;width:100%;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#17131c;color:#fff}
+        body{min-height:100vh;background-image:linear-gradient(180deg,rgba(18,12,22,.20),rgba(18,12,22,.48)),url("'.esc_url($bg_desktop).'");background-position:center center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed}
+        .customer-auth-shell{width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:42px 20px}
+        .customer-auth-brand{text-align:center;margin:0 0 20px;text-shadow:0 4px 22px rgba(0,0,0,.5)}
+        .customer-auth-brand img{display:block;max-width:min(290px,68vw);max-height:108px;width:auto;height:auto;object-fit:contain;margin:0 auto 12px;filter:drop-shadow(0 5px 20px rgba(0,0,0,.28))}
+        .customer-auth-brand h2{margin:0;color:#fff;font-size:30px;line-height:1.15;font-weight:750}
+        .customer-auth-brand p{margin:7px 0 0;color:rgba(255,255,255,.78);font-size:13px}
+        .customer-login-card{width:min(500px,100%);padding:29px 30px 30px;border:1px solid rgba(255,255,255,.22);border-radius:20px;background:rgba(24,18,29,.64);box-shadow:0 24px 70px rgba(0,0,0,.38);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+        .customer-login-card .eyebrow{font-size:10px;font-weight:900;letter-spacing:.16em;color:rgba(255,255,255,.68);text-transform:uppercase}
+        .customer-login-card h1{margin:7px 0 8px;font-size:29px;line-height:1.15;color:#fff}
+        .customer-login-card p{margin:7px 0 15px;color:rgba(255,255,255,.74);line-height:1.55}
+        .customer-login-card label{display:block;margin:14px 0 6px;color:#f5f0f6;font-size:12px;font-weight:750;letter-spacing:.04em}
+        .customer-login-card input[type=password],.customer-login-card input[type=text],.customer-login-card input[type=email]{width:100%;height:52px;padding:0 15px;border:1px solid rgba(255,255,255,.30);border-radius:8px;background:rgba(12,8,16,.58);color:#fff;font:inherit;outline:none}
+        .customer-login-card input:focus{border-color:var(--a);box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 22%, transparent)}
+        .customer-login-card input[type=checkbox]{accent-color:var(--a)}
+        .auth-check{display:flex!important;align-items:center;gap:8px;font-size:13px!important;letter-spacing:0!important;font-weight:500!important}
+        .aurora-btn{display:inline-flex;width:100%;min-height:50px;margin-top:16px;align-items:center;justify-content:center;border:0;border-radius:8px;padding:12px 18px;background:var(--a);color:#fff;font-weight:850;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-align:center;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,.16)}
+        .aurora-btn:hover{filter:brightness(1.08)}
+        .notice{padding:12px 14px;border-radius:9px;margin:14px 0;font-size:13px}
+        .notice.ok{background:rgba(31,160,111,.22);border:1px solid rgba(86,221,164,.42);color:#d3f8e7}
+        .notice.err{background:rgba(188,48,69,.24);border:1px solid rgba(255,111,133,.38);color:#ffe0e5}
+        .back{display:inline-block;margin-top:16px;color:#fff;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.38)}
+        .customer-powered{margin-top:26px;text-align:center;color:rgba(255,255,255,.66);font-size:11px;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+        .customer-powered strong{display:block;margin-top:4px;color:#fff;font-size:13px;letter-spacing:.04em}
+        @media(max-width:700px){
+            body{background-image:linear-gradient(180deg,rgba(18,12,22,.18),rgba(18,12,22,.50)),url("'.esc_url($bg_mobile).'");background-attachment:scroll;background-position:center center}
+            .customer-auth-shell{justify-content:flex-start;padding:8vh 14px 28px}
+            .customer-auth-brand img{max-height:84px}
+            .customer-auth-brand h2{font-size:26px}
+            .customer-login-card{padding:23px 20px;border-radius:17px}
+            .customer-login-card h1{font-size:25px}
+        }
+        </style></head><body>';
+        echo '<main class="customer-auth-shell"><header class="customer-auth-brand">';
+        if($logo_url) echo '<img src="'.esc_url($logo_url).'" alt="'.esc_attr($studio).'">';
+        echo '<h2>'.esc_html($studio).'</h2>';
+        if($photographer && $photographer!==$studio) echo '<p>'.esc_html($photographer).'</p>';
+        echo '</header><section class="customer-login-card"><div class="eyebrow">Privat bildeportal</div><h1>'.esc_html($title).'</h1>'.$content.'</section><div class="customer-powered">Powered by<strong>Aurora Fotoportal · 9Ls1 Digital</strong></div></main>';
+        echo '</body></html>'; exit;
     }
 
     private function photographer_auth_shell($account,$title,$content){
@@ -254,17 +303,19 @@ class NLS1_Fotoportal_Frontend {
         $bg_desktop=$branding['photographer_login_bg_desktop']??(NLS1_FOTOPORTAL_PLUGIN_URL.'assets/aurora-login-background.png');
         $bg_mobile=$branding['photographer_login_bg_mobile']??'';
         if(!$bg_mobile) $bg_mobile=$bg_desktop;
+        $logo_url=!empty($branding['logo_url'])?$branding['logo_url']:'';
 
         status_header(200); nocache_headers();
-        echo '<!doctype html><html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.esc_html($title).' – Aurora Fotoportal</title><style>
+        echo '<!doctype html><html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.esc_html($title).' – Aurora Fotoportal</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300&display=swap" rel="stylesheet"><style>
         *{box-sizing:border-box}
         html,body{margin:0;width:100%;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#03111d;color:#fff}
         body{min-height:100vh;background-image:linear-gradient(180deg,rgba(0,10,22,.12),rgba(0,10,22,.22)),url("'.esc_url($bg_desktop).'");background-position:center center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed}
         .aurora-auth-shell{width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:42px 20px}
         .aurora-auth-brand{text-align:center;margin:0 0 22px;text-shadow:0 4px 20px rgba(0,0,0,.5)}
+        .aurora-auth-logo{display:block;max-width:min(330px,74vw);max-height:126px;width:auto;height:auto;object-fit:contain;margin:0 auto 12px;filter:drop-shadow(0 5px 20px rgba(0,0,0,.28))}
         .aurora-auth-mark{font-size:54px;line-height:1;font-weight:200;letter-spacing:.12em;color:#fff;margin-bottom:4px}
         .aurora-auth-mark span{background:linear-gradient(90deg,#21e6b7,#38c6f4);-webkit-background-clip:text;background-clip:text;color:transparent}
-        .aurora-auth-brand h2{margin:0;font-size:38px;letter-spacing:.28em;font-weight:300;padding-left:.28em}
+        .aurora-auth-brand h2{margin:4px 0 0;font-family:"Montserrat",Arial,sans-serif;font-size:38px;line-height:1.15;letter-spacing:.30em;font-weight:300;padding-left:.30em;text-transform:uppercase}
         .aurora-auth-brand p{margin:8px 0 0;color:#4cf0d4;font-size:10px;font-weight:850;letter-spacing:.22em;text-transform:uppercase}
         .aurora-auth-product{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px auto 0;color:#4cf0d4;font-size:11px;letter-spacing:.30em;font-weight:850;text-transform:uppercase}
         .aurora-auth-product:before,.aurora-auth-product:after{content:"";display:block;width:62px;height:1px;background:#42e5d0}
@@ -296,7 +347,13 @@ class NLS1_Fotoportal_Frontend {
             .login-card h1{font-size:25px}
         }
         </style></head><body>';
-        echo '<main class="aurora-auth-shell"><header class="aurora-auth-brand"><div class="aurora-auth-mark"><span>∿</span></div><h2>AURORA</h2><p>Intelligent Business Platform</p><div class="aurora-auth-product">Fotoportal</div></header><section class="login-card"><div class="eyebrow">Aurora · Fotograf</div><h1>'.esc_html($title).'</h1>'.$content.'</section><div class="aurora-powered">Powered by<strong>9Ls1 Digital</strong></div></main>';
+        echo '<main class="aurora-auth-shell"><header class="aurora-auth-brand">';
+        if($logo_url){
+            echo '<img class="aurora-auth-logo" src="'.esc_url($logo_url).'" alt="Aurora">';
+        }else{
+            echo '<div class="aurora-auth-mark"><span>∿</span></div>';
+        }
+        echo '<h2>AURORA</h2><p>Intelligent Business Platform</p><div class="aurora-auth-product">Fotoportal</div></header><section class="login-card"><div class="eyebrow">Aurora · Fotograf</div><h1>'.esc_html($title).'</h1>'.$content.'</section><div class="aurora-powered">Powered by<strong>9Ls1 Digital</strong></div></main>';
         echo '</body></html>'; exit;
     }
 

@@ -450,3 +450,15 @@
 - Simplified contracts to one Aurora Digital Signering (ADS) workflow.
 - ADS now uses editable standard contract text and supports an optional uploaded attachment instead of a separate upload-only contract type.
 - Digital signing continues to update the contract to Signed automatically after the customer completes the signing page.
+
+
+## 0.7.1-dev.31-fix39 — Login brand lockup & customer glass refinement
+- Photographer auth now always renders the AURORA wordmark and “Intelligent Business Platform” line together with the platform Logo URL mark.
+- Platform Logo URL remains the authoritative logo asset; built-in mark is only a fallback when no Logo URL is configured.
+- Customer portal login card is more transparent with increased backdrop blur, allowing the configured photography background to remain visible behind the form.
+
+## 0.7.1-dev.31-fix40
+- Locked the AURORA photographer-auth wordmark to Montserrat Light (300).
+- Set the established Aurora wordmark tracking to 0.30em.
+- Added Montserrat 300 loading for the dedicated photographer authentication shell, with safe sans-serif fallback.
+- No authentication, routing, customer-login or branding-setting behavior changed from fix39.
