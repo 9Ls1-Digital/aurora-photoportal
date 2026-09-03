@@ -1,3 +1,13 @@
+## 0.7.1-dev.32-account2 - Consent-based support access
+- Added photographer-controlled support consent under Photographer Workspace -> Innstillinger.
+- Aurora Admin can open a photographer Workspace only when the photographer has explicitly enabled support access.
+- Support access uses a temporary 60-minute administrator session and never requires or exposes the photographer password.
+- Added a persistent Supportmodus banner with explicit exit action while Aurora Admin is inside the photographer Workspace.
+- Support context is tenant-locked to the approved photographer account and is automatically cleared when leaving the Workspace, when expired or when consent is revoked.
+- Added platform support audit logging for consent, session start/end, denied attempts and revocation.
+- Added support status, access action and recent support log to Aurora Admin photographer customer cards.
+- Account schema upgraded to 0.6.0 with support-consent fields and a dedicated support log table.
+
 ## 0.7.1-dev.32-account1 - Photographer account management foundation
 - Expanded Aurora photographer/studio accounts with organization number, phone, website, billing identity/address/email, internal admin notes and last-active timestamp.
 - Added searchable and filterable Aurora Admin photographer customer registry.

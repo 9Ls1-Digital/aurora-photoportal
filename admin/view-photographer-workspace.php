@@ -15,6 +15,7 @@ $workspace_platform_name = trim((string)($branding['platform_name'] ?? 'Aurora')
 $workspace_platform_name = preg_replace('/\s+(?:Photo\s*Portal|Fotoportal)$/iu', '', $workspace_platform_name);
 $workspace_platform_name = trim($workspace_platform_name) ?: 'Aurora';
 $workspace_product_name = $workspace_platform_name . ' Fotoportal';
+$support_mode = current_user_can('manage_options') && NLS1_Aurora_Account_Platform::support_context_account_id() === (int)$account->id;
 
 $view_titles = [
     'dashboard' => ['Dashboard', 'Oversikt over Fotoportal og det som trenger oppfølging.'],
@@ -100,6 +101,17 @@ $legacy_links = [
     <button type="button" class="aurora-mobile-menu-overlay" data-aurora-menu-close aria-label="Lukk meny"></button>
 
     <main class="aurora-workspace-main">
+        <?php if ($support_mode) : ?>
+        <div class="aurora-support-mode-banner">
+            <div><span class="dashicons dashicons-shield"></span><strong>Supportmodus</strong><span>Du ser nå Photographer Workspace for <?php echo esc_html($account->account_name); ?>. Tilgangen er midlertidig og logges.</span></div>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                <input type="hidden" name="action" value="aurora_end_support_session">
+                <input type="hidden" name="account_id" value="<?php echo (int)$account->id; ?>">
+                <?php wp_nonce_field('aurora_end_support_session'); ?>
+                <button type="submit">Avslutt supportmodus</button>
+            </form>
+        </div>
+        <?php endif; ?>
         <header class="aurora-workspace-topbar">
             <div class="aurora-workspace-mobilebrand">
                 <button type="button" class="aurora-mobile-menu-toggle" data-aurora-menu-open aria-label="Åpne meny" aria-expanded="false"><span class="dashicons dashicons-menu-alt"></span></button>
@@ -123,6 +135,11 @@ $legacy_links = [
         </header>
 
         <div class="aurora-workspace-content">
+            <?php if (($view ?? '') === 'settings' && ($_GET['message'] ?? '') === 'support_enabled') : ?>
+                <div class="aurora-workspace-alert is-success"><span class="dashicons dashicons-shield-alt"></span><div><strong>Supporttilgang er aktivert</strong><p>Aurora/9Ls1 Digital kan nå åpne Workspace i en tidsbegrenset, logget supportøkt uten passordet ditt.</p></div></div>
+            <?php elseif (($view ?? '') === 'settings' && ($_GET['message'] ?? '') === 'support_disabled') : ?>
+                <div class="aurora-workspace-alert"><span class="dashicons dashicons-lock"></span><div><strong>Supporttilgang er deaktivert</strong><p>Aurora Admin kan ikke åpne Workspace før du aktiverer tilgangen igjen.</p></div></div>
+            <?php endif; ?>
             <div class="aurora-workspace-titlebar">
                 <div><span class="aurora-workspace-eyebrow">AURORA FOTOPORTAL</span><h1><?php echo esc_html($title[0]); ?></h1><p><?php echo esc_html($title[1]); ?></p></div>
                 <?php if ($view === 'onboarding') : ?>
@@ -1200,6 +1217,32 @@ $legacy_links = [
 <hr><h3>E-postmal – Send URL til kunde</h3><label>E-postemne<input name="portal_email_subject" value="<?php echo esc_attr($ps['email_subject']); ?>"></label><label>E-posttekst<textarea name="portal_email_body" rows="8"><?php echo esc_textarea($ps['email_body']); ?></textarea></label><p><button class="aurora-primary-action" type="submit">Lagre profil</button></p></form></section>
 <?php else: ?>
 <section class="aurora-workspace-card aurora-profile-settings-summary aurora-settings-profile-card"><div class="aurora-workspace-cardhead"><div><span class="aurora-workspace-eyebrow">FOTOGRAFKONTO</span><h2><?php echo esc_html($ps['studio_name']?:$account->account_name);?></h2><p><?php echo esc_html($ps['photographer_name']);?><?php if($ps['email']):?> · <?php echo esc_html($ps['email']);?><?php endif;?></p></div><a class="aurora-secondary-action" href="<?php echo esc_url(NLS1_Photographer_Workspace::url('settings',['edit_profile'=>1]));?>"><span class="dashicons dashicons-edit"></span>Rediger profil, branding og e-post</a></div><div class="aurora-settings-profile-mini"><?php if($ps['logo_url']):?><img src="<?php echo esc_url($ps['logo_url']);?>" alt="Logo"><?php endif;?><?php if($ps['profile_image_url']):?><img src="<?php echo esc_url($ps['profile_image_url']);?>" alt="Profilbilde"><?php endif;?><span style="background:<?php echo esc_attr($ps['accent_color']);?>"></span><small>Logo · profilbilde · hero · kontaktinformasjon · profilfarge · e-postmaler</small></div></section>
+
+<?php if (current_user_can('aurora_fotoportal_photographer') && !$support_mode) : ?>
+<section class="aurora-workspace-card aurora-photographer-support-card">
+    <div class="aurora-workspace-cardhead">
+        <div>
+            <span class="aurora-workspace-eyebrow">SUPPORT OG PERSONVERN</span>
+            <h2>Supporttilgang til Aurora/9Ls1 Digital</h2>
+            <p>Du bestemmer selv om Aurora-support kan åpne din Photographer Workspace ved behov.</p>
+        </div>
+        <span class="aurora-support-state <?php echo !empty($account->support_access_enabled)?'is-on':'is-off'; ?>"><?php echo !empty($account->support_access_enabled)?'Aktiv':'Av'; ?></span>
+    </div>
+    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-support-consent-form">
+        <input type="hidden" name="action" value="aurora_toggle_support_access">
+        <?php wp_nonce_field('aurora_toggle_support_access'); ?>
+        <label class="aurora-support-switch">
+            <input type="checkbox" name="support_access_enabled" value="1" <?php checked(!empty($account->support_access_enabled)); ?>>
+            <span></span>
+            <div><strong>Tillat Aurora Administrator å åpne min Photographer Workspace</strong><small>Support bruker aldri passordet ditt. Tilgangen kan slås av når som helst, og alle supportøkter logges.</small></div>
+        </label>
+        <div class="aurora-support-consent-footer">
+            <?php if (!empty($account->support_access_granted_at)) : ?><small>Sist aktivert <?php echo esc_html(wp_date(get_option('date_format').' H:i', strtotime($account->support_access_granted_at))); ?></small><?php else : ?><small>Tilgangen er ikke aktivert.</small><?php endif; ?>
+            <button class="aurora-primary-action" type="submit">Lagre supporttilgang</button>
+        </div>
+    </form>
+</section>
+<?php endif; ?>
 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" enctype="multipart/form-data" class="aurora-watermark-page-form">
 <input type="hidden" name="action" value="9ls1_fotoportal_save_portal_settings"><?php wp_nonce_field('9ls1_fotoportal_save_portal_settings'); ?>
 <input type="hidden" name="studio_name" value="<?php echo esc_attr($ps['studio_name']); ?>"><input type="hidden" name="photographer_name" value="<?php echo esc_attr($ps['photographer_name']); ?>"><input type="hidden" name="portal_email" value="<?php echo esc_attr($ps['email']); ?>"><input type="hidden" name="portal_phone" value="<?php echo esc_attr($ps['phone']); ?>"><input type="hidden" name="portal_website" value="<?php echo esc_attr($ps['website']); ?>"><input type="hidden" name="portal_address" value="<?php echo esc_attr($ps['address']); ?>"><input type="hidden" name="portal_about" value="<?php echo esc_attr($ps['about']); ?>"><input type="hidden" name="accent_color" value="<?php echo esc_attr($ps['accent_color']); ?>"><input type="hidden" name="portal_email_subject" value="<?php echo esc_attr($ps['email_subject']); ?>"><input type="hidden" name="portal_email_body" value="<?php echo esc_attr($ps['email_body']); ?>">

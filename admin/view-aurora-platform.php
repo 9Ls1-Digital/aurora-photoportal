@@ -64,6 +64,9 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
     <?php if (isset($_GET['message']) && $_GET['message']==='license_saved') : ?><div class="notice notice-success"><p>Lisensinnstillinger er lagret.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message']==='trial_extended') : ?><div class="notice notice-success"><p>Demoperioden er forlenget.</p></div><?php endif; ?>
     <?php if (isset($_GET['message']) && $_GET['message']==='trial_expired') : ?><div class="notice notice-warning"><p>Demoperioden er markert som utløpt.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='support_not_allowed') : ?><div class="notice notice-error"><p>Supporttilgang er ikke aktivert av fotografen. Workspace ble ikke åpnet.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='support_ended') : ?><div class="notice notice-success"><p>Supportøkten er avsluttet.</p></div><?php endif; ?>
+    <?php if (isset($_GET['message']) && $_GET['message']==='support_revoked') : ?><div class="notice notice-success"><p>Supporttilgangen er deaktivert. Fotografen kan aktivere den igjen fra sin Workspace.</p></div><?php endif; ?>
 
     <?php if ($section === 'dashboard') : ?>
         <section class="aurora-platform-stats">
@@ -313,6 +316,60 @@ $aurora_products = NLS1_Aurora_Account_Platform::installed_aurora_products();
 
             <?php $owner_user = !empty($account->owner_user_id) ? get_user_by('id', (int)$account->owner_user_id) : false; $invite_sent_at = $owner_user ? get_user_meta($owner_user->ID, 'aurora_fotoportal_invitation_sent_at', true) : ''; ?>
             <div class="aurora-invitation-panel"><div><span class="aurora-kicker">INNLOGGING / INVITASJON</span><h3>Fotografens tilgang</h3><p><?php if ($owner_user) : ?>Bruker <strong><?php echo esc_html($owner_user->user_email); ?></strong> er koblet til kontoen. <?php if ($invite_sent_at) : ?>Sist sendt <?php echo esc_html(wp_date(get_option('date_format').' H:i', strtotime($invite_sent_at))); ?>.<?php endif; ?><?php else : ?>Ingen fotografbruker er koblet til kontoen ennå.<?php endif; ?></p></div><form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="aurora_resend_photographer_invitation"><input type="hidden" name="account_id" value="<?php echo esc_attr($account->id); ?>"><?php wp_nonce_field('aurora_resend_photographer_invitation'); ?><button class="button button-primary"><?php echo $invite_sent_at ? 'Send invitasjon på nytt' : 'Send invitasjon'; ?></button></form></div>
+
+            <?php
+                $support_enabled = !empty($account->support_access_enabled);
+                $support_logs = NLS1_Aurora_Account_Platform::get_support_logs((int)$account->id, 6);
+            ?>
+            <div class="aurora-support-panel <?php echo $support_enabled ? 'is-enabled' : 'is-disabled'; ?>">
+                <div class="aurora-support-panel-main">
+                    <span class="aurora-kicker">SIKKER SUPPORTTILGANG</span>
+                    <h3>Åpne fotografens Workspace</h3>
+                    <?php if ($support_enabled) : ?>
+                        <p>Fotografen har gitt Aurora/9Ls1 Digital supporttilgang. En supportøkt varer i <?php echo (int)NLS1_Aurora_Account_Platform::support_session_minutes(); ?> minutter og krever ikke fotografens passord.</p>
+                        <div class="aurora-support-consent"><span class="dashicons dashicons-yes-alt"></span><div><strong>Tilgang godkjent av fotografen</strong><small><?php echo !empty($account->support_access_granted_at) ? 'Aktivert '.esc_html(wp_date(get_option('date_format').' H:i', strtotime($account->support_access_granted_at))) : 'Aktiv'; ?></small></div></div>
+                    <?php else : ?>
+                        <p>Fotografen har ikke aktivert supporttilgang. Aurora Admin kan ikke åpne Workspace før fotografen selv godkjenner dette under Innstillinger.</p>
+                        <div class="aurora-support-consent is-off"><span class="dashicons dashicons-lock"></span><div><strong>Ingen supporttilgang</strong><small>Venter på fotografens samtykke</small></div></div>
+                    <?php endif; ?>
+                </div>
+                <div class="aurora-support-actions">
+                    <?php if ($support_enabled) : ?>
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                            <input type="hidden" name="action" value="aurora_start_support_session">
+                            <input type="hidden" name="account_id" value="<?php echo esc_attr($account->id); ?>">
+                            <?php wp_nonce_field('aurora_start_support_session'); ?>
+                            <button class="button button-primary"><span class="dashicons dashicons-visibility"></span> Åpne Workspace som support</button>
+                        </form>
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('Vil du deaktivere supporttilgang for denne fotografkontoen? Fotografen kan aktivere den igjen senere.');">
+                            <input type="hidden" name="action" value="aurora_revoke_support_access">
+                            <input type="hidden" name="account_id" value="<?php echo esc_attr($account->id); ?>">
+                            <?php wp_nonce_field('aurora_revoke_support_access'); ?>
+                            <button class="button">Deaktiver tilgang</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php if ($support_logs) : ?>
+            <details class="aurora-support-log">
+                <summary>Supportlogg</summary>
+                <div class="aurora-support-log-list">
+                    <?php foreach ($support_logs as $support_log) :
+                        $actor = get_user_by('id', (int)$support_log->actor_user_id);
+                        $labels = [
+                            'started'=>'Supportøkt startet',
+                            'ended'=>'Supportøkt avsluttet',
+                            'denied'=>'Forsøk avvist – tilgang ikke aktiv',
+                            'granted_by_photographer'=>'Tilgang aktivert av fotograf',
+                            'revoked_by_photographer'=>'Tilgang deaktivert av fotograf',
+                            'revoked_by_admin'=>'Tilgang deaktivert av Aurora Admin',
+                        ];
+                    ?>
+                    <div><span class="dashicons dashicons-clock"></span><div><strong><?php echo esc_html($labels[$support_log->action] ?? $support_log->action); ?></strong><small><?php echo esc_html($actor ? $actor->display_name : 'Bruker #'.(int)$support_log->actor_user_id); ?> · <?php echo esc_html(wp_date(get_option('date_format').' H:i', strtotime($support_log->created_at))); ?></small></div></div>
+                    <?php endforeach; ?>
+                </div>
+            </details>
+            <?php endif; ?>
 
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="aurora-account-modules-form">
                 <input type="hidden" name="action" value="aurora_save_account_modules"><input type="hidden" name="account_id" value="<?php echo esc_attr($account->id); ?>"><?php wp_nonce_field('aurora_save_account_modules'); ?>
