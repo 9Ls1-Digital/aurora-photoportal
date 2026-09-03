@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) exit;
  */
 class NLS1_Aurora_Account_Platform {
     const MENU_SLUG = 'nls1-plugin-center';
-    const SCHEMA_VERSION = '0.4.0';
+    const SCHEMA_VERSION = '0.5.0';
 
     private static $module_catalog = [
         // [Name, description, type, trial_default]
@@ -38,6 +38,7 @@ class NLS1_Aurora_Account_Platform {
 
         add_action('admin_post_aurora_create_photographer_account', [$this, 'handle_create_account']);
         add_action('admin_post_aurora_save_account_modules', [$this, 'handle_save_account_modules']);
+        add_action('admin_post_aurora_save_photographer_account', [$this, 'handle_save_photographer_account']);
         add_action('admin_post_aurora_save_platform_branding', [$this, 'handle_save_platform_branding']);
         add_action('admin_post_aurora_save_license', [$this, 'handle_save_license']);
         add_action('admin_post_aurora_extend_trial', [$this, 'handle_extend_trial']);
@@ -74,6 +75,17 @@ class NLS1_Aurora_Account_Platform {
             account_slug VARCHAR(190) NOT NULL,
             contact_name VARCHAR(190) DEFAULT '',
             contact_email VARCHAR(190) DEFAULT '',
+            contact_phone VARCHAR(80) DEFAULT '',
+            organization_number VARCHAR(80) DEFAULT '',
+            website_url VARCHAR(255) DEFAULT '',
+            billing_name VARCHAR(190) DEFAULT '',
+            billing_address VARCHAR(255) DEFAULT '',
+            billing_postcode VARCHAR(40) DEFAULT '',
+            billing_city VARCHAR(120) DEFAULT '',
+            billing_country VARCHAR(120) DEFAULT 'Norge',
+            billing_email VARCHAR(190) DEFAULT '',
+            internal_notes TEXT NULL,
+            last_active_at DATETIME NULL,
             status VARCHAR(50) DEFAULT 'active',
             plan_name VARCHAR(100) DEFAULT 'Development',
             onboarding_state VARCHAR(50) DEFAULT 'ready',
@@ -259,14 +271,54 @@ class NLS1_Aurora_Account_Platform {
         return add_query_arg(array_merge(['page' => $slug], $args), admin_url('admin.php'));
     }
 
-    public static function get_accounts() {
+    public static function get_accounts($filters = []) {
         global $wpdb;
-        return $wpdb->get_results("SELECT * FROM " . self::table('accounts') . " ORDER BY account_name ASC");
+        $table = self::table('accounts');
+        $where = ['1=1'];
+        $args = [];
+
+        $search = sanitize_text_field($filters['search'] ?? '');
+        if ($search !== '') {
+            $like = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = '(account_name LIKE %s OR contact_name LIKE %s OR contact_email LIKE %s OR contact_phone LIKE %s OR organization_number LIKE %s OR billing_email LIKE %s)';
+            array_push($args, $like, $like, $like, $like, $like, $like);
+        }
+
+        $status = sanitize_key($filters['status'] ?? '');
+        if ($status !== '' && in_array($status, ['trial','active','expired','suspended','cancelled','invalid'], true)) {
+            $where[] = 'status=%s';
+            $args[] = $status;
+        }
+
+        $sort = sanitize_key($filters['sort'] ?? 'name');
+        $order_map = [
+            'name' => 'account_name ASC',
+            'name_desc' => 'account_name DESC',
+            'newest' => 'created_at DESC',
+            'oldest' => 'created_at ASC',
+            'updated' => 'COALESCE(updated_at,created_at) DESC',
+            'last_active' => 'last_active_at DESC, account_name ASC',
+            'status' => 'status ASC, account_name ASC',
+        ];
+        $order = $order_map[$sort] ?? $order_map['name'];
+        $sql = "SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY $order";
+        if ($args) $sql = $wpdb->prepare($sql, $args);
+        return $wpdb->get_results($sql);
     }
 
     public static function get_account($id) {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare("SELECT * FROM " . self::table('accounts') . " WHERE id=%d", (int)$id));
+    }
+
+    public static function mark_account_active($account_id) {
+        global $wpdb;
+        $account_id = absint($account_id);
+        if (!$account_id) return;
+        $wpdb->update(self::table('accounts'), [
+            'last_active_at' => current_time('mysql'),
+            'updated_at' => current_time('mysql'),
+        ], ['id' => $account_id]);
     }
 
     public static function get_license($account_id) {
@@ -590,7 +642,16 @@ class NLS1_Aurora_Account_Platform {
         $name = sanitize_text_field($_POST['account_name'] ?? '');
         $contact = sanitize_text_field($_POST['contact_name'] ?? '');
         $email = sanitize_email($_POST['contact_email'] ?? '');
-        if (!$name) {
+        $phone = sanitize_text_field($_POST['contact_phone'] ?? '');
+        $org = sanitize_text_field($_POST['organization_number'] ?? '');
+        $website = esc_url_raw($_POST['website_url'] ?? '');
+        $billing_name = sanitize_text_field($_POST['billing_name'] ?? $name);
+        $billing_address = sanitize_text_field($_POST['billing_address'] ?? '');
+        $billing_postcode = sanitize_text_field($_POST['billing_postcode'] ?? '');
+        $billing_city = sanitize_text_field($_POST['billing_city'] ?? '');
+        $billing_country = sanitize_text_field($_POST['billing_country'] ?? 'Norge');
+        $billing_email = sanitize_email($_POST['billing_email'] ?? '');
+        if (!$name || !$email) {
             wp_safe_redirect(add_query_arg('message', 'account_missing', self::url('accounts')));
             exit;
         }
@@ -609,6 +670,15 @@ class NLS1_Aurora_Account_Platform {
             'account_slug' => $candidate,
             'contact_name' => $contact,
             'contact_email' => $email,
+            'contact_phone' => $phone,
+            'organization_number' => $org,
+            'website_url' => $website,
+            'billing_name' => $billing_name ?: $name,
+            'billing_address' => $billing_address,
+            'billing_postcode' => $billing_postcode,
+            'billing_city' => $billing_city,
+            'billing_country' => $billing_country ?: 'Norge',
+            'billing_email' => $billing_email ?: $email,
             'status' => 'trial',
             'plan_name' => 'Trial',
             'onboarding_state' => 'onboarding_pending',
@@ -648,6 +718,66 @@ class NLS1_Aurora_Account_Platform {
         }
 
         wp_safe_redirect(add_query_arg($args, self::url('accounts')));
+        exit;
+    }
+
+    public function handle_save_photographer_account() {
+        if (!current_user_can('manage_options')) wp_die('Ingen tilgang.');
+        check_admin_referer('aurora_save_photographer_account');
+
+        $account_id = absint($_POST['account_id'] ?? 0);
+        $account = self::get_account($account_id);
+        if (!$account) wp_die('Fotografkonto finnes ikke.');
+
+        $name = sanitize_text_field($_POST['account_name'] ?? '');
+        $email = sanitize_email($_POST['contact_email'] ?? '');
+        if ($name === '' || $email === '') wp_die('Studionavn og konto-/login-e-post må fylles ut.');
+
+        $status = sanitize_key($_POST['status'] ?? $account->status);
+        if (!in_array($status, ['trial','active','expired','suspended','cancelled','invalid'], true)) $status = $account->status;
+
+        if (!empty($account->owner_user_id)) {
+            $email_owner = email_exists($email);
+            if ($email_owner && (int)$email_owner !== (int)$account->owner_user_id) {
+                wp_safe_redirect(add_query_arg([
+                    'account_id' => $account_id,
+                    'message' => 'account_email_in_use',
+                ], self::url('accounts')));
+                exit;
+            }
+        }
+
+        global $wpdb;
+        $wpdb->update(self::table('accounts'), [
+            'account_name' => $name,
+            'contact_name' => sanitize_text_field($_POST['contact_name'] ?? ''),
+            'contact_email' => $email,
+            'contact_phone' => sanitize_text_field($_POST['contact_phone'] ?? ''),
+            'organization_number' => sanitize_text_field($_POST['organization_number'] ?? ''),
+            'website_url' => esc_url_raw($_POST['website_url'] ?? ''),
+            'billing_name' => sanitize_text_field($_POST['billing_name'] ?? ''),
+            'billing_address' => sanitize_text_field($_POST['billing_address'] ?? ''),
+            'billing_postcode' => sanitize_text_field($_POST['billing_postcode'] ?? ''),
+            'billing_city' => sanitize_text_field($_POST['billing_city'] ?? ''),
+            'billing_country' => sanitize_text_field($_POST['billing_country'] ?? ''),
+            'billing_email' => sanitize_email($_POST['billing_email'] ?? ''),
+            'internal_notes' => sanitize_textarea_field($_POST['internal_notes'] ?? ''),
+            'status' => $status,
+            'updated_at' => current_time('mysql'),
+        ], ['id' => $account_id]);
+
+        // Keep the photographer owner user's email synchronized when the platform owner changes the canonical login email.
+        if (!empty($account->owner_user_id)) {
+            $user = get_user_by('id', (int)$account->owner_user_id);
+            if ($user && strtolower($user->user_email) !== strtolower($email) && !email_exists($email)) {
+                wp_update_user(['ID' => $user->ID, 'user_email' => $email]);
+            }
+        }
+
+        wp_safe_redirect(add_query_arg([
+            'account_id' => $account_id,
+            'message' => 'account_saved',
+        ], self::url('accounts')));
         exit;
     }
 

@@ -403,7 +403,7 @@ class NLS1_Fotoportal_Frontend {
         if(!$account){status_header(404);echo '<h1>Fotografkonto finnes ikke</h1>';exit;}
         if(is_user_logged_in()){
             $current=wp_get_current_user();
-            if((int)get_user_meta($current->ID,'aurora_fotoportal_account_id',true)===$account_id && (in_array('aurora_photographer',(array)$current->roles,true)||$current->has_cap('aurora_fotoportal_photographer'))){wp_safe_redirect(NLS1_Photographer_Workspace::url('dashboard'));exit;}
+            if((int)get_user_meta($current->ID,'aurora_fotoportal_account_id',true)===$account_id && (in_array('aurora_photographer',(array)$current->roles,true)||$current->has_cap('aurora_fotoportal_photographer'))){NLS1_Aurora_Account_Platform::mark_account_active($account_id);wp_safe_redirect(NLS1_Photographer_Workspace::url('dashboard'));exit;}
             wp_logout();
         }
         $login=sanitize_text_field(wp_unslash($_REQUEST['login']??'')); $err='';
@@ -426,6 +426,7 @@ class NLS1_Fotoportal_Frontend {
                     ) {
                         $signed->set_role('aurora_photographer');
                     }
+                    NLS1_Aurora_Account_Platform::mark_account_active($account_id);
                     wp_safe_redirect(NLS1_Photographer_Workspace::url('dashboard'));exit;
                 }
             }

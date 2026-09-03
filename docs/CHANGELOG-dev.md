@@ -1,3 +1,13 @@
+## 0.7.1-dev.32-account1 - Photographer account management foundation
+- Expanded Aurora photographer/studio accounts with organization number, phone, website, billing identity/address/email, internal admin notes and last-active timestamp.
+- Added searchable and filterable Aurora Admin photographer customer registry.
+- Added sorting by name, creation date, update date, last activity and status.
+- Added a complete photographer/studio customer card with editable company, contact, billing and internal information.
+- Added account status editing in the customer card.
+- Photographer login now records last activity on the owning Aurora account.
+- Preserved Trial, invitation and module-management controls on the photographer account detail view.
+- Schema version advanced to 0.5.0 via dbDelta migration.
+
 ## 0.7.1-dev.31-fix20 – Blueprint Baseline
 - Added the first complete `docs/Aurora-Fotoportal-Blueprint.docx` baseline documentation.
 - Documents architecture, tenant model, roles, customer auth, project workflow, ADS contracts, galleries, Hero Designer, interactions, Bildevalg, notifications, delivery foundation, watermarking, dashboard, resources, branding, data model, technical debt and roadmap.
