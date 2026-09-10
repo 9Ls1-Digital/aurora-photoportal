@@ -1,3 +1,11 @@
+## 0.7.1-dev.36-auth-session-guard
+- Enables Aurora Auth workspace session guard for Fotoportal.
+- Uses an 8-hour sliding inactivity timeout for normal sessions.
+- Uses a 14-day sliding inactivity timeout when “Husk meg” is selected.
+- Enables safe wrong-context recovery between photographer and customer workspaces.
+- Leaves the verified dev.35 clean portal routes and login flow unchanged.
+- Adds ADR-050.
+
 ## 0.7.1-dev.32-account8-fix2 – Auth route hard fallback
 - `/fotograf/` and `/fotograf/kunde/` now dispatch directly from the request path and no longer depend on WordPress rewrite rules being refreshed.
 - Public auth routes explicitly suppress theme/WordPress 404 handling and render the Aurora auth surfaces immediately.

@@ -1,3 +1,11 @@
+## 0.7.1-dev.36-auth-session-guard
+- Enables Aurora Auth workspace session guard for Fotoportal.
+- Uses an 8-hour sliding inactivity timeout for normal sessions.
+- Uses a 14-day sliding inactivity timeout when “Husk meg” is selected.
+- Enables safe wrong-context recovery between photographer and customer workspaces.
+- Leaves the verified dev.35 clean portal routes and login flow unchanged.
+- Adds ADR-050.
+
 # v0.7.1-dev.35 — Customer workspace fatal fix
 
 - Fixes blank customer portal after login introduced in dev.34.

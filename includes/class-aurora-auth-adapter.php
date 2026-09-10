@@ -33,6 +33,11 @@ final class NLS1_Aurora_Fotoportal_Auth_Adapter {
                 'customer' => '/fotograf/kunde/portal/',
             ],
             'workspace_renderer' => [$this, 'render_workspace'],
+            // Aurora Auth v0.1.8-dev.3 session guard. Normal sessions expire after
+            // 8 hours of inactivity; "Husk meg" sessions after 14 days.
+            'session_timeout' => 8 * HOUR_IN_SECONDS,
+            'remember_session_timeout' => 14 * DAY_IN_SECONDS,
+            'redirect_wrong_context' => true,
             // Controlled takeover: Auth owns the registered public login entry routes.
             // If Aurora Auth is not active, Fotoportal's legacy handlers remain intact.
             'takeover_routes' => true,
