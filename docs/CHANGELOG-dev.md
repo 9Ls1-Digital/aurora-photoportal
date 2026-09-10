@@ -1,3 +1,28 @@
+# v0.7.1-dev.35 — Customer workspace fatal fix
+
+- Fixes blank customer portal after login introduced in dev.34.
+- Replaces an invalid `get_public_client_by_id()` call with the existing account-scoped client lookup.
+- Keeps `/fotograf/kunde/portal/` routing unchanged.
+- Does not modify photographer routing or the working Aurora Auth login flow.
+
+# v0.7.1-dev.34 — Customer frontend workspace routing
+
+- Adds authenticated customer workspace route `/fotograf/kunde/portal/`.
+- Keeps the proven customer login entry `/fotograf/kunde/` unchanged.
+- Removes `fotoportal_customer=1` and the portal token from the normal authenticated customer URL.
+- Reuses the existing customer portal renderer to minimize functional regression risk.
+- Existing token invitation/deep-link behavior remains available as a compatibility fallback.
+- Photographer workspace routing from dev.33 is unchanged.
+
+# v0.7.1-dev.33 — Photographer frontend workspace routing
+
+- Adds `/fotograf/portal/` as the authenticated Aurora Auth workspace route for photographers.
+- Preserves the existing `/fotograf/` login route and authentication mechanism unchanged.
+- Post-login redirect uses the frontend workspace only when the new Aurora Auth workspace API is available.
+- Retains the proven hidden wp-admin workspace as an administrator/support and compatibility fallback.
+- Removes `account_id` from photographer-facing workspace URLs; account identity comes from the authenticated user/context.
+- Existing workspace UI and admin-post actions are reused to minimize regression risk.
+
 ## 0.7.1-dev.32-auth-context2 - Photographer logout redirect fix
 - Fixed photographer logout being intercepted by the legacy Fotoportal customer `logout_redirect` filter.
 - Explicit Aurora Auth logout destinations for both `/fotograf/` and `/fotograf/kunde/` now take precedence over legacy customer-meta fallback.

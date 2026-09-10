@@ -845,7 +845,22 @@ class NLS1_Fotoportal_Admin {
     public static function photographer_portal_defaults(){return ['studio_name'=>'','photographer_name'=>'','email'=>'','phone'=>'','website'=>'','address'=>'','about'=>'','logo_url'=>'','profile_image_url'=>'','cover_image_url'=>'','watermark_url'=>'','watermark_position'=>'bottom_right','watermark_opacity'=>35,'watermark_size'=>18,'accent_color'=>'#6f4bf2','show_filenames'=>1,'delivery_terms_version'=>'1.0','delivery_terms_text'=>"Ved nedlasting bekrefter kunden at bildene brukes i samsvar med avtalen med fotografen. Opphavsretten til bildene tilhører fotografen med mindre annet er skriftlig avtalt. Kunden kan ikke videreselge, overdra eller bruke bildene utover avtalt bruksrett.",'email_subject'=>'Dine bilder er klare – {project_name}','email_body'=>"Hei {customer_name},\n\nBildene dine er nå tilgjengelige i kundeportalen.\n\nÅpne kundeportalen her:\n{customer_portal_url}\n\nMed vennlig hilsen\n{photographer_name}"];}
     public static function photographer_portal_settings($account_id=0){$account_id=$account_id?:self::tenant_account_id();$x=get_option('9ls1_fotoportal_portal_settings_'.(int)$account_id,[]);return array_merge(self::photographer_portal_defaults(),is_array($x)?$x:[]);}
     public static function ensure_client_portal_token($client_id){global $wpdb;$c=self::get_client($client_id);if(!$c)return '';if($c->portal_token)return $c->portal_token;$t=wp_generate_password(40,false,false);$wpdb->update(self::table('clients'),['portal_token'=>$t],['id'=>(int)$client_id,'account_id'=>self::tenant_account_id()]);return $t;}
-    public static function customer_portal_url($client_id){$t=self::ensure_client_portal_token($client_id);return $t?add_query_arg(['fotoportal_customer'=>1,'token'=>rawurlencode($t)],home_url('/')):'';}
+    public static function customer_portal_url($client_id){
+        $client_id=absint($client_id);
+        if($client_id && is_user_logged_in() && function_exists('aurora_auth_workspace_url')){
+            $user_id=get_current_user_id();
+            $account_id=(int)get_user_meta($user_id,'aurora_fotoportal_account_id',true);
+            $mapped_client_id=(int)get_user_meta($user_id,'aurora_fotoportal_client_id',true);
+            if($account_id && $mapped_client_id===$client_id){
+                $client=self::get_public_client_by_id_account($client_id,$account_id);
+                if($client && self::client_user_authorized($client)){
+                    return aurora_auth_workspace_url('fotoportal','customer');
+                }
+            }
+        }
+        $t=self::ensure_client_portal_token($client_id);
+        return $t?add_query_arg(['fotoportal_customer'=>1,'token'=>rawurlencode($t)],home_url('/')):'';
+    }
     public static function get_public_client_by_token($t){global $wpdb;$t=sanitize_text_field($t);return $t?$wpdb->get_row($wpdb->prepare("SELECT * FROM ".self::table('clients')." WHERE portal_token=%s LIMIT 1",$t)):null;}
     public static function get_public_client_by_id_account($id,$account_id){global $wpdb;return $wpdb->get_row($wpdb->prepare("SELECT * FROM ".self::table('clients')." WHERE id=%d AND account_id=%d LIMIT 1",(int)$id,(int)$account_id));}
     public static function public_project_portal_ready($project_id,$account_id){global $wpdb;$p=$wpdb->get_row($wpdb->prepare("SELECT payment_status FROM ".self::table('projects')." WHERE id=%d AND account_id=%d LIMIT 1",(int)$project_id,(int)$account_id));if(!$p||($p->payment_status??'unpaid')!=='paid')return false;$n=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM ".self::table('contracts')." WHERE project_id=%d AND account_id=%d AND status='signed'",(int)$project_id,(int)$account_id));return $n>0;}

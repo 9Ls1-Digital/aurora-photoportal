@@ -3,7 +3,8 @@ if (!defined('ABSPATH')) exit;
 
 class NLS1_Fotoportal_Frontend {
 
-    public function __construct() {
+    public function __construct($register_hooks = true) {
+        if (!$register_hooks) return;
         add_action('init', [$this, 'add_rewrite']);
         add_filter('query_vars', [$this, 'query_vars']);
         // Hard fallback for the public auth entry points. Pretty routes must work
@@ -678,6 +679,24 @@ class NLS1_Fotoportal_Frontend {
         if(!$p||($p->delivery_status??'')!=='released')wp_send_json_error(['message'=>'Leveransen er ikke frigitt'],400);
         $wpdb->update(NLS1_Fotoportal_Admin::table('projects'),['delivery_terms_accepted_at'=>current_time('mysql'),'delivery_terms_accepted_user'=>(int)get_current_user_id(),'delivery_terms_accepted_ip'=>sanitize_text_field($_SERVER['REMOTE_ADDR']??'')],['id'=>$project_id,'account_id'=>$account_id]);
         wp_send_json_success(['accepted'=>true]);
+    }
+
+    /**
+     * Render the existing customer portal from an authenticated Aurora Auth
+     * workspace without exposing the portal token in the browser address bar.
+     */
+    public function render_authenticated_customer_portal($client) {
+        if (!$client || empty($client->portal_token)) {
+            status_header(404);
+            echo '<h1>Portalen ble ikke funnet</h1>';
+            exit;
+        }
+
+        set_query_var('fotoportal_customer', 1);
+        $_GET['token'] = (string)$client->portal_token;
+        $_REQUEST['token'] = (string)$client->portal_token;
+        $this->set_customer_auth_context($client);
+        $this->render_customer_portal();
     }
 
     public function render_customer_portal(){if(!get_query_var('fotoportal_customer'))return;$c=NLS1_Fotoportal_Admin::get_public_client_by_token(sanitize_text_field($_GET['token']??''));status_header($c?200:404);nocache_headers();if(!$c){echo '<h1>Portalen ble ikke funnet</h1>';exit;}if(class_exists('NLS1_Aurora_Account_Platform')&&!NLS1_Aurora_Account_Platform::is_module_enabled((int)$c->account_id,'customer_portal')){status_header(403);echo '<h1>Kundeportal er ikke aktivert</h1><p>Fotografen har ikke aktivert Kundeportal for denne kontoen.</p>';exit;}$this->set_customer_auth_context($c);$return_url=home_url(add_query_arg([],$_SERVER['REQUEST_URI']??'/'));if(!is_user_logged_in()||!NLS1_Fotoportal_Admin::client_user_authorized($c)){$this->render_customer_login_gate($c,$return_url);}$s=NLS1_Fotoportal_Admin::photographer_portal_settings($c->account_id);$gs=NLS1_Fotoportal_Admin::get_public_client_projects_and_galleries($c);$studio=$s['studio_name']?:($s['photographer_name']?:get_bloginfo('name'));$a=sanitize_hex_color($s['accent_color'])?:'#6f4bf2';echo '<!doctype html><html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.esc_html($studio).' – Kundeportal</title><style>:root{--a:'.$a.'}'.$this->brand_css().'.shell{max-width:1240px;margin:auto;padding:34px 20px 55px}.welcome h1{font-size:34px;margin:0 0 8px}.welcome p{color:#817889}.project{margin:30px 0}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{background:#fff;border:1px solid #e9e4ed;border-radius:14px;overflow:hidden;text-decoration:none;color:inherit}.cover{aspect-ratio:16/10;background:#e9e6ec}.cover img{width:100%;height:100%;object-fit:cover}.cb{padding:15px}.cb strong{display:block}.cb p{color:#817889}.open{color:var(--a);font-weight:700}.final-delivery{background:#fff;border:1px solid #e9e4ed;border-radius:16px;padding:24px;margin:26px 0}.final-delivery-head{display:flex;justify-content:space-between;gap:18px;align-items:center}.final-delivery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.final-delivery-image{border:1px solid #eee7f0;border-radius:12px;overflow:hidden}.final-delivery-image img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}.final-delivery-image div{padding:10px}.download-btn{display:inline-block;background:var(--a);color:#fff!important;text-decoration:none;padding:10px 15px;border-radius:9px;font-weight:700}.final-delivery.is-locked a[download]{display:none!important}.delivery-terms{border:1px solid #e9e4ed;background:#faf9fb;border-radius:12px;padding:18px;margin-bottom:20px}.edited-badge{display:inline-block;background:#eaf8f0;color:#157849;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}.final-delivery-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.cards,.final-delivery-grid{grid-template-columns:1fr}.final-delivery-head{display:block}}</style></head><body>';$this->brand_head($s,$studio,NLS1_Fotoportal_Admin::customer_portal_url((int)$c->id),$c);$chs=NLS1_Fotoportal_Admin::public_customer_hero_settings($c);$chi=[];foreach($gs as $xx)foreach($xx['galleries'] as $gg){$gi=NLS1_Fotoportal_Admin::get_public_gallery_images($gg);$chi=array_merge($chi,$gi);}$hero=NLS1_Fotoportal_Admin::hero_image_url($chs,$chi,$s['cover_image_url']??'');echo '<section class="photo-hero size-'.esc_attr($chs['size']).' '.($hero?'':'no-image').'"'.($hero?' style="background-image:url('.esc_url($hero).');background-position:'.(int)$chs['focal_x'].'% '.(int)$chs['focal_y'].'%"':'').'><span class="photo-hero-overlay" style="background:'.esc_attr($chs['overlay_color']).';opacity:'.esc_attr($chs['overlay_opacity']/100).'"></span><div class="photo-hero-content"><div class="hero-kicker">'.esc_html($studio).'</div><h1>'.esc_html($c->client_name).'</h1><p>Velkommen til din bildeportal</p></div></section><main class="shell">'; $pc=NLS1_Fotoportal_Admin::get_primary_contact((int)$c->id); $all_signed=true;$all_paid=true;$has_gallery=false; foreach($gs as $sx){$st=NLS1_Fotoportal_Admin::public_project_delivery_state((int)$sx['project']->project_id,(int)$c->account_id);if(empty($st['contract_signed']))$all_signed=false;if(empty($st['paid']))$all_paid=false;if(!empty($st['gallery']))$has_gallery=true;} $account_view=sanitize_key($_GET['account_view']??'');

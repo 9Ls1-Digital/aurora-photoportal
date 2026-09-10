@@ -21,7 +21,8 @@ class NLS1_Photographer_Workspace {
         'shop' => ['Nettbutikk', 'dashicons-cart'],
     ];
 
-    public function __construct() {
+    public function __construct($register_hooks = true) {
+        if (!$register_hooks) return;
         add_action('admin_menu', [$this, 'register_hidden_page'], 2);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('current_screen', [$this, 'prepare_workspace_screen']);
@@ -55,7 +56,28 @@ class NLS1_Photographer_Workspace {
         wp_enqueue_style('9ls1-fotoportal-admin', NLS1_FOTOPORTAL_PLUGIN_URL . 'assets/css/admin.css', [], NLS1_FOTOPORTAL_VERSION);
     }
 
+    /**
+     * Canonical workspace URL. Photographer users use the authenticated
+     * frontend route; WordPress administrators retain the legacy hidden admin
+     * workspace for support/fallback. No account_id is exposed to photographers.
+     */
     public static function url($view = 'dashboard', $args = []) {
+        $view = sanitize_key($view ?: 'dashboard');
+
+        if (!current_user_can('manage_options') && function_exists('aurora_auth_workspace_url')) {
+            unset($args['account_id'], $args['page'], $args['workspace_view']);
+            if ($view !== 'dashboard') $args = array_merge(['workspace_view' => $view], $args);
+            return aurora_auth_workspace_url('fotoportal', 'photographer', $args);
+        }
+
+        return self::admin_url($view, $args);
+    }
+
+    /**
+     * Proven wp-admin workspace URL retained as a hard fallback and for
+     * authorized Aurora/WordPress support administrators.
+     */
+    public static function admin_url($view = 'dashboard', $args = []) {
         if (empty($args['account_id'])) {
             $account_id = 0;
             $uid = get_current_user_id();
@@ -159,6 +181,51 @@ class NLS1_Photographer_Workspace {
 
         wp_safe_redirect(self::url('settings', ['message'=>$enabled?'support_enabled':'support_disabled']));
         exit;
+    }
+
+    /**
+     * Frontend shell used only after Aurora Auth has authenticated and
+     * authorized the photographer context.
+     */
+    public function render_frontend($identity = []) {
+        if (!is_user_logged_in() || !current_user_can('aurora_fotoportal_photographer')) wp_die('Ingen tilgang.');
+
+        $account_id = absint($identity['account_id'] ?? 0);
+        if (!$account_id) $account_id = (int)get_user_meta(get_current_user_id(), 'aurora_fotoportal_account_id', true);
+        $account = $account_id ? NLS1_Aurora_Account_Platform::get_account($account_id) : null;
+        if (!$account) wp_die('Ingen fotografkonto er konfigurert.');
+
+        $enabled = NLS1_Aurora_Account_Platform::get_account_modules($account->id);
+        $view = sanitize_key($_GET['workspace_view'] ?? 'dashboard');
+        if (($account->onboarding_state ?? '') !== 'completed') $view = 'onboarding';
+
+        $allowed = ['dashboard', 'onboarding', 'new', 'settings', 'resources'];
+        if (!empty($enabled['favorites_comments'])) $allowed[] = 'selections';
+        foreach ($this->module_pages as $key => $meta) {
+            if (!empty($enabled[$key])) $allowed[] = $key;
+        }
+        if (!in_array($view, $allowed, true)) $view = 'dashboard';
+        $menu = $this->module_pages;
+
+        wp_enqueue_style('dashicons');
+        wp_enqueue_style('9ls1-fotoportal-admin', NLS1_FOTOPORTAL_PLUGIN_URL . 'assets/css/admin.css', [], NLS1_FOTOPORTAL_VERSION);
+
+        status_header(200);
+        nocache_headers();
+        ?><!doctype html>
+        <html <?php language_attributes(); ?>>
+        <head>
+            <meta charset="<?php bloginfo('charset'); ?>">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title><?php echo esc_html('Aurora Fotoportal'); ?></title>
+            <?php wp_head(); ?>
+            <style>html{margin-top:0!important}body.aurora-photographer-frontend{margin:0;background:#f7f6fa}</style>
+        </head>
+        <body <?php body_class('aurora-photographer-frontend'); ?>>
+        <?php wp_body_open(); ?>
+        <?php include NLS1_FOTOPORTAL_PLUGIN_DIR . 'admin/view-photographer-workspace.php'; ?>
+        <?php wp_footer(); ?>
+        </body></html><?php
     }
 
     public function render() {

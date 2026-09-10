@@ -26,6 +26,13 @@ final class NLS1_Aurora_Fotoportal_Auth_Adapter {
                 'photographer' => '/fotograf/',
                 'customer' => '/fotograf/kunde/',
             ],
+            // Frontend workspace is opt-in. Customer delivery remains on its
+            // existing portal route in this checkpoint.
+            'workspace_routes' => [
+                'photographer' => '/fotograf/portal/',
+                'customer' => '/fotograf/kunde/portal/',
+            ],
+            'workspace_renderer' => [$this, 'render_workspace'],
             // Controlled takeover: Auth owns the registered public login entry routes.
             // If Aurora Auth is not active, Fotoportal's legacy handlers remain intact.
             'takeover_routes' => true,
@@ -99,19 +106,64 @@ final class NLS1_Aurora_Fotoportal_Auth_Adapter {
         if ($context === 'photographer') {
             $account_id = absint($identity['account_id'] ?? 0);
             if ($account_id) NLS1_Aurora_Account_Platform::mark_account_active($account_id);
-            return NLS1_Photographer_Workspace::url('dashboard', ['account_id' => $account_id]);
+            if (function_exists('aurora_auth_workspace_url')) {
+                return aurora_auth_workspace_url(self::APP_ID, 'photographer');
+            }
+            // Hard fallback preserves the proven wp-admin workspace when Auth
+            // is older/unavailable; login itself is deliberately untouched.
+            return NLS1_Photographer_Workspace::admin_url('dashboard', ['account_id' => $account_id]);
         }
 
         if ($context === 'customer') {
             $client_id = absint($identity['subject_id'] ?? 0);
             $account_id = absint($identity['account_id'] ?? 0);
             $client = ($client_id && $account_id) ? NLS1_Fotoportal_Admin::get_public_client_by_id_account($client_id, $account_id) : null;
+            if ($client && function_exists('aurora_auth_workspace_url')) {
+                return aurora_auth_workspace_url(self::APP_ID, 'customer');
+            }
+            // Compatibility fallback for older Aurora Auth installations.
             if ($client && !empty($client->portal_token)) {
                 return add_query_arg(['fotoportal_customer' => 1, 'token' => rawurlencode((string)$client->portal_token)], home_url('/'));
             }
         }
 
         return home_url('/');
+    }
+
+
+    /**
+     * Render the photographer workspace on Aurora Auth's authenticated
+     * frontend route. Auth has already resolved identity and authorization.
+     */
+    public function render_workspace($user, $context, $identity, $match = []) {
+        if ($context === 'photographer') {
+            $workspace = new NLS1_Photographer_Workspace(false);
+            $workspace->render_frontend($identity);
+            return;
+        }
+
+        if ($context === 'customer') {
+            $client_id = absint($identity['subject_id'] ?? 0);
+            $account_id = absint($identity['account_id'] ?? 0);
+            $client = ($client_id && $account_id)
+                ? NLS1_Fotoportal_Admin::get_public_client_by_id_account($client_id, $account_id)
+                : null;
+
+            if (!$client || !NLS1_Fotoportal_Admin::client_user_authorized($client)) {
+                wp_safe_redirect(home_url('/fotograf/kunde/'));
+                exit;
+            }
+
+            // Reuse the proven customer portal renderer. The token is supplied
+            // internally for backwards compatibility and is never exposed in
+            // the authenticated workspace URL.
+            $frontend = new NLS1_Fotoportal_Frontend(false);
+            $frontend->render_authenticated_customer_portal($client);
+            return;
+        }
+
+        wp_safe_redirect(home_url('/'));
+        exit;
     }
 
     public function logout_redirect($context) {
