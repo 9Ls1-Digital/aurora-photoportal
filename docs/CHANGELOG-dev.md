@@ -1,3 +1,90 @@
+## 0.7.1-dev.32-auth-context2 - Photographer logout redirect fix
+- Fixed photographer logout being intercepted by the legacy Fotoportal customer `logout_redirect` filter.
+- Explicit Aurora Auth logout destinations for both `/fotograf/` and `/fotograf/kunde/` now take precedence over legacy customer-meta fallback.
+- No changes to login routing, branding, session isolation or customer portal authorization.
+
+## 0.7.1-dev.32-auth-context1 - Context branding and logout
+- Restores context-specific photographer/customer backgrounds in the shared Aurora Auth shell from persisted Fotoportal platform settings.
+- Adds an explicit `Logg ut` action to Photographer Workspace.
+- Photographer logout returns to `/fotograf/`.
+- Customer logout returns to `/fotograf/kunde/` instead of the legacy token login gate.
+- Legacy token portal URLs remain authenticated portal destinations/fallbacks, not canonical login entries.
+- Uses Aurora Auth context-aware logout API when available and preserves Fotoportal fallback behavior.
+- Adds ADR-047 and updates Blueprint.
+
+## 0.7.1-dev.32-auth-branding1 – Aurora Auth branding adapter
+- Supplies Fotoportal photographer/customer login backgrounds to Aurora Auth through the product branding callback.
+- Reuses the existing Aurora Admin platform-branding options; no image or branding settings are duplicated in Auth.
+- Preserves separate desktop/mobile backgrounds and the existing customer fallback hierarchy.
+- Uses the shared Auth glass-card presentation while Auth remains owner of `/fotograf/` and `/fotograf/kunde/`.
+- Keeps Fotoportal legacy auth handlers as rollback fallback if Aurora Auth is unavailable.
+- Adds ADR-046 and updates the Blueprint.
+
+## 0.7.1-dev.32-auth-adapter1 – Aurora Auth adapter checkpoint
+- Registers Aurora Fotoportal as app `fotoportal` in Aurora Auth when the capsule is active.
+- Declares photographer and customer contexts with canonical `/fotograf/` and `/fotograf/kunde/` routes.
+- Adds Fotoportal identity resolver, authorization and post-login redirect contracts for the shared Auth Capsule.
+- Canonical login URL helpers now use Aurora Auth when available and fall back to the existing Fotoportal routes when Auth is absent.
+- Keeps `takeover_routes` disabled for this checkpoint, so current Fotoportal login rendering and authentication remain unchanged while the integration is verified.
+- Adds ADR-044 and updates Blueprint.
+
+## 0.7.1-dev.32-account7
+- Active Bildevalg ignores deleted/withdrawn requests and fixes counters.
+- Sticky Videre behandling panel and filename visibility setting.
+- Delivery terms acceptance gate before HQ/original downloads.
+- Per-delivery usage rights: free under terms or licensed.
+- Customer comment box close button and delivery acceptance audit fields.
+
+## 0.7.1-dev.32-account6
+- Fixed Digital delivery readiness so active customer edit requests block release until a finished edited replacement is uploaded.
+- Added clear green/red delivery readiness cards and server-side release enforcement.
+- Added per-image customer/photographer comment threads with author labels and timestamps.
+- Customers can delete their own comments; photographers can delete their own replies. Deleted comments disappear for both sides.
+- Separated normal comments from edit requests with an explicit customer checkbox.
+- Renamed the customer submit action to “Send valg til fotograf”.
+- Added direct project/Bildevalg/Digital levering navigation from gallery and image workflows.
+- Added schema fields for comment author, edit-request flag and soft deletion.
+
+## 0.7.1-dev.32-account4 - Trial modules and photographer subscription overview
+- Renamed Favoritter & kommentarer to Bildevalg with the subtitle Favoritter, kommentarer og redigeringsønsker.
+- Renamed HQ-levering to Digital levering with a customer-facing description for secure high-resolution delivery.
+- Standard Trial includes every production-ready Fotoportal add-on: Premium Proof / PDF, Kundeportal, Bildevalg and Digital levering.
+- Nettbutikk and Customer App / PWA remain outside Standard Trial until production-ready.
+- Added Photographer Workspace -> Innstillinger -> Abonnement og moduler overview for core, active, inactive and future modules.
+- Existing authoritative module gating remains unchanged: Aurora Admin controls actual entitlement per account.
+- Account schema upgraded to 0.8.0.
+
+## 0.7.1-dev.32-account3 - Authoritative module gating
+- Aurora Admin module settings are now the source of truth for photographer-account feature access.
+- Core Fotoportal modules remain permanently enabled.
+- Disabled add-ons are removed from Photographer Workspace navigation and blocked at server-side action endpoints.
+- Kundeportal access, customer-login creation and portal e-mail actions are blocked when the Kundeportal add-on is disabled.
+- Favoritter & kommentarer now controls Bildevalg, gallery interaction controls, selection submission/status and related notifications.
+- Premium Proof / PDF generation and PDF actions are blocked when the add-on is disabled.
+- HQ-levering controls the Leveranser workspace, delivery dashboard shortcuts and payment/delivery action.
+- Direct URL/action attempts against disabled add-ons return a 403 module-not-enabled response instead of bypassing the UI.
+- Schema upgraded to 0.7.0. Module migrations now preserve explicit add-on choices and never re-enable an add-on merely because a schema upgrade runs.
+
+## 0.7.1-dev.32-account2 - Consent-based support access
+- Added photographer-controlled support consent under Photographer Workspace -> Innstillinger.
+- Aurora Admin can open a photographer Workspace only when the photographer has explicitly enabled support access.
+- Support access uses a temporary 60-minute administrator session and never requires or exposes the photographer password.
+- Added a persistent Supportmodus banner with explicit exit action while Aurora Admin is inside the photographer Workspace.
+- Support context is tenant-locked to the approved photographer account and is automatically cleared when leaving the Workspace, when expired or when consent is revoked.
+- Added platform support audit logging for consent, session start/end, denied attempts and revocation.
+- Added support status, access action and recent support log to Aurora Admin photographer customer cards.
+- Account schema upgraded to 0.6.0 with support-consent fields and a dedicated support log table.
+
+## 0.7.1-dev.32-account1 - Photographer account management foundation
+- Expanded Aurora photographer/studio accounts with organization number, phone, website, billing identity/address/email, internal admin notes and last-active timestamp.
+- Added searchable and filterable Aurora Admin photographer customer registry.
+- Added sorting by name, creation date, update date, last activity and status.
+- Added a complete photographer/studio customer card with editable company, contact, billing and internal information.
+- Added account status editing in the customer card.
+- Photographer login now records last activity on the owning Aurora account.
+- Preserved Trial, invitation and module-management controls on the photographer account detail view.
+- Schema version advanced to 0.5.0 via dbDelta migration.
+
 ## 0.7.1-dev.31-fix20 – Blueprint Baseline
 - Added the first complete `docs/Aurora-Fotoportal-Blueprint.docx` baseline documentation.
 - Documents architecture, tenant model, roles, customer auth, project workflow, ADS contracts, galleries, Hero Designer, interactions, Bildevalg, notifications, delivery foundation, watermarking, dashboard, resources, branding, data model, technical debt and roadmap.
@@ -462,3 +549,36 @@
 - Set the established Aurora wordmark tracking to 0.30em.
 - Added Montserrat 300 loading for the dedicated photographer authentication shell, with safe sans-serif fallback.
 - No authentication, routing, customer-login or branding-setting behavior changed from fix39.
+
+## 0.7.1-dev.32-account5
+- Full Bildevalg → redigering → Digital levering workflow.
+- Hide gallery interaction counters when Bildevalg is disabled.
+- Added edited replacement upload per requested image.
+- Added delivery modes: all finished images or customer-selected images.
+- Open edit requests block final delivery release.
+- Added explicit release to customer and generated delivery ZIP archives.
+- Customer portal shows final delivery, selected download and edited-request section after release.
+
+## 0.7.1-dev.32-account8 — Photographer login persistence & permanent URLs
+- Restored Aurora Photographer Login as the mandatory authentication route for Photographer Workspace.
+- Direct/logged-out Workspace requests are rerouted away from WordPress wp-login.php and into Aurora Photographer Login.
+- Added a global Aurora photographer login fallback that resolves the correct photographer account after successful authentication.
+- Workspace URLs now carry account_id when available so bookmarked links retain tenant context after logout.
+- Added a permanent, account-specific photographer/studio login URL to Aurora Admin → Fotografkontoer, with copy/open controls.
+- Documented the invariant that Aurora Photographer authentication must never regress to WordPress wp-login during future releases.
+
+## 0.7.1-dev.32-account8-fix1 – 2026-09-09
+- Added permanent public Fotoportal routes `/fotograf/` and `/fotograf/kunde/`, generated from the current WordPress installation URL.
+- Photographer account login URLs now use `/fotograf/?account_id=...` instead of query-only root URLs.
+- Added universal customer login that resolves the authenticated customer and redirects to the correct photographer/customer portal.
+- Replaced the ambiguous photographer-list `Åpne` action with `Kundekort`; public login remains a separate `Login URL` action.
+- Added the common customer-login URL to each photographer account card with copy action.
+- Added one-time rewrite refresh on route version changes so plugin updates keep public login routes active without manual permalink saving.
+- Preserved consent-based Workspace support access as the only Aurora Admin route into a photographer Workspace.
+- Added ADR-042 documenting public auth-route invariants and future Aurora Auth Capsule extraction.
+
+## 0.7.1-dev.32-auth-takeover1
+- Transfers `/fotograf/` and `/fotograf/kunde/` route ownership to Aurora Auth when the Auth Capsule is active.
+- Keeps Fotoportal legacy route handlers in place as rollback/fallback.
+- Fotoportal remains authority for tenant/client identity and authorization callbacks.
+- Adds ADR-045 documenting controlled takeover and acceptance criteria.

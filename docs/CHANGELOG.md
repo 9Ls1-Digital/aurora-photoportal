@@ -1,3 +1,59 @@
+## 0.7.1-dev.32-account8-fix2 – Auth route hard fallback
+- `/fotograf/` and `/fotograf/kunde/` now dispatch directly from the request path and no longer depend on WordPress rewrite rules being refreshed.
+- Public auth routes explicitly suppress theme/WordPress 404 handling and render the Aurora auth surfaces immediately.
+- Photographer registry no longer exposes a second admin/open action button. The studio name itself opens the internal kundekort; the only action button is the secure `Login URL`.
+- Route generation remains dynamic from the current WordPress `home_url()`.
+
+## 0.7.1-dev.32-account6
+- Fixed Digital delivery readiness so active customer edit requests block release until a finished edited replacement is uploaded.
+- Added clear green/red delivery readiness cards and server-side release enforcement.
+- Added per-image customer/photographer comment threads with author labels and timestamps.
+- Customers can delete their own comments; photographers can delete their own replies. Deleted comments disappear for both sides.
+- Separated normal comments from edit requests with an explicit customer checkbox.
+- Renamed the customer submit action to “Send valg til fotograf”.
+- Added direct project/Bildevalg/Digital levering navigation from gallery and image workflows.
+- Added schema fields for comment author, edit-request flag and soft deletion.
+
+## 0.7.1-dev.32-account4 - Trial modules and photographer subscription overview
+- Renamed Favoritter & kommentarer to Bildevalg with the subtitle Favoritter, kommentarer og redigeringsønsker.
+- Renamed HQ-levering to Digital levering with a customer-facing description for secure high-resolution delivery.
+- Standard Trial includes every production-ready Fotoportal add-on: Premium Proof / PDF, Kundeportal, Bildevalg and Digital levering.
+- Nettbutikk and Customer App / PWA remain outside Standard Trial until production-ready.
+- Added Photographer Workspace -> Innstillinger -> Abonnement og moduler overview for core, active, inactive and future modules.
+- Existing authoritative module gating remains unchanged: Aurora Admin controls actual entitlement per account.
+- Account schema upgraded to 0.8.0.
+
+## 0.7.1-dev.32-account3 - Authoritative module gating
+- Aurora Admin module settings are now the source of truth for photographer-account feature access.
+- Core Fotoportal modules remain permanently enabled.
+- Disabled add-ons are removed from Photographer Workspace navigation and blocked at server-side action endpoints.
+- Kundeportal access, customer-login creation and portal e-mail actions are blocked when the Kundeportal add-on is disabled.
+- Favoritter & kommentarer now controls Bildevalg, gallery interaction controls, selection submission/status and related notifications.
+- Premium Proof / PDF generation and PDF actions are blocked when the add-on is disabled.
+- HQ-levering controls the Leveranser workspace, delivery dashboard shortcuts and payment/delivery action.
+- Direct URL/action attempts against disabled add-ons return a 403 module-not-enabled response instead of bypassing the UI.
+- Schema upgraded to 0.7.0. Module migrations now preserve explicit add-on choices and never re-enable an add-on merely because a schema upgrade runs.
+
+## 0.7.1-dev.32-account2 - Consent-based support access
+- Added photographer-controlled support consent under Photographer Workspace -> Innstillinger.
+- Aurora Admin can open a photographer Workspace only when the photographer has explicitly enabled support access.
+- Support access uses a temporary 60-minute administrator session and never requires or exposes the photographer password.
+- Added a persistent Supportmodus banner with explicit exit action while Aurora Admin is inside the photographer Workspace.
+- Support context is tenant-locked to the approved photographer account and is automatically cleared when leaving the Workspace, when expired or when consent is revoked.
+- Added platform support audit logging for consent, session start/end, denied attempts and revocation.
+- Added support status, access action and recent support log to Aurora Admin photographer customer cards.
+- Account schema upgraded to 0.6.0 with support-consent fields and a dedicated support log table.
+
+## 0.7.1-dev.32-account1 - Photographer account management foundation
+- Expanded Aurora photographer/studio accounts with organization number, phone, website, billing identity/address/email, internal admin notes and last-active timestamp.
+- Added searchable and filterable Aurora Admin photographer customer registry.
+- Added sorting by name, creation date, update date, last activity and status.
+- Added a complete photographer/studio customer card with editable company, contact, billing and internal information.
+- Added account status editing in the customer card.
+- Photographer login now records last activity on the owning Aurora account.
+- Preserved Trial, invitation and module-management controls on the photographer account detail view.
+- Schema version advanced to 0.5.0 via dbDelta migration.
+
 # Changelog
 
 ## 0.7.1-dev.31-fix38 - Central login branding and customer login backgrounds
@@ -188,3 +244,12 @@
 - Explicitly establishes current user/auth cookie after successful customer login.
 - Redirects successful login to the canonical customer portal URL.
 - Removes the blank/intermediate customer-login state seen after authentication.
+
+## 0.7.1-dev.32-account8-fix1 – Public Fotoportal auth routes
+- Stable `/fotograf/` photographer login route.
+- Stable `/fotograf/kunde/` universal customer login route.
+- Admin photographer registry separates public login from internal customer-card management.
+- Route definitions are installation-relative and ready for future extraction into Aurora Auth Capsule.
+
+## Auth takeover checkpoint
+- Aurora Auth can now own Fotoportal's two public authentication entry routes while Fotoportal retains fallback handlers.

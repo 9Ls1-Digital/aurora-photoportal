@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) exit;
  */
 class NLS1_Aurora_Account_Platform {
     const MENU_SLUG = 'nls1-plugin-center';
-    const SCHEMA_VERSION = '0.4.0';
+    const SCHEMA_VERSION = '0.8.0';
 
     private static $module_catalog = [
         // [Name, description, type, trial_default]
@@ -21,8 +21,8 @@ class NLS1_Aurora_Account_Platform {
 
         'premium_proof' => ['Premium Proof / PDF', 'Kontaktark og branded proof-PDF', 'addon', true],
         'customer_portal' => ['Kundeportal', 'Kundens innloggede arbeidsflate', 'addon', true],
-        'favorites_comments' => ['Favoritter & kommentarer', 'Kundevalg og tilbakemeldinger', 'addon', true],
-        'hq_delivery' => ['HQ-levering', 'Kontrollert levering og nedlasting', 'addon', true],
+        'favorites_comments' => ['Bildevalg', 'Favoritter, kommentarer og redigeringsønsker', 'addon', true],
+        'hq_delivery' => ['Digital levering', 'Sikker levering av ferdige høyoppløselige bilder', 'addon', true],
 
         // Future add-ons: visible in the catalogue, but not enabled by default in Trial yet.
         'shop' => ['Nettbutikk', 'Produkter, print og ordre', 'addon', false],
@@ -31,6 +31,7 @@ class NLS1_Aurora_Account_Platform {
 
     public function __construct() {
         add_action('admin_init', [__CLASS__, 'maybe_install']);
+        add_action('admin_init', [$this, 'maybe_close_support_outside_workspace'], 2);
         add_action('admin_init', [__CLASS__, 'maybe_install_tenant'], 11);
         add_action('admin_menu', [$this, 'register_menu'], 1);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
@@ -38,11 +39,32 @@ class NLS1_Aurora_Account_Platform {
 
         add_action('admin_post_aurora_create_photographer_account', [$this, 'handle_create_account']);
         add_action('admin_post_aurora_save_account_modules', [$this, 'handle_save_account_modules']);
+        add_action('admin_post_aurora_save_photographer_account', [$this, 'handle_save_photographer_account']);
         add_action('admin_post_aurora_save_platform_branding', [$this, 'handle_save_platform_branding']);
         add_action('admin_post_aurora_save_license', [$this, 'handle_save_license']);
         add_action('admin_post_aurora_extend_trial', [$this, 'handle_extend_trial']);
         add_action('admin_post_aurora_expire_trial', [$this, 'handle_expire_trial']);
         add_action('admin_post_aurora_resend_photographer_invitation', [$this, 'handle_resend_photographer_invitation']);
+        add_action('admin_post_aurora_start_support_session', [$this, 'handle_start_support_session']);
+        add_action('admin_post_aurora_end_support_session', [$this, 'handle_end_support_session']);
+        add_action('admin_post_aurora_revoke_support_access', [$this, 'handle_revoke_support_access']);
+    }
+
+
+    public function maybe_close_support_outside_workspace() {
+        if (!current_user_can('manage_options')) return;
+        $account_id = (int)get_user_meta(get_current_user_id(), 'aurora_support_account_id', true);
+        if (!$account_id) return;
+
+        $page = sanitize_key($_GET['page'] ?? '');
+        $action = sanitize_key($_REQUEST['action'] ?? '');
+        $is_workspace = ($page === NLS1_Photographer_Workspace::PAGE_SLUG);
+        $is_workspace_post = ($GLOBALS['pagenow'] ?? '') === 'admin-post.php'
+            && ($action === 'aurora_end_support_session' || strpos($action, '9ls1_fotoportal_') === 0);
+
+        if (!$is_workspace && !$is_workspace_post) {
+            self::clear_support_session(get_current_user_id(), true);
+        }
     }
 
     public static function maybe_install_tenant() {
@@ -74,6 +96,20 @@ class NLS1_Aurora_Account_Platform {
             account_slug VARCHAR(190) NOT NULL,
             contact_name VARCHAR(190) DEFAULT '',
             contact_email VARCHAR(190) DEFAULT '',
+            contact_phone VARCHAR(80) DEFAULT '',
+            organization_number VARCHAR(80) DEFAULT '',
+            website_url VARCHAR(255) DEFAULT '',
+            billing_name VARCHAR(190) DEFAULT '',
+            billing_address VARCHAR(255) DEFAULT '',
+            billing_postcode VARCHAR(40) DEFAULT '',
+            billing_city VARCHAR(120) DEFAULT '',
+            billing_country VARCHAR(120) DEFAULT 'Norge',
+            billing_email VARCHAR(190) DEFAULT '',
+            internal_notes TEXT NULL,
+            support_access_enabled TINYINT(1) DEFAULT 0,
+            support_access_granted_at DATETIME NULL,
+            support_access_granted_by BIGINT UNSIGNED DEFAULT 0,
+            last_active_at DATETIME NULL,
             status VARCHAR(50) DEFAULT 'active',
             plan_name VARCHAR(100) DEFAULT 'Development',
             onboarding_state VARCHAR(50) DEFAULT 'ready',
@@ -118,6 +154,20 @@ class NLS1_Aurora_Account_Platform {
             KEY status (status)
         ) $charset;");
 
+        $support_logs = self::table('support_logs');
+        dbDelta("CREATE TABLE $support_logs (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            account_id BIGINT UNSIGNED NOT NULL,
+            actor_user_id BIGINT UNSIGNED NOT NULL,
+            action VARCHAR(50) NOT NULL,
+            session_expires_at DATETIME NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY (id),
+            KEY account_id (account_id),
+            KEY actor_user_id (actor_user_id),
+            KEY created_at (created_at)
+        ) $charset;");
+
         // Seed the current installation as the first photographer account.
         $count = (int)$wpdb->get_var("SELECT COUNT(*) FROM $accounts");
         if ($count === 0) {
@@ -150,28 +200,35 @@ class NLS1_Aurora_Account_Platform {
             ]);
         }
 
-        // v0.4.0 policy migration:
-        // - Core Fotoportal functions are always included/enabled.
-        // - Existing Trial accounts receive the standard Trial add-on set.
+        // Module policy migration:
+        // - Core Fotoportal functions are always enabled.
+        // - Existing explicit add-on choices are never overwritten by a schema upgrade.
+        // - Missing add-on rows on Trial accounts receive the standard Trial defaults once.
         $existing_accounts = $wpdb->get_results("SELECT id,status,plan_name FROM $accounts");
         foreach ($existing_accounts as $existing_account) {
             foreach (self::$module_catalog as $key => $meta) {
-                $must_enable = self::is_core_module($key);
-                if (
-                    !$must_enable
-                    && ($existing_account->status === 'trial' || $existing_account->plan_name === 'Trial')
-                    && !empty($meta[3])
-                ) {
-                    $must_enable = true;
-                }
-                if ($must_enable) {
+                $existing_enabled = $wpdb->get_var($wpdb->prepare(
+                    "SELECT enabled FROM $account_modules WHERE account_id=%d AND module_key=%s LIMIT 1",
+                    (int)$existing_account->id,
+                    $key
+                ));
+                if (self::is_core_module($key)) {
                     $wpdb->replace($account_modules, [
                         'account_id' => (int)$existing_account->id,
                         'module_key' => $key,
                         'enabled' => 1,
                         'updated_at' => current_time('mysql'),
                     ]);
+                    continue;
                 }
+                if ($existing_enabled !== null) continue;
+                $trial_default = ($existing_account->status === 'trial' || $existing_account->plan_name === 'Trial') && !empty($meta[3]);
+                $wpdb->insert($account_modules, [
+                    'account_id' => (int)$existing_account->id,
+                    'module_key' => $key,
+                    'enabled' => $trial_default ? 1 : 0,
+                    'updated_at' => current_time('mysql'),
+                ]);
             }
         }
 
@@ -259,14 +316,124 @@ class NLS1_Aurora_Account_Platform {
         return add_query_arg(array_merge(['page' => $slug], $args), admin_url('admin.php'));
     }
 
-    public static function get_accounts() {
+    public static function photographer_login_url($account_or_id = 0, $args = []) {
+        $account_id = is_object($account_or_id) ? (int)($account_or_id->id ?? 0) : (int)$account_or_id;
+        $base = [];
+        if ($account_id > 0) $base['account_id'] = $account_id;
+        $args = array_merge($base, $args);
+        if (function_exists('aurora_auth_app') && aurora_auth_app('fotoportal') && function_exists('aurora_auth_login_url')) {
+            return aurora_auth_login_url('fotoportal', 'photographer', $args);
+        }
+        return add_query_arg($args, home_url('/fotograf/'));
+    }
+
+    public static function customer_login_url($args = []) {
+        if (function_exists('aurora_auth_app') && aurora_auth_app('fotoportal') && function_exists('aurora_auth_login_url')) {
+            return aurora_auth_login_url('fotoportal', 'customer', $args);
+        }
+        return add_query_arg($args, home_url('/fotograf/kunde/'));
+    }
+
+    public static function get_accounts($filters = []) {
         global $wpdb;
-        return $wpdb->get_results("SELECT * FROM " . self::table('accounts') . " ORDER BY account_name ASC");
+        $table = self::table('accounts');
+        $where = ['1=1'];
+        $args = [];
+
+        $search = sanitize_text_field($filters['search'] ?? '');
+        if ($search !== '') {
+            $like = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = '(account_name LIKE %s OR contact_name LIKE %s OR contact_email LIKE %s OR contact_phone LIKE %s OR organization_number LIKE %s OR billing_email LIKE %s)';
+            array_push($args, $like, $like, $like, $like, $like, $like);
+        }
+
+        $status = sanitize_key($filters['status'] ?? '');
+        if ($status !== '' && in_array($status, ['trial','active','expired','suspended','cancelled','invalid'], true)) {
+            $where[] = 'status=%s';
+            $args[] = $status;
+        }
+
+        $sort = sanitize_key($filters['sort'] ?? 'name');
+        $order_map = [
+            'name' => 'account_name ASC',
+            'name_desc' => 'account_name DESC',
+            'newest' => 'created_at DESC',
+            'oldest' => 'created_at ASC',
+            'updated' => 'COALESCE(updated_at,created_at) DESC',
+            'last_active' => 'last_active_at DESC, account_name ASC',
+            'status' => 'status ASC, account_name ASC',
+        ];
+        $order = $order_map[$sort] ?? $order_map['name'];
+        $sql = "SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY $order";
+        if ($args) $sql = $wpdb->prepare($sql, $args);
+        return $wpdb->get_results($sql);
     }
 
     public static function get_account($id) {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare("SELECT * FROM " . self::table('accounts') . " WHERE id=%d", (int)$id));
+    }
+
+    public static function mark_account_active($account_id) {
+        global $wpdb;
+        $account_id = absint($account_id);
+        if (!$account_id) return;
+        $wpdb->update(self::table('accounts'), [
+            'last_active_at' => current_time('mysql'),
+            'updated_at' => current_time('mysql'),
+        ], ['id' => $account_id]);
+    }
+
+
+    public static function support_session_minutes() {
+        return 60;
+    }
+
+    public static function support_access_enabled($account_id) {
+        $account = self::get_account((int)$account_id);
+        return $account && !empty($account->support_access_enabled);
+    }
+
+    public static function support_context_account_id($user_id = 0) {
+        $user_id = $user_id ?: get_current_user_id();
+        if (!$user_id || !user_can($user_id, 'manage_options')) return 0;
+
+        $account_id = (int)get_user_meta($user_id, 'aurora_support_account_id', true);
+        $expires = (int)get_user_meta($user_id, 'aurora_support_expires', true);
+        if (!$account_id || !$expires || $expires <= time() || !self::support_access_enabled($account_id)) {
+            self::clear_support_session($user_id, false);
+            return 0;
+        }
+        return $account_id;
+    }
+
+    public static function clear_support_session($user_id = 0, $log = true) {
+        $user_id = $user_id ?: get_current_user_id();
+        if (!$user_id) return;
+        $account_id = (int)get_user_meta($user_id, 'aurora_support_account_id', true);
+        if ($log && $account_id) self::log_support_event($account_id, $user_id, 'ended', null);
+        delete_user_meta($user_id, 'aurora_support_account_id');
+        delete_user_meta($user_id, 'aurora_support_expires');
+    }
+
+    public static function log_support_event($account_id, $admin_user_id, $action, $expires_at = null) {
+        global $wpdb;
+        $wpdb->insert(self::table('support_logs'), [
+            'account_id' => (int)$account_id,
+            'actor_user_id' => (int)$admin_user_id,
+            'action' => sanitize_key($action),
+            'session_expires_at' => $expires_at,
+            'created_at' => current_time('mysql'),
+        ]);
+    }
+
+    public static function get_support_logs($account_id, $limit = 10) {
+        global $wpdb;
+        $limit = max(1, min(50, (int)$limit));
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM " . self::table('support_logs') . " WHERE account_id=%d ORDER BY created_at DESC LIMIT %d",
+            (int)$account_id, $limit
+        ));
     }
 
     public static function get_license($account_id) {
@@ -276,9 +443,18 @@ class NLS1_Aurora_Account_Platform {
 
     public static function get_account_modules($account_id) {
         global $wpdb;
-        $rows = $wpdb->get_results($wpdb->prepare("SELECT module_key,enabled FROM " . self::table('account_modules') . " WHERE account_id=%d", (int)$account_id));
+        $account_id = (int)$account_id;
+        $rows = $wpdb->get_results($wpdb->prepare("SELECT module_key,enabled FROM " . self::table('account_modules') . " WHERE account_id=%d", $account_id));
         $result = [];
-        foreach ($rows as $row) $result[$row->module_key] = (bool)$row->enabled;
+        // The catalogue is the source of truth: every known key has an explicit state.
+        foreach (self::$module_catalog as $key => $meta) {
+            $result[$key] = self::is_core_module($key); // core is always available
+        }
+        foreach ($rows as $row) {
+            $key = sanitize_key($row->module_key);
+            if (!isset(self::$module_catalog[$key])) continue;
+            $result[$key] = self::is_core_module($key) ? true : (bool)$row->enabled;
+        }
         return $result;
     }
 
@@ -328,8 +504,18 @@ class NLS1_Aurora_Account_Platform {
     }
 
     public static function is_module_enabled($account_id, $module_key) {
+        $module_key = sanitize_key($module_key);
+        if (!isset(self::$module_catalog[$module_key])) return false;
+        if (self::is_core_module($module_key)) return true;
         $modules = self::get_account_modules((int)$account_id);
-        return !empty($modules[sanitize_key($module_key)]);
+        return !empty($modules[$module_key]);
+    }
+
+    public static function require_module($account_id, $module_key, $message = '') {
+        if (self::is_module_enabled((int)$account_id, $module_key)) return true;
+        $meta = self::$module_catalog[sanitize_key($module_key)] ?? ['Denne funksjonen'];
+        $label = $meta[0] ?? 'Denne funksjonen';
+        wp_die($message ?: ($label . ' er ikke aktivert for denne fotografkontoen.'), 'Modul ikke aktivert', ['response'=>403]);
     }
 
     /**
@@ -519,11 +705,7 @@ class NLS1_Aurora_Account_Platform {
         }
 
         $workspace = NLS1_Photographer_Workspace::url('dashboard');
-        $photographer_login = add_query_arg([
-            'aurora_photographer_login' => 1,
-            'account_id' => (int)$account_id,
-            'login' => $email,
-        ], home_url('/'));
+        $photographer_login = self::photographer_login_url((int)$account_id, ['login'=>$email]);
 
         // Photographer invitations use Aurora's own authentication surface.
         // WordPress still validates the reset key and owns the password hash,
@@ -590,7 +772,16 @@ class NLS1_Aurora_Account_Platform {
         $name = sanitize_text_field($_POST['account_name'] ?? '');
         $contact = sanitize_text_field($_POST['contact_name'] ?? '');
         $email = sanitize_email($_POST['contact_email'] ?? '');
-        if (!$name) {
+        $phone = sanitize_text_field($_POST['contact_phone'] ?? '');
+        $org = sanitize_text_field($_POST['organization_number'] ?? '');
+        $website = esc_url_raw($_POST['website_url'] ?? '');
+        $billing_name = sanitize_text_field($_POST['billing_name'] ?? $name);
+        $billing_address = sanitize_text_field($_POST['billing_address'] ?? '');
+        $billing_postcode = sanitize_text_field($_POST['billing_postcode'] ?? '');
+        $billing_city = sanitize_text_field($_POST['billing_city'] ?? '');
+        $billing_country = sanitize_text_field($_POST['billing_country'] ?? 'Norge');
+        $billing_email = sanitize_email($_POST['billing_email'] ?? '');
+        if (!$name || !$email) {
             wp_safe_redirect(add_query_arg('message', 'account_missing', self::url('accounts')));
             exit;
         }
@@ -609,6 +800,15 @@ class NLS1_Aurora_Account_Platform {
             'account_slug' => $candidate,
             'contact_name' => $contact,
             'contact_email' => $email,
+            'contact_phone' => $phone,
+            'organization_number' => $org,
+            'website_url' => $website,
+            'billing_name' => $billing_name ?: $name,
+            'billing_address' => $billing_address,
+            'billing_postcode' => $billing_postcode,
+            'billing_city' => $billing_city,
+            'billing_country' => $billing_country ?: 'Norge',
+            'billing_email' => $billing_email ?: $email,
             'status' => 'trial',
             'plan_name' => 'Trial',
             'onboarding_state' => 'onboarding_pending',
@@ -648,6 +848,66 @@ class NLS1_Aurora_Account_Platform {
         }
 
         wp_safe_redirect(add_query_arg($args, self::url('accounts')));
+        exit;
+    }
+
+    public function handle_save_photographer_account() {
+        if (!current_user_can('manage_options')) wp_die('Ingen tilgang.');
+        check_admin_referer('aurora_save_photographer_account');
+
+        $account_id = absint($_POST['account_id'] ?? 0);
+        $account = self::get_account($account_id);
+        if (!$account) wp_die('Fotografkonto finnes ikke.');
+
+        $name = sanitize_text_field($_POST['account_name'] ?? '');
+        $email = sanitize_email($_POST['contact_email'] ?? '');
+        if ($name === '' || $email === '') wp_die('Studionavn og konto-/login-e-post må fylles ut.');
+
+        $status = sanitize_key($_POST['status'] ?? $account->status);
+        if (!in_array($status, ['trial','active','expired','suspended','cancelled','invalid'], true)) $status = $account->status;
+
+        if (!empty($account->owner_user_id)) {
+            $email_owner = email_exists($email);
+            if ($email_owner && (int)$email_owner !== (int)$account->owner_user_id) {
+                wp_safe_redirect(add_query_arg([
+                    'account_id' => $account_id,
+                    'message' => 'account_email_in_use',
+                ], self::url('accounts')));
+                exit;
+            }
+        }
+
+        global $wpdb;
+        $wpdb->update(self::table('accounts'), [
+            'account_name' => $name,
+            'contact_name' => sanitize_text_field($_POST['contact_name'] ?? ''),
+            'contact_email' => $email,
+            'contact_phone' => sanitize_text_field($_POST['contact_phone'] ?? ''),
+            'organization_number' => sanitize_text_field($_POST['organization_number'] ?? ''),
+            'website_url' => esc_url_raw($_POST['website_url'] ?? ''),
+            'billing_name' => sanitize_text_field($_POST['billing_name'] ?? ''),
+            'billing_address' => sanitize_text_field($_POST['billing_address'] ?? ''),
+            'billing_postcode' => sanitize_text_field($_POST['billing_postcode'] ?? ''),
+            'billing_city' => sanitize_text_field($_POST['billing_city'] ?? ''),
+            'billing_country' => sanitize_text_field($_POST['billing_country'] ?? ''),
+            'billing_email' => sanitize_email($_POST['billing_email'] ?? ''),
+            'internal_notes' => sanitize_textarea_field($_POST['internal_notes'] ?? ''),
+            'status' => $status,
+            'updated_at' => current_time('mysql'),
+        ], ['id' => $account_id]);
+
+        // Keep the photographer owner user's email synchronized when the platform owner changes the canonical login email.
+        if (!empty($account->owner_user_id)) {
+            $user = get_user_by('id', (int)$account->owner_user_id);
+            if ($user && strtolower($user->user_email) !== strtolower($email) && !email_exists($email)) {
+                wp_update_user(['ID' => $user->ID, 'user_email' => $email]);
+            }
+        }
+
+        wp_safe_redirect(add_query_arg([
+            'account_id' => $account_id,
+            'message' => 'account_saved',
+        ], self::url('accounts')));
         exit;
     }
 
@@ -737,6 +997,60 @@ class NLS1_Aurora_Account_Platform {
         ], ['account_id'=>$account_id]);
 
         wp_safe_redirect(add_query_arg(['account_id'=>$account_id,'message'=>'trial_expired'], self::url('accounts')));
+        exit;
+    }
+
+
+    public function handle_start_support_session() {
+        if (!current_user_can('manage_options')) wp_die('Ingen tilgang.');
+        check_admin_referer('aurora_start_support_session');
+
+        $account_id = absint($_POST['account_id'] ?? 0);
+        $account = self::get_account($account_id);
+        if (!$account) wp_die('Fotografkonto finnes ikke.');
+        if (empty($account->support_access_enabled)) {
+            self::log_support_event($account_id, get_current_user_id(), 'denied', null);
+            wp_safe_redirect(add_query_arg(['account_id'=>$account_id,'message'=>'support_not_allowed'], self::url('accounts')));
+            exit;
+        }
+
+        $expires_ts = time() + (self::support_session_minutes() * MINUTE_IN_SECONDS);
+        $expires_mysql = wp_date('Y-m-d H:i:s', current_time('timestamp') + (self::support_session_minutes() * MINUTE_IN_SECONDS));
+        update_user_meta(get_current_user_id(), 'aurora_support_account_id', $account_id);
+        update_user_meta(get_current_user_id(), 'aurora_support_expires', $expires_ts);
+        self::log_support_event($account_id, get_current_user_id(), 'started', $expires_mysql);
+
+        wp_safe_redirect(NLS1_Photographer_Workspace::url('dashboard', ['support_mode'=>1]));
+        exit;
+    }
+
+    public function handle_end_support_session() {
+        if (!current_user_can('manage_options')) wp_die('Ingen tilgang.');
+        check_admin_referer('aurora_end_support_session');
+        self::clear_support_session(get_current_user_id(), true);
+        $account_id = absint($_POST['account_id'] ?? 0);
+        wp_safe_redirect($account_id ? add_query_arg(['account_id'=>$account_id,'message'=>'support_ended'], self::url('accounts')) : self::url('accounts'));
+        exit;
+    }
+
+    public function handle_revoke_support_access() {
+        if (!current_user_can('manage_options')) wp_die('Ingen tilgang.');
+        check_admin_referer('aurora_revoke_support_access');
+        $account_id = absint($_POST['account_id'] ?? 0);
+        $account = self::get_account($account_id);
+        if (!$account) wp_die('Fotografkonto finnes ikke.');
+
+        global $wpdb;
+        $wpdb->update(self::table('accounts'), [
+            'support_access_enabled' => 0,
+            'updated_at' => current_time('mysql'),
+        ], ['id'=>$account_id]);
+        self::log_support_event($account_id, get_current_user_id(), 'revoked_by_admin', null);
+
+        if (self::support_context_account_id(get_current_user_id()) === $account_id) {
+            self::clear_support_session(get_current_user_id(), false);
+        }
+        wp_safe_redirect(add_query_arg(['account_id'=>$account_id,'message'=>'support_revoked'], self::url('accounts')));
         exit;
     }
 
