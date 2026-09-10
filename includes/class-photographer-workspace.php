@@ -26,6 +26,7 @@ class NLS1_Photographer_Workspace {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('current_screen', [$this, 'prepare_workspace_screen']);
         add_action('admin_post_aurora_save_photographer_onboarding', [$this, 'save_onboarding']);
+        add_action('admin_post_aurora_toggle_support_access', [$this, 'handle_toggle_support_access']);
     }
 
     public function prepare_workspace_screen($screen) {
@@ -55,6 +56,17 @@ class NLS1_Photographer_Workspace {
     }
 
     public static function url($view = 'dashboard', $args = []) {
+        if (empty($args['account_id'])) {
+            $account_id = 0;
+            $uid = get_current_user_id();
+            if ($uid) {
+                if (current_user_can('manage_options') && class_exists('NLS1_Aurora_Account_Platform')) {
+                    $account_id = (int)NLS1_Aurora_Account_Platform::support_context_account_id($uid);
+                }
+                if (!$account_id) $account_id = (int)get_user_meta($uid, 'aurora_fotoportal_account_id', true);
+            }
+            if ($account_id) $args['account_id'] = $account_id;
+        }
         return add_query_arg(array_merge([
             'page' => self::PAGE_SLUG,
             'workspace_view' => sanitize_key($view),
@@ -119,10 +131,41 @@ class NLS1_Photographer_Workspace {
         exit;
     }
 
+
+    public function handle_toggle_support_access() {
+        if (!current_user_can('aurora_fotoportal_photographer')) wp_die('Ingen tilgang.');
+        check_admin_referer('aurora_toggle_support_access');
+
+        $user_id = get_current_user_id();
+        $account_id = (int)get_user_meta($user_id, 'aurora_fotoportal_account_id', true);
+        $account = $account_id ? NLS1_Aurora_Account_Platform::get_account($account_id) : null;
+        if (!$account || (int)$account->owner_user_id !== $user_id) wp_die('Fotografkonto kunne ikke bekreftes.');
+
+        $enabled = !empty($_POST['support_access_enabled']) ? 1 : 0;
+        global $wpdb;
+        $wpdb->update(NLS1_Aurora_Account_Platform::table('accounts'), [
+            'support_access_enabled' => $enabled,
+            'support_access_granted_at' => $enabled ? current_time('mysql') : null,
+            'support_access_granted_by' => $enabled ? $user_id : 0,
+            'updated_at' => current_time('mysql'),
+        ], ['id'=>$account_id]);
+
+        NLS1_Aurora_Account_Platform::log_support_event(
+            $account_id,
+            $user_id,
+            $enabled ? 'granted_by_photographer' : 'revoked_by_photographer',
+            null
+        );
+
+        wp_safe_redirect(self::url('settings', ['message'=>$enabled?'support_enabled':'support_disabled']));
+        exit;
+    }
+
     public function render() {
         if (!current_user_can('manage_options') && !current_user_can('aurora_fotoportal_photographer')) wp_die('Ingen tilgang.');
 
-        $account_id=(int)get_user_meta(get_current_user_id(),'aurora_fotoportal_account_id',true);
+        $support_account_id = current_user_can('manage_options') ? NLS1_Aurora_Account_Platform::support_context_account_id() : 0;
+        $account_id = $support_account_id ?: (int)get_user_meta(get_current_user_id(),'aurora_fotoportal_account_id',true);
         $account=$account_id ? NLS1_Aurora_Account_Platform::get_account($account_id) : NLS1_Aurora_Account_Platform::default_account();
         if (!$account) wp_die('Ingen fotografkonto er konfigurert.');
 
@@ -130,7 +173,8 @@ class NLS1_Photographer_Workspace {
         $view = sanitize_key($_GET['workspace_view'] ?? 'dashboard');
         if (!current_user_can('manage_options') && ($account->onboarding_state ?? '') !== 'completed') $view='onboarding';
 
-        $allowed = ['dashboard', 'onboarding', 'new', 'settings', 'resources', 'hq_delivery', 'selections'];
+        $allowed = ['dashboard', 'onboarding', 'new', 'settings', 'resources'];
+        if (!empty($enabled['favorites_comments'])) $allowed[] = 'selections';
         foreach ($this->module_pages as $key => $meta) {
             if (!empty($enabled[$key])) $allowed[] = $key;
         }

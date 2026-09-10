@@ -29,3 +29,18 @@ Third-party admin notices are relocated above the Aurora module header.
 
 ## 0.7.1-dev.10 — Account Platform Foundation
 Aurora Admin now separates platform-owner administration from the photographer workspace. Photographer Accounts, licenses, module entitlements and platform branding are introduced as additive infrastructure. Existing Fotoportal domain data is not yet tenant-migrated.
+
+
+## Aurora Auth adapter checkpoint
+`0.7.1-dev.32-auth-adapter1` registers Fotoportal with Aurora Auth when available, while retaining the existing public login handlers as a tested fallback.
+
+
+## 0.7.1-dev.32-auth-branding1
+Fotoportal now enables controlled Aurora Auth route takeover for `/fotograf/` and `/fotograf/kunde/`. Legacy Fotoportal route handlers remain in place as rollback/fallback if Aurora Auth is unavailable.
+
+## Aurora Auth branding adapter
+`0.7.1-dev.32-auth-branding1` keeps Aurora Auth as owner of `/fotograf/` and `/fotograf/kunde/` and supplies Fotoportal's existing photographer/customer login backgrounds, logo and accent through the reusable Auth branding contract. Legacy Fotoportal handlers remain as rollback fallback.
+
+
+## 0.7.1-dev.32-auth-context2
+Context-specific branding and logout integration for Aurora Auth. Photographer and customer public login entries retain separate background configuration, and logout returns to the matching canonical Aurora login route.
