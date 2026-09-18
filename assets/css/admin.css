@@ -1051,3 +1051,199 @@ html.aurora-menu-lock,html.aurora-menu-lock body{overflow:hidden}
 .aurora-photographer-login-url input{display:block;width:100%;margin-top:6px;background:#f8f6fb;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
 .aurora-login-url-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .aurora-photographer-login-url small{display:block;margin-top:7px;color:#766e7e}
+
+
+/* dev.37 - DEMO phase 1 account lifecycle */
+.aurora-danger-zone{margin-top:28px;padding:22px;border:1px solid #efb1b1;background:#fff7f7;border-radius:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:28px}
+.aurora-danger-zone h3{margin:3px 0 7px;color:#9f1f1f}
+.aurora-danger-zone p{max-width:820px;margin:0;color:#684b4b}
+.aurora-danger-zone form{min-width:300px;text-align:right}
+.aurora-delete-owner-option{display:block;text-align:left;margin:0 0 12px;color:#684b4b;font-size:12px;line-height:1.45}
+.aurora-danger-button{border-color:#b42318!important;color:#b42318!important;background:#fff!important}
+.aurora-danger-button:hover{background:#b42318!important;color:#fff!important}
+@media(max-width:850px){.aurora-danger-zone{flex-direction:column}.aurora-danger-zone form{min-width:0;width:100%;text-align:left}}
+
+
+/* dev.38 — DEMO onboarding polish */
+.aurora-workspace.is-onboarding .aurora-workspace-main{
+  background:#07101b url('../aurora-login-background.jpg') center center/cover fixed no-repeat!important;
+  position:relative;
+}
+.aurora-workspace.is-onboarding .aurora-workspace-main:before{content:"";position:fixed;inset:0;background:linear-gradient(135deg,rgba(3,9,17,.40),rgba(24,12,48,.22));pointer-events:none}
+.aurora-workspace.is-onboarding .aurora-workspace-content{position:relative;z-index:1}
+.aurora-workspace.is-onboarding .aurora-onboarding-card{background:rgba(255,255,255,.82)!important;border:1px solid rgba(255,255,255,.62)!important;box-shadow:0 24px 70px rgba(5,10,22,.28)!important;backdrop-filter:blur(24px) saturate(125%);-webkit-backdrop-filter:blur(24px) saturate(125%)}
+.aurora-workspace.is-onboarding .aurora-workspace-alert.is-success{position:relative;z-index:2;background:rgba(230,250,239,.86)!important;border:1px solid rgba(255,255,255,.58)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.aurora-workspace-avatar.is-logo{background:#fff;padding:4px;overflow:hidden}
+.aurora-workspace-avatar.is-logo img{object-fit:contain!important;border-radius:5px!important}
+.aurora-current-upload{display:block;font-size:10px;font-weight:650;color:#665d6e;background:#f2eff6;border-radius:7px;padding:6px 8px;overflow-wrap:anywhere}
+.aurora-current-upload-preview{display:block;width:100%;max-width:180px;height:72px;object-fit:contain;border:1px solid #e4dee8;border-radius:9px;background:#f8f7fa;padding:5px}
+.aurora-current-upload-preview.is-round{width:72px;height:72px;border-radius:50%;object-fit:cover;padding:0}
+.aurora-current-upload-preview.is-cover{max-width:360px;height:120px;object-fit:cover;padding:0}
+.aurora-upload-action{display:block;font-size:11px;font-weight:750;color:#6244d8;margin-top:3px}
+
+/* dev.39 — exact Aurora login-style onboarding glass + clearer admin navigation */
+.aurora-workspace.is-onboarding .aurora-workspace-main{
+  background-color:#07101b!important;
+  background-image:linear-gradient(180deg,rgba(18,12,22,.18),rgba(18,12,22,.42)),var(--aurora-onboarding-bg)!important;
+  background-position:center center!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+  background-attachment:fixed!important;
+}
+.aurora-workspace.is-onboarding .aurora-workspace-main:before{display:none!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-card{
+  background:rgba(24,18,29,.68)!important;
+  border:1px solid rgba(255,255,255,.24)!important;
+  box-shadow:0 24px 70px rgba(0,0,0,.34)!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+  color:#fff!important;
+}
+.aurora-workspace.is-onboarding .aurora-onboarding-intro h2,
+.aurora-workspace.is-onboarding .aurora-onboarding-form h3,
+.aurora-workspace.is-onboarding .aurora-onboarding-form label,
+.aurora-workspace.is-onboarding .aurora-onboarding-finish h3,
+.aurora-workspace.is-onboarding .aurora-onboarding-summary b{color:#fff!important}
+.aurora-workspace.is-onboarding .aurora-workspace-eyebrow,
+.aurora-workspace.is-onboarding .aurora-onboarding-intro p,
+.aurora-workspace.is-onboarding .aurora-onboarding-section-help,
+.aurora-workspace.is-onboarding .aurora-onboarding-section-help strong,
+.aurora-workspace.is-onboarding .aurora-onboarding-form label>small,
+.aurora-workspace.is-onboarding .aurora-onboarding-form label em,
+.aurora-workspace.is-onboarding .aurora-onboarding-finish p{color:rgba(255,255,255,.72)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-form input:not([type=hidden]):not([type=color]),
+.aurora-workspace.is-onboarding .aurora-onboarding-form textarea,
+.aurora-workspace.is-onboarding .aurora-onboarding-form select{
+  background:rgba(12,8,16,.58)!important;
+  border-color:rgba(255,255,255,.30)!important;
+  color:#fff!important;
+}
+.aurora-workspace.is-onboarding .aurora-onboarding-form input::placeholder,
+.aurora-workspace.is-onboarding .aurora-onboarding-form textarea::placeholder{color:rgba(255,255,255,.46)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-form input[type=file]{background:rgba(12,8,16,.42)!important;color:rgba(255,255,255,.80)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-form input[type=color]{background:rgba(12,8,16,.58)!important;border-color:rgba(255,255,255,.30)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-actions{border-top-color:rgba(255,255,255,.14)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-stepper div{color:rgba(255,255,255,.52)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-stepper div:before{background:rgba(255,255,255,.18)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-stepper span{background:rgba(255,255,255,.14)!important;color:rgba(255,255,255,.72)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-stepper .is-current span{background:#6f4bf2!important;color:#fff!important;box-shadow:0 0 0 5px rgba(111,75,242,.22)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-stepper .is-current b{color:#ded6ff!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-stepper .is-done span{background:rgba(80,190,130,.24)!important;color:#9ce4bb!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-stepper .is-done b{color:rgba(255,255,255,.68)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-summary div{background:rgba(12,8,16,.38)!important;border-color:rgba(255,255,255,.16)!important}
+.aurora-workspace.is-onboarding .aurora-onboarding-summary span{color:rgba(255,255,255,.58)!important}
+.aurora-workspace.is-onboarding .aurora-workspace-alert.is-success{background:rgba(30,96,61,.78)!important;border:1px solid rgba(164,230,188,.30)!important;color:#effbf3!important;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.aurora-settings-edit-cta{font-size:13px!important;min-height:44px!important;padding:12px 18px!important;box-shadow:0 8px 22px rgba(111,75,242,.25)!important}
+#aurora-account-detail{scroll-margin-top:26px;outline:none}
+#aurora-account-detail:target{box-shadow:0 0 0 3px rgba(111,75,242,.16),0 12px 35px rgba(52,39,77,.08)}
+@media(max-width:700px){
+  .aurora-workspace.is-onboarding .aurora-workspace-main{background-image:linear-gradient(180deg,rgba(18,12,22,.18),rgba(18,12,22,.42)),var(--aurora-onboarding-bg-mobile)!important;background-attachment:scroll!important}
+}
+
+
+/* dev.40 — force photographer onboarding to true viewport width in both WP menu contexts */
+body.toplevel_page_aurora-photographer-workspace #adminmenumain,
+body.admin_page_aurora-photographer-workspace #adminmenumain{display:none!important}
+body.toplevel_page_aurora-photographer-workspace #wpadminbar,
+body.admin_page_aurora-photographer-workspace #wpadminbar{display:none!important}
+html.wp-toolbar body.toplevel_page_aurora-photographer-workspace,
+html.wp-toolbar body.admin_page_aurora-photographer-workspace{padding-top:0!important}
+body.toplevel_page_aurora-photographer-workspace #wpcontent,
+body.admin_page_aurora-photographer-workspace #wpcontent{margin-left:0!important;padding-left:0!important;width:100%!important}
+body.toplevel_page_aurora-photographer-workspace #wpbody,
+body.admin_page_aurora-photographer-workspace #wpbody,
+body.toplevel_page_aurora-photographer-workspace #wpbody-content,
+body.admin_page_aurora-photographer-workspace #wpbody-content{width:100%!important;margin:0!important;padding:0!important}
+body.toplevel_page_aurora-photographer-workspace #wpfooter,
+body.admin_page_aurora-photographer-workspace #wpfooter{display:none!important}
+.aurora-workspace.is-onboarding{width:100vw!important;max-width:none!important;min-height:100vh!important;margin:0!important}
+.aurora-workspace.is-onboarding .aurora-workspace-main{width:100vw!important;max-width:none!important;margin-left:0!important;min-height:100vh!important}
+/* dev.41 Demo Content Manager */
+.aurora-demo-upload-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:20px}.aurora-demo-upload-card{border:1px solid #e7e2ee;border-radius:16px;padding:22px;background:#faf9fc}.aurora-demo-upload-card>.dashicons{font-size:28px;width:28px;height:28px;color:var(--aurora-accent,#6f4bf2)}.aurora-demo-upload-card h3{margin:12px 0 5px}.aurora-demo-upload-card p{min-height:40px;color:#756e7c}.aurora-demo-upload-card input[type=file]{display:block;width:100%;margin:14px 0}.aurora-demo-list-card{margin-top:18px}.aurora-demo-items{display:grid;gap:9px}.aurora-demo-item{display:grid;grid-template-columns:64px minmax(0,1fr) auto auto auto;gap:12px;align-items:center;border:1px solid #ebe7ef;border-radius:12px;padding:10px 12px}.aurora-demo-item>img{width:64px;height:52px;object-fit:cover;border-radius:8px}.aurora-demo-item>.dashicons{font-size:28px;width:32px;height:32px;color:#6f4bf2}.aurora-demo-item strong,.aurora-demo-item small{display:block}.aurora-demo-item small{color:#837b88;margin-top:3px}.aurora-demo-item.is-disabled{opacity:.48}@media(max-width:900px){.aurora-demo-upload-grid{grid-template-columns:1fr}.aurora-demo-item{grid-template-columns:54px 1fr}.aurora-demo-item form,.aurora-demo-item>a{grid-column:2}}
+.aurora-workspace.is-onboarding .aurora-onboarding-brand{position:relative;z-index:2;text-align:center;color:#fff;margin:0 auto 16px;display:flex;flex-direction:column;align-items:center;line-height:1.1}.aurora-workspace.is-onboarding .aurora-onboarding-brand img{max-width:52px;max-height:52px;object-fit:contain;margin-bottom:7px}.aurora-workspace.is-onboarding .aurora-onboarding-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:12px;background:linear-gradient(145deg,#16d6a0,#6850f5);font-size:28px;font-weight:800;margin-bottom:7px;box-shadow:0 8px 30px rgba(0,0,0,.25)}.aurora-workspace.is-onboarding .aurora-onboarding-brand strong{font-size:16px;letter-spacing:.16em}.aurora-workspace.is-onboarding .aurora-onboarding-brand small{font-size:10px;margin-top:4px;opacity:.9}
+/* dev.43 Trial demo distribution */
+.aurora-demo-trial-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:18px 0}.aurora-demo-trial-list label{display:flex;gap:10px;align-items:flex-start;border:1px solid #e7e3ee;border-radius:12px;padding:12px;background:#fff}.aurora-demo-trial-list small{display:block;color:#777;margin-top:3px}.aurora-demo-distribution-actions{display:flex;gap:10px;flex-wrap:wrap}.aurora-resource-row{display:flex;align-items:center;gap:10px}.aurora-resource-row>a{flex:1}.aurora-demo-badge{font-style:normal;font-size:9px;letter-spacing:.08em;margin-left:8px;padding:3px 6px;border-radius:999px;background:#efe9ff;color:#6841e8}.aurora-resource-row form{margin:0}
+
+/* dev.44 - Demo Content Pack distribution */
+.aurora-demo-push-card{border:2px solid #7a50ff!important;background:linear-gradient(135deg,#fbf9ff 0%,#fff 60%)!important;box-shadow:0 12px 32px rgba(99,65,232,.10)}
+.aurora-demo-pack-pill{display:inline-flex;align-items:center;padding:7px 11px;border-radius:999px;background:#efe9ff;color:#6841e8;font-weight:800;font-size:12px;white-space:nowrap}
+.aurora-demo-state{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.5}.aurora-demo-state.is-new{background:#fff1d5;color:#8a5a00}.aurora-demo-state.is-current{background:#e5f8ed;color:#16784a}.aurora-demo-state.is-update{background:#efe9ff;color:#6841e8}
+.aurora-demo-distribution-actions .button-primary{font-weight:800;min-height:38px;padding:0 18px}
+.aurora-dashboard-demo-card{border:1px solid #ddd2ff;background:linear-gradient(135deg,#fbf9ff,#fff)}
+.aurora-dashboard-demo-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.aurora-dashboard-demo-head h2{margin:4px 0 5px}.aurora-dashboard-demo-head p{margin:0;color:#6e6977}
+.aurora-dashboard-demo-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}.aurora-dashboard-demo-links a{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;border:1px solid #e8e2f3;border-radius:12px;padding:13px;text-decoration:none;background:#fff}.aurora-dashboard-demo-links a .dashicons{grid-row:1/3;color:#6b45ef}.aurora-dashboard-demo-links strong{color:#242029}.aurora-dashboard-demo-links small{color:#77717f}@media(max-width:800px){.aurora-dashboard-demo-links{grid-template-columns:1fr}}
+
+/* dev.45 - Demo experience polish */
+.aurora-demo-trial-tools{display:flex;gap:10px;margin:14px 0}.aurora-demo-trial-tools input{min-width:280px}.aurora-demo-trial-table-wrap{max-height:430px;overflow:auto;border:1px solid #e7e2ee;border-radius:12px}.aurora-demo-trial-table{width:100%;border-collapse:collapse;background:#fff}.aurora-demo-trial-table th{position:sticky;top:0;background:#f7f4fb;z-index:1;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em}.aurora-demo-trial-table th,.aurora-demo-trial-table td{padding:11px 12px;border-bottom:1px solid #eee9f2;vertical-align:middle}.aurora-demo-trial-table td small{display:block;color:#82798a;margin-top:3px}.aurora-demo-state{white-space:nowrap}.aurora-demo-side-links{display:grid;gap:8px;margin:14px 0}.aurora-demo-side-links a{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border:1px solid #e8e0f7;border-radius:10px;text-decoration:none}.aurora-demo-side-links small{color:#7d7485}.aurora-demo-watermark-reminder{border-top:1px solid #eee7f2;padding-top:13px;display:flex;gap:10px;align-items:center}.aurora-demo-watermark-reminder span{color:#7c7482;flex:1}.aurora-demo-customer-login{margin-top:18px;padding:18px;border-radius:14px;background:#f6f2ff;border:1px solid #ded1ff}.aurora-demo-customer-login h3{margin:4px 0 12px}.aurora-demo-credentials{display:grid;grid-template-columns:1fr 1fr;gap:10px}.aurora-demo-credentials>div{padding:10px 12px;background:#fff;border:1px solid #e4dbf3;border-radius:9px}.aurora-demo-credentials small,.aurora-demo-credentials strong{display:block}.aurora-demo-customer-login p{font-size:13px;line-height:1.45}.aurora-gallery-watermark-strip{margin-top:18px;padding-top:18px;border-top:1px solid #eee9f2;display:flex;align-items:center;justify-content:space-between;gap:20px}.aurora-gallery-watermark-strip>div:first-child{display:grid;gap:4px}.aurora-dashboard-watermark-preview.is-compact{width:260px;min-width:260px;height:120px;margin:0}.aurora-dashboard-watermark-preview.is-compact>img:first-child{width:100%;height:100%;object-fit:cover}@media(max-width:800px){.aurora-demo-trial-tools{display:grid}.aurora-demo-trial-tools input{min-width:0}.aurora-demo-trial-table-wrap{overflow-x:auto}.aurora-demo-trial-table{min-width:760px}.aurora-gallery-watermark-strip{align-items:stretch;flex-direction:column}.aurora-dashboard-watermark-preview.is-compact{width:100%;min-width:0}.aurora-demo-credentials{grid-template-columns:1fr}}
+
+/* dev.46 – photographer project flow UX */
+.aurora-project-workflow-top{margin-bottom:16px}.aurora-project-steps .is-attention{border-color:#eadcae;background:#fffdf6}.aurora-project-steps .is-attention>span{background:#fff1c9;color:#9a6a00}
+.aurora-gallery-gate-summary{margin-left:auto;min-width:300px;padding:13px 16px;border-radius:14px;display:flex;align-items:center;gap:13px;border:1px solid #ead7d4;background:#fff8f7}.aurora-gallery-gate-summary>.dashicons{width:42px;height:42px;font-size:30px;display:grid;place-items:center;color:#b94c43}.aurora-gallery-gate-summary div{display:flex;flex-direction:column}.aurora-gallery-gate-summary small{font-size:9px;font-weight:800;letter-spacing:.12em;color:#9a8583}.aurora-gallery-gate-summary strong{font-size:14px;color:#322b31;margin:2px 0}.aurora-gallery-gate-summary em{font-size:12px;font-style:normal;color:#a0463f}.aurora-gallery-gate-summary.is-unlocked{border-color:#cfe8d9;background:#f4fbf7}.aurora-gallery-gate-summary.is-unlocked>.dashicons,.aurora-gallery-gate-summary.is-unlocked em{color:#18794e}
+@media(max-width:800px){.aurora-gallery-gate-summary{margin-left:0;width:100%;min-width:0}.aurora-project-profile-card{flex-wrap:wrap}}
+/* dev.47 – guided project journey */
+.aurora-project-next-step{display:flex;align-items:center;gap:18px;border:1px solid #d9cdfd!important;background:linear-gradient(135deg,#fbf9ff,#fff)!important}.aurora-next-step-icon{width:54px;height:54px;display:grid;place-items:center;border-radius:15px;background:#eee8ff;color:#6841e8}.aurora-next-step-icon .dashicons{font-size:27px;width:27px;height:27px}.aurora-next-step-copy{flex:1}.aurora-next-step-copy h2{margin:4px 0 4px}.aurora-next-step-copy p{margin:0;color:#716a78}.aurora-project-gallery-preview{display:grid;grid-template-columns:minmax(240px,.75fr) 1.25fr;gap:22px;align-items:center}.aurora-project-gallery-preview h2{margin:4px 0}.aurora-project-gallery-preview p{color:#746d7b}.aurora-project-gallery-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.aurora-project-gallery-thumbs img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px}.aurora-demo-journey{border-color:#ddd2ff!important}.aurora-demo-journey-steps{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.aurora-demo-journey-steps span{padding:11px 10px;border:1px solid #e8e3ed;border-radius:10px;background:#faf9fb;font-size:12px;font-weight:700;display:flex;justify-content:space-between;gap:5px}.aurora-demo-journey-steps .is-done{background:#f0faf4;border-color:#cfe9da;color:#176d47}.aurora-demo-journey-steps .is-current{background:#f1ecff;border-color:#bba8ff;color:#603ee1}.aurora-demo-mail{margin-top:14px;border-top:1px solid #ece7f0;padding-top:12px}.aurora-demo-mail summary{cursor:pointer;font-weight:800;color:#5e3de0}.aurora-demo-mail summary .dashicons{margin-right:6px}.aurora-demo-mail>div{margin-top:10px;padding:14px;border-radius:10px;background:#faf8ff}.aurora-demo-mail p{margin:5px 0 8px;color:#706879}.aurora-gallery-lock-hint{display:flex;gap:10px;align-items:center;padding:12px 16px;border:1px solid #ead7d4;border-radius:12px;background:#fff8f7;color:#5d4542}.aurora-gallery-lock-hint .dashicons{color:#b94c43}.aurora-gallery-lock-hint a{font-weight:800}.aurora-project-steps-six a.is-attention{box-shadow:inset 0 0 0 1px #eadcae}@media(max-width:900px){.aurora-project-next-step{align-items:flex-start;flex-wrap:wrap}.aurora-project-next-step .aurora-primary-action{margin-left:72px}.aurora-project-gallery-preview{grid-template-columns:1fr}.aurora-demo-journey-steps{grid-template-columns:repeat(2,1fr)}}
+
+/* dev.50 – guided demo journey */
+.aurora-demo-journey-steps-seven{grid-template-columns:repeat(7,1fr)}
+.aurora-demo-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.aurora-demo-mail-actions{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.aurora-demo-mail-actions small{color:#756d7b;max-width:760px}
+.aurora-demo-welcome-modal{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:24px}
+.aurora-demo-welcome-modal[hidden]{display:none!important}
+.aurora-demo-welcome-backdrop{position:absolute;inset:0;background:rgba(13,11,22,.72);backdrop-filter:blur(8px)}
+.aurora-demo-welcome-dialog{position:relative;width:min(620px,100%);background:rgba(20,18,31,.94);border:1px solid rgba(255,255,255,.14);box-shadow:0 28px 80px rgba(0,0,0,.38);border-radius:22px;padding:30px;color:#fff}
+.aurora-demo-welcome-dialog h2{font-size:28px;margin:12px 0 8px;color:#fff}
+.aurora-demo-welcome-dialog p{color:#d8d3e3;font-size:15px;line-height:1.6}
+.aurora-demo-welcome-points{display:grid;gap:8px;margin:18px 0 24px}
+.aurora-demo-welcome-points span{padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+.aurora-demo-welcome-actions{display:flex;gap:10px;flex-wrap:wrap}
+.aurora-demo-welcome-dialog .aurora-secondary-action{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff}
+@media(max-width:1100px){.aurora-demo-journey-steps-seven{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:700px){.aurora-demo-journey-steps-seven{grid-template-columns:repeat(2,1fr)}.aurora-demo-welcome-dialog{padding:22px}.aurora-demo-welcome-dialog h2{font-size:23px}}
+
+/* dev.51 – demo download continuation */
+.aurora-demo-after-download{margin-top:14px;padding:14px 16px;border:1px solid #bfe7cf;background:#f0fbf4;border-radius:14px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.aurora-demo-after-download[hidden]{display:none!important}
+.aurora-demo-after-download>.dashicons{color:#1f9d60;font-size:24px;width:24px;height:24px}
+.aurora-demo-after-download strong{display:block;color:#163d2a;margin-bottom:2px}
+.aurora-demo-after-download p{margin:0;color:#476354}
+@media(max-width:760px){.aurora-demo-after-download{grid-template-columns:auto 1fr}.aurora-demo-after-download .aurora-primary-action{grid-column:1/-1;justify-self:start}}
+
+/* dev.53 – Aurora Demo Journey Engine */
+.aurora-demo-engine-card{border-color:#d9cdfd!important;background:linear-gradient(135deg,#fff,#fbf9ff)!important}
+.aurora-demo-engine-progress{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:18px}
+.aurora-demo-engine-progress span{display:flex;align-items:center;gap:8px;min-height:46px;padding:9px 11px;border-radius:11px;border:1px solid #e7e1ec;background:#faf9fb;color:#756d7b;font-size:11px;font-weight:800;line-height:1.25}
+.aurora-demo-engine-progress b{display:grid;place-items:center;width:22px;height:22px;border-radius:999px;background:#eeeaf1;color:#766d7d;font-size:10px;flex:0 0 auto}
+.aurora-demo-engine-progress .is-current{border-color:#a78aff;background:#f3efff;color:#5d3fd3}.aurora-demo-engine-progress .is-current b{background:#6f4bf2;color:#fff}.aurora-demo-engine-progress .is-done{border-color:#bfe7cf;background:#f0fbf4;color:#176d47}.aurora-demo-engine-progress .is-done b{background:#1e9b5f;color:#fff}
+.aurora-demo-engine-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.aurora-demo-engine-status{margin:12px 0 0;color:#6e6574}
+.aurora-demo-engine-modal{position:fixed;inset:0;z-index:100100;display:grid;place-items:center;padding:24px}.aurora-demo-engine-backdrop{position:absolute;inset:0;background:rgba(14,11,24,.74);backdrop-filter:blur(9px)}
+.aurora-demo-engine-dialog{position:relative;width:min(860px,100%);max-height:calc(100vh - 48px);overflow:auto;background:rgba(25,22,37,.97);border:1px solid rgba(255,255,255,.14);box-shadow:0 28px 90px rgba(0,0,0,.45);border-radius:24px;padding:30px;color:#fff}
+.aurora-demo-engine-dialog h2{font-size:28px;line-height:1.15;margin:14px 0 8px;color:#fff}.aurora-demo-engine-dialog p{color:#d7d1df;line-height:1.6}.aurora-demo-engine-top{display:flex;justify-content:space-between;align-items:center}.aurora-demo-engine-top>a{color:#ddd5e8;text-decoration:none;font-weight:700}
+.aurora-demo-engine-welcome{width:min(680px,100%)}.aurora-demo-engine-dialog .aurora-secondary-action{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.18);color:#fff;margin-left:8px}.aurora-demo-engine-dialog .aurora-primary-action{margin-top:12px}
+.aurora-demo-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}.aurora-demo-form-grid label{color:#cfc8db;font-size:12px;font-weight:700}.aurora-demo-form-grid input{width:100%;margin-top:6px;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff}
+.aurora-demo-tip{padding:14px 16px;border:1px solid rgba(190,168,255,.35);background:rgba(111,75,242,.12);border-radius:13px;color:#e7defe;margin:16px 0}.aurora-demo-file{display:block;padding:16px;border:1px dashed rgba(255,255,255,.25);border-radius:14px;background:rgba(255,255,255,.04);margin:18px 0;color:#fff;font-weight:800}.aurora-demo-file input{display:block;margin-top:12px;color:#ddd}
+.aurora-demo-mail-preview{margin:18px 0;padding:18px;border-radius:16px;background:#fff;color:#251f2b}.aurora-demo-mail-preview small{display:block;color:#7c689a;font-weight:900;letter-spacing:.09em;margin-bottom:7px}.aurora-demo-mail-preview strong{display:block;font-size:17px;margin-bottom:8px}.aurora-demo-mail-preview p{color:#615969;margin:0}.aurora-demo-illustration{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.aurora-demo-illustration span{padding:18px 12px;border-radius:14px;background:rgba(255,255,255,.07);text-align:center;font-weight:800}
+.aurora-demo-shoot{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center}.aurora-demo-shoot img{width:100%;max-height:430px;object-fit:cover;border-radius:18px}.aurora-demo-welcome-points{display:grid;gap:8px;margin:18px 0 24px}.aurora-demo-welcome-points span{padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+@media(max-width:1100px){.aurora-demo-engine-progress{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:720px){.aurora-demo-engine-dialog{padding:22px}.aurora-demo-engine-dialog h2{font-size:23px}.aurora-demo-form-grid,.aurora-demo-shoot{grid-template-columns:1fr}.aurora-demo-illustration{grid-template-columns:1fr}.aurora-demo-engine-progress{grid-template-columns:repeat(2,1fr)}}
+
+/* dev.54 – project safety + demo delivery polish */
+.aurora-project-gallery-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.aurora-project-danger-zone{border-color:#f0d7d7!important;background:#fffdfd!important}.aurora-project-danger-zone details{border-top:1px solid #f2e2e2;padding-top:12px}.aurora-project-danger-zone summary{cursor:pointer;font-weight:800;color:#9b2c2c}.aurora-project-danger-zone form{display:grid;gap:10px;max-width:620px;margin-top:14px}.aurora-project-danger-zone input[type=text]{width:100%;min-height:42px}.aurora-danger-action{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:9px;padding:10px 14px;background:#b42318;color:#fff;font-weight:800;cursor:pointer}.aurora-danger-action:hover{background:#912018;color:#fff}
+.aurora-demo-delivery-helper{border-color:#d9cdfd!important;background:linear-gradient(135deg,#fbf9ff,#fff)!important}.aurora-demo-delivery-helper h2{margin:8px 0}.aurora-demo-delivery-helper .aurora-demo-illustration{margin:12px 0 15px}
+
+/* dev.55 Test Photographer Harness */
+.aurora-test-photographer-panel{border:1px solid rgba(111,75,242,.22);background:linear-gradient(135deg,#fff 0%,#faf8ff 100%)}
+.aurora-test-photographer-summary{display:flex;gap:10px 22px;flex-wrap:wrap;align-items:center;margin:16px 0;padding:14px 16px;border-radius:14px;background:#fff;border:1px solid #ece7ff}.aurora-test-photographer-summary strong{font-size:16px}.aurora-test-photographer-summary span{color:#655f70}.aurora-test-photographer-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.aurora-test-photographer-actions form{margin:0}.aurora-test-photographer-panel .aurora-demo-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:#efe9ff;color:#6f4bf2;font-weight:800;font-size:11px;letter-spacing:.08em}
+
+
+/* dev.59 – optional Demo Journey + HQ upload guidance */
+.aurora-demo-journey-optin{display:flex!important;gap:12px;align-items:flex-start;padding:14px 16px;border:1px solid #ded7ff;border-radius:12px;background:#faf8ff;margin:14px 0}
+.aurora-demo-journey-optin input{margin-top:3px}
+.aurora-demo-journey-optin span{display:grid;gap:3px}.aurora-demo-journey-optin small{color:#7d7487;font-weight:400}
+.aurora-hq-upload-note{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;padding:13px 15px;border-radius:12px;background:#f5f1ff;border:1px solid #e2d9ff;color:#4b4058}
+.aurora-hq-upload-note strong{white-space:nowrap;color:#2d2635}.aurora-hq-upload-note span{line-height:1.5}
+@media(max-width:720px){.aurora-hq-upload-note{display:block}.aurora-hq-upload-note strong{display:block;margin-bottom:4px}}
+.aurora-settings-profile-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.aurora-settings-profile-actions .aurora-secondary-action{min-height:44px;display:inline-flex;align-items:center;gap:7px}
+#vannmerke{scroll-margin-top:28px}

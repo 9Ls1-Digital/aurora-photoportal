@@ -1,3 +1,131 @@
+
+## 0.7.1-dev.68 – Download tracking & project status
+- HQ downloads are now served through an authenticated tracking endpoint.
+- First HQ download updates the project to Levert and sends the photographer an e-mail.
+- Delivery view shows real download state, count and last download timestamp instead of legacy `download_enabled`.
+- Contract, Documents, Gallery and Digital Delivery use one authoritative gallery open/locked status banner.
+- Fixes the Documents view showing “Galleri låst” after the gallery was already open.
+- ADR-081 added.
+
+## 0.7.1-dev.67 – Photographer customer preview + login toggle
+- Added photographer-only **Åpne som kunde** preview without customer password or identity switching.
+- Added short-lived signed preview context for customer portal and galleries.
+- Added per-customer **Aktiver/Deaktiver innlogging** control.
+- Disabled customers are rejected by Aurora Access/Fotoportal authorization while photographer preview still works.
+- Replaced photographer-facing customer-login buttons with preview links; canonical customer login remains `/aurora/kunde/`.
+- Added ADR-080.
+## 0.7.1-dev.66 — Unified login routing — 2026-09-14
+- Canonical shared photographer login: `/aurora/login/` → Mine apper.
+- Canonical shared customer login: `/aurora/kunde/` → correct Fotoportal customer automatically.
+- Canonical authenticated customer portal: `/aurora/kunde/portal/`.
+- Legacy Fotoportal login routes redirect to the canonical Aurora routes.
+- Tokenized customer portal URLs are no longer shown as the normal customer login address.
+
+
+## dev.65 — Aurora Access customer-auth unification
+- Customer authentication is now treated as owned by Aurora Access whenever the capsule is active.
+- New customer password setup links use the Aurora Access reset route instead of the legacy query-string reset path.
+- Fotoportal opts into Access auto-login after a successful customer password reset.
+- Customer identity resolution can repair older users with missing Fotoportal account/client meta when one unique exact e-mail match exists.
+- Eliminates the split reset/login ownership that caused consumed reset links and repeated login screens.
+- Documented in ADR-078.
+## 0.7.1-dev.64 – Watermark profile routing – 2026-09-14
+
+- Vannmerke er nå tydelig plassert som en del av fotografens profil/branding.
+- Profilmenyen har egen **Rediger vannmerke**-lenke.
+- Profilkortet under Innstillinger har egen knapp til vannmerke-editoren.
+- Dashboard- og Galleri-lenker for vannmerke går direkte til `#vannmerke`.
+- Vannmerke-editoren er merket **Profil · Vannmerke**.
+
+## 0.7.1-dev.63 – Customer reset/login stability – 2026-09-14
+- Fixed the post-reset loop where “Gå til innlogging” could reload the already-consumed password-reset URL and show “Lenken er ugyldig eller utløpt”.
+- Customer portal URL generation now accepts authoritative client/account context and no longer depends on the ambient photographer tenant during public authentication flows.
+- Successful customer password reset now repairs authorization, signs the customer in and opens the customer portal directly; no second login is required.
+- The legacy/fallback customer login form posts to the canonical `/fotograf/kunde/` route.
+- Added ADR-076 and updated Blueprint.
+
+## 0.7.1-dev.62 – Customer login context repair
+
+- Fixed a public customer-portal context bug where the photographer workspace correctly showed a customer login as active, while the public “Glemt passord” route could report that no customer login existed.
+- Public password recovery now resolves the customer e-mail and WordPress user using the customer’s explicit account_id instead of the active photographer/admin tenant context.
+- Customer portal user self-healing now accepts the explicit account context on public routes, so legacy mappings can be repaired without crossing tenant boundaries.
+- Existing photographer-workspace behavior remains unchanged: tenant-scoped calls still use the active tenant context by default.
+- Added ADR-075.
+
+## 0.7.1-dev.61 – Contract mail diagnostics + gate autosave
+- Contract requirement now saves automatically when the checkbox changes; no separate save step can be missed.
+- ADS contract mail now uses the same minimal mail header profile as the verified photographer invitation flow.
+- Captures `wp_mail_failed` details and stores every ADS send attempt in project logs.
+- Added visible E-posthistorikk on the photographer Contracts screen with recipient, time and success/failure information.
+- Sent contracts can be sent again without creating a duplicate contract.
+- Added explicit success/failure feedback after ADS send attempts.
+
+
+## 0.7.1-dev.60 - Contract access, ADS mail and password eye
+- Added show/hide password controls on photographer password activation.
+- ADS "Marker sendt" now emails the signer and only marks the contract sent after successful mail dispatch.
+- Added per-project contract requirement for gallery access, defaulting to required.
+- Added photographer workspace control to change the requirement with audit logging.
+- Gallery creation/customer visibility now follows the project gate; payment and HQ delivery remain separate.
+- Clarified HQ upload/preview/watermark/original-delivery behavior.
+- ADR-073 added.
+## 0.7.1-dev.43 – Demo Trial distribution
+- Automatisk Demo Content Pack ved opprettelse av ny Trial-konto.
+- Manuell distribusjon til valgte eller alle eksisterende Trial-kontoer.
+- Idempotent oppdatering med stabil demo-ID, uten duplikater.
+- Fotograf kan fjerne demo-ressurser; vanlig push respekterer sletting.
+- Aurora Admin kan eksplisitt gjenopprette slettet demo-innhold.
+- ADR-056 dokumenterer distribusjonsmodellen og fase-2-kompatibilitet.
+
+
+
+## 0.7.1-dev.56-account-user-cleanup – 2026-09-12
+
+- Fotografkonto-sletting rydder nå automatisk dedikerte WordPress-brukere for både fotograf og tilknyttede kunder.
+- Admin-/WooCommerce-brukere og brukere med annen Aurora-identitet bevares.
+- Test-fotograf-nullstilling sletter genererte kundeinnlogginger, men bevarer den permanente Test-fotografen.
+- Test Harness kan gjenbruke en eksisterende testbruker funnet på test-e-post dersom en eldre kjøring har etterlatt brukeren.
+- Slettegrensesnittet er forenklet; separat avkryssing for WordPress-bruker er fjernet.
+- ADR-069 dokumenterer bruker-livssyklusen.
+
+## 0.7.1-dev.42 – Demo Content route fix
+- Registrerer den skjulte WordPress-adminruten `aurora-platform-demo` både med og uten Aurora Core.
+- Mapper ruten korrekt til seksjonen `demo`, slik at Aurora Admin kan åpne Demo-innhold uten «du har ikke tilgang»-feil.
+- Ingen endring i rettighetsnivå: siden krever fortsatt `manage_options`.
+
+## 0.7.1-dev.40 — Onboarding fullscreen fix
+- Fixed WordPress top-level page shell so photographer onboarding fills the complete browser viewport.
+- Applies the zero-margin/hidden-admin-shell rules to both `toplevel_page_aurora-photographer-workspace` and `admin_page_aurora-photographer-workspace`.
+- Removes the white strip at the right edge without changing onboarding content or flow.
+
+## 0.7.1-dev.39-onboarding-admin-ux — 10 September 2026
+- Matched first-run onboarding to the same Aurora login background source used by Aurora Access/Fotograf login.
+- Changed the onboarding panel to the same dark translucent glass treatment as the Aurora login card.
+- Increased contrast for onboarding labels, help text, fields, stepper and success state on the dark glass surface.
+- Promoted “Rediger profil, branding og e-post” to a clear primary CTA in Photographer Settings.
+- Photographer/studio names in Aurora Admin now deep-link directly to the selected customer card instead of leaving the detail below the fold.
+- Added selected customer-card target highlight and scroll margin for clearer navigation.
+
+
+## 0.7.1-dev.38-demo-onboarding-polish — 10 September 2026
+
+- Refined photographer first-run DEMO onboarding based on live acceptance testing.
+- Studio address is now split into street address, postal code and city in onboarding and photographer settings.
+- Aurora Admin contact phone and website are seeded into the photographer profile when the account is created; existing accounts also fall back to account contact data during onboarding.
+- Added recommended image dimensions and formats for logo, profile image and hero/banner image.
+- Onboarding now uses the established Aurora northern-lights login background with a glass-style setup card.
+- Uploaded photographer logo is shown on the photographer account identity in Workspace.
+- Photographer settings now show the currently selected logo/profile/hero filename and preview, while retaining a standard file picker for replacement.
+- Preserved the verified activation, password, routing and 6-step onboarding flow from dev.37.
+
+## 0.7.1-dev.36-auth-session-guard
+- Enables Aurora Auth workspace session guard for Fotoportal.
+- Uses an 8-hour sliding inactivity timeout for normal sessions.
+- Uses a 14-day sliding inactivity timeout when “Husk meg” is selected.
+- Enables safe wrong-context recovery between photographer and customer workspaces.
+- Leaves the verified dev.35 clean portal routes and login flow unchanged.
+- Adds ADR-050.
+
 ## 0.7.1-dev.32-account8-fix2 – Auth route hard fallback
 - `/fotograf/` and `/fotograf/kunde/` now dispatch directly from the request path and no longer depend on WordPress rewrite rules being refreshed.
 - Public auth routes explicitly suppress theme/WordPress 404 handling and render the Aurora auth surfaces immediately.
@@ -253,3 +381,40 @@
 
 ## Auth takeover checkpoint
 - Aurora Auth can now own Fotoportal's two public authentication entry routes while Fotoportal retains fallback handlers.
+
+## 0.7.1-dev.37-demo-phase1
+DEMO lifecycle phase 1: branded photographer activation, direct continuation to six-step onboarding, and safe permanent account/tenant/upload cleanup for test and demo photographers. Blueprint and ADR-051 updated.
+
+### 0.7.1-dev.53-demo-journey-engine
+Introduces the guided Aurora Demo Journey Engine, same-session customer preview, prefilled Demo exercise data, real gallery ZIP processing in the training flow, restart/continue controls and a complete simulated customer journey through payment and delivery.
+
+## 0.7.1-dev.54-demo-journey-polish — 2026-09-12
+- Demo Journey delivery now trains the real Bruksrett and invoice-paid actions instead of auto-completing them.
+- Fixed photographer payment action access that returned “Mangler tilgang”.
+- Photographer receives e-mail when a customer signs, for both ADS and Demo Journey signing.
+- ADS default wording now says signature metadata is registered “i fotoportalen”.
+- Demo-kit v1.5 clearly separates the outer ZIP to unpack from the inner gallery ZIP `DEMO-BILDER_IKKE PAKK UT DENNE.zip` that must remain zipped.
+- Added direct project-gallery/customer-portal navigation and secure permanent project deletion with full project-scoped cleanup.
+- Aurora-styled delivery controls and Demo helper added.
+
+## 0.7.1-dev.55-test-photographer-harness – 2026-09-12
+- Permanent Test-fotograf for repeated end-to-end testing without recreating a photographer account.
+- One-click reset for onboarding, Demo Journey or all test content.
+- Onboarding fixtures include prefilled studio/contact/address data plus logo, profile, hero and watermark assets.
+- Normal account deletion is blocked for the Test-fotograf; only explicit test-reset actions can clear its tenant data.
+
+## 0.7.1-dev.57-demo-journey-reset-flow – 2026-09-14
+- Test-fotograf now follows the real invitation → password → six-step onboarding path.
+- Demo-kit is only marked complete after an actual download; provisioning no longer advances the Journey.
+- Restart now returns to Demo-kit step 1 and clears stale download progress.
+- `Lær Fotoportal` is shown first on Dashboard for Trial and Test-fotograf accounts.
+- Test Harness cleanup now removes the correct Demo Content Pack state.
+## 0.7.1-dev.59-demo-optin-hq-hero-access – 2026-09-14
+- Demo Journey is now optional per photographer account. Aurora Admin chooses “Ta med guidet DEMO Journey” when creating a photographer and can enable/pause it later on the photographer account card.
+- Trial remains independent from Demo Journey; disabling the Journey hides guided training without changing the Trial period.
+- Demo Content Pack is resources-only. It no longer creates a second seeded demo customer/project/gallery; legacy seeded demo entities are removed account-scoped during migration, while Journey-created entities remain separate.
+- Gallery guidance now explicitly asks for HIGH QUALITY originals. Aurora retains the HQ originals, automatically creates preview/thumbnail derivatives, applies watermark only to customer-facing previews and delivers approved HQ downloads without watermark.
+- Added visible “Faktura / betaling” shortcuts from project/gallery context to Digital levering.
+- Fixed photographer workspace access for saving gallery HERO, gallery details, customer HERO and sending customer-portal e-mail by requiring an explicit workspace marker while retaining nonce and tenant scoping.
+- Added ADR-072 and updated the Aurora Fotoportal Blueprint.
+

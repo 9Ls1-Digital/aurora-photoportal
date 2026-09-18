@@ -2,6 +2,7 @@
 if (!defined('ABSPATH')) exit;
 
 class NLS1_Fotoportal_Admin {
+    private $contract_mail_failure = '';
     const MENU_SLUG = 'nls1-plugin-center';
 
     public static $project_types = [
@@ -53,9 +54,12 @@ class NLS1_Fotoportal_Admin {
         add_action('admin_post_9ls1_fotoportal_add_log', [$this, 'handle_add_log']);
         add_action('admin_post_9ls1_fotoportal_update_client', [$this, 'handle_update_client']);
         add_action('admin_post_9ls1_fotoportal_update_project', [$this, 'handle_update_project']);
+        add_action('admin_post_9ls1_fotoportal_save_project_contract_gate', [$this, 'handle_save_project_contract_gate']);
         add_action('admin_post_9ls1_fotoportal_delete_test_item', [$this, 'handle_delete_test_item']);
+        add_action('admin_post_9ls1_fotoportal_delete_project_permanently', [$this, 'handle_delete_project_permanently']);
         add_action('admin_post_9ls1_fotoportal_create_contract', [$this, 'handle_create_contract']);
         add_action('admin_post_9ls1_fotoportal_mark_contract_sent', [$this, 'handle_mark_contract_sent']);
+        add_action('admin_post_9ls1_fotoportal_delete_contract', [$this, 'handle_delete_contract']);
         add_action('admin_post_9ls1_fotoportal_add_document', [$this, 'handle_add_document']);
         add_action('admin_post_9ls1_fotoportal_delete_document', [$this, 'handle_delete_document']);
         add_action('admin_post_9ls1_fotoportal_save_template', [$this, 'handle_save_template']);
@@ -75,6 +79,7 @@ class NLS1_Fotoportal_Admin {
         add_action('admin_post_9ls1_fotoportal_delete_image_comment', [$this, 'handle_delete_image_comment']);
         add_action('admin_post_9ls1_fotoportal_save_customer_hero', [$this, 'handle_save_customer_hero']);
         add_action('admin_post_9ls1_fotoportal_ensure_customer_login', [$this, 'handle_ensure_customer_login']);
+        add_action('admin_post_9ls1_fotoportal_toggle_customer_login', [$this, 'handle_toggle_customer_login']);
         add_action('admin_post_9ls1_fotoportal_regenerate_gallery', [$this, 'handle_regenerate_gallery']);
         add_action('admin_post_9ls1_fotoportal_generate_proof_pdf', [$this, 'handle_generate_proof_pdf']);
         add_action('admin_post_9ls1_fotoportal_create_testdata', [$this, 'handle_create_testdata']);
@@ -333,7 +338,13 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function handle_save_client_project() {
-        if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
+        // Aurora photographer workspace posts through admin-post.php, but photographers
+        // intentionally do not have WordPress manage_options. Permit the dedicated
+        // workspace form for the photographer capability while keeping legacy/admin
+        // submissions restricted to platform administrators.
+        $workspace_request = !empty($_POST['aurora_workspace']);
+        $workspace_photographer = $workspace_request && current_user_can('aurora_fotoportal_photographer');
+        if (!current_user_can('manage_options') && !$workspace_photographer) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_save_client_project');
 
         global $wpdb;
@@ -356,6 +367,7 @@ class NLS1_Fotoportal_Admin {
         $location = sanitize_text_field($_POST['location'] ?? '');
         $description = sanitize_textarea_field($_POST['description'] ?? '');
         $is_test = !empty($_POST['is_test']) ? 1 : 0;
+        $contract_required = isset($_POST['contract_required']) ? (int)!empty($_POST['contract_required']) : 1;
 
         if (!$client_name || !$first_name || !$email || !$project_name || !$project_type) {
             $target = ($workspace && class_exists('NLS1_Photographer_Workspace'))
@@ -409,6 +421,7 @@ class NLS1_Fotoportal_Admin {
             'location' => $location,
             'description' => $description,
             'status' => 'created',
+            'contract_required' => $contract_required,
             'is_test' => $is_test,
             'created_at' => $now,
         ]);
@@ -539,6 +552,16 @@ class NLS1_Fotoportal_Admin {
         return $count > 0;
     }
 
+    public static function project_requires_contract($project_id) {
+        $project=self::get_project((int)$project_id);
+        if(!$project) return true;
+        return !isset($project->contract_required) || (int)$project->contract_required === 1;
+    }
+
+    public static function gallery_access_allowed($project_id) {
+        return !self::project_requires_contract((int)$project_id) || self::has_signed_contract((int)$project_id);
+    }
+
     public static function get_contract($contract_id) {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare(
@@ -584,9 +607,10 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function handle_create_contract() {
-        if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
-        check_admin_referer('9ls1_fotoportal_create_contract');
         $workspace = !empty($_POST['aurora_workspace']);
+        $workspace_photographer = $workspace && current_user_can('aurora_fotoportal_photographer');
+        if (!current_user_can('manage_options') && !$workspace_photographer) wp_die('Mangler tilgang.');
+        check_admin_referer('9ls1_fotoportal_create_contract');
         global $wpdb;
 
         $project_id = (int)($_POST['project_id'] ?? 0);
@@ -657,11 +681,41 @@ class NLS1_Fotoportal_Admin {
         exit;
     }
 
+    public function handle_delete_contract() {
+        $workspace=!empty($_POST['aurora_workspace']);
+        $workspace_photographer=$workspace&&current_user_can('aurora_fotoportal_photographer');
+        if(!current_user_can('manage_options')&&!$workspace_photographer)wp_die('Mangler tilgang.');
+        $contract_id=absint($_POST['contract_id']??0);
+        check_admin_referer('9ls1_fotoportal_delete_contract_'.$contract_id);
+        $contract=self::get_contract($contract_id); if(!$contract)wp_die('Kontrakten finnes ikke.');
+        $status=sanitize_key($contract->status??'draft');
+        if($status==='signed')wp_die('En signert kontrakt kan ikke slettes. Den må beholdes som avtaledokumentasjon.');
+        global $wpdb; $project=self::get_project((int)$contract->project_id);
+        if(!empty($contract->attachment_id))wp_delete_attachment((int)$contract->attachment_id,true);
+        $wpdb->delete(self::table('contracts'),['id'=>$contract_id,'account_id'=>self::tenant_account_id()],['%d','%d']);
+        if($project)$this->log((int)$project->client_id,(int)$project->id,'contract','Kontrakt slettet: '.($contract->contract_name?:'Kontrakt'),(int)$project->is_test);
+        wp_safe_redirect($workspace&&class_exists('NLS1_Photographer_Workspace')?NLS1_Photographer_Workspace::url('contracts',['project_id'=>(int)$contract->project_id,'message'=>'contract_deleted']):self::project_url((int)$contract->project_id)); exit;
+    }
+
+    public function capture_contract_mail_failure($error) {
+        if (is_wp_error($error)) {
+            $this->contract_mail_failure = $error->get_error_message();
+            $data = $error->get_error_data();
+            if ($data) {
+                $encoded = wp_json_encode($data);
+                if ($encoded) $this->contract_mail_failure .= ' | ' . $encoded;
+            }
+        } else {
+            $this->contract_mail_failure = 'Ukjent wp_mail-feil.';
+        }
+    }
+
     public function handle_mark_contract_sent() {
-        if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
+        $workspace = !empty($_POST['aurora_workspace']);
+        $workspace_photographer = $workspace && current_user_can('aurora_fotoportal_photographer');
+        if (!current_user_can('manage_options') && !$workspace_photographer) wp_die('Mangler tilgang.');
         $contract_id = (int)($_POST['contract_id'] ?? 0);
         check_admin_referer('9ls1_fotoportal_mark_contract_sent_' . $contract_id);
-        $workspace = !empty($_POST['aurora_workspace']);
         global $wpdb;
 
         $contract = self::get_contract($contract_id);
@@ -681,15 +735,59 @@ class NLS1_Fotoportal_Admin {
             exit;
         }
 
-        $wpdb->update(self::table('contracts'), ['status'=>'sent','sent_at'=>current_time('mysql')], ['id'=>$contract_id,'account_id'=>self::tenant_account_id()]);
+        $token = self::create_signing_token($contract_id);
+        $signing_url = home_url('/fotoportal-signer/?token=' . rawurlencode($token));
+        $to = sanitize_email((string)$contract->signer_email);
+        $ps = self::photographer_portal_settings();
+        $studio = $ps['studio_name'] ?: ($ps['photographer_name'] ?: get_bloginfo('name'));
+        $signer = trim((string)$contract->signer_name) ?: 'kunde';
+        $subject = 'Avtale til signering – ' . ($project ? $project->project_name : $contract->contract_name);
+        $safe_signer = esc_html($signer);
+        $safe_studio = esc_html($studio);
+        $safe_url = esc_url($signing_url);
+        $body = '<!doctype html><html><body style="margin:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif;color:#25272b">';
+        $body .= '<div style="max-width:620px;margin:0 auto;padding:34px 16px"><div style="background:#fff;border-radius:20px;padding:32px 30px;box-shadow:0 16px 40px rgba(0,0,0,.08)">';
+        $body .= '<div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6f4bf2;margin-bottom:8px">Aurora Fotoportal</div>';
+        $body .= '<h1 style="margin:0 0 14px;font-size:26px">Avtale klar for signering</h1>';
+        $body .= '<p>Hei '.$safe_signer.',</p><p>Du har mottatt en avtale fra <strong>'.$safe_studio.'</strong> som er klar for digital signering.</p>';
+        $body .= '<p style="margin:28px 0"><a href="'.$safe_url.'" style="display:inline-block;background:#6f4bf2;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:9px">Åpne og signer avtalen</a></p>';
+        $body .= '<p style="font-size:13px;color:#6f6875">Hvis knappen ikke virker, kopier denne adressen inn i nettleseren:<br><span style="word-break:break-all">'.$safe_url.'</span></p>';
+        $body .= '<p>Med vennlig hilsen<br><strong>'.$safe_studio.'</strong></p></div></div></body></html>';
+
+        // Use the same minimal mail header profile as the photographer invitation,
+        // which is already verified on the installation. SMTP plugins may then
+        // control the actual From address consistently.
+        $headers = ['Content-Type: text/html; charset=UTF-8'];
+        $this->contract_mail_failure = '';
+        add_action('wp_mail_failed', [$this, 'capture_contract_mail_failure']);
+        $mail_ok = $to ? wp_mail($to, $subject, $body, $headers) : false;
+        remove_action('wp_mail_failed', [$this, 'capture_contract_mail_failure']);
+
+        $when = current_time('mysql');
         if ($project) {
-            $wpdb->update(self::table('projects'), ['status'=>'contract_sent','updated_at'=>current_time('mysql')], ['id'=>$project_id,'account_id'=>self::tenant_account_id()]);
-            $this->log((int)$project->client_id,$project_id,'contract','Kontrakt markert som sendt: '.$contract->contract_name,(int)$project->is_test);
+            if ($mail_ok) {
+                $this->log((int)$project->client_id, $project_id, 'contract_email',
+                    'ADS e-post godkjent av WordPress e-postsystem. Til: '.$to.' | Avtale: '.$contract->contract_name.' | Tid: '.$when,
+                    (int)$project->is_test);
+            } else {
+                $detail = $this->contract_mail_failure ?: ($to ? 'wp_mail() returnerte false uten feildetalj.' : 'Mottakeradresse mangler eller er ugyldig.');
+                $this->log((int)$project->client_id, $project_id, 'contract_email_error',
+                    'ADS e-post FEILET. Til: '.($to ?: '[mangler]').' | Avtale: '.$contract->contract_name.' | Feil: '.$detail.' | Tid: '.$when,
+                    (int)$project->is_test);
+            }
         }
 
+        if ($mail_ok) {
+            $wpdb->update(self::table('contracts'), ['status'=>'sent','sent_at'=>$when], ['id'=>$contract_id,'account_id'=>self::tenant_account_id()]);
+            if ($project) {
+                $wpdb->update(self::table('projects'), ['status'=>'contract_sent','updated_at'=>$when], ['id'=>$project_id,'account_id'=>self::tenant_account_id()]);
+            }
+        }
+
+        $message = $mail_ok ? 'contract_sent' : 'contract_mail_failed';
         wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')
-            ? NLS1_Photographer_Workspace::url('contracts', ['project_id'=>$project_id,'message'=>'contract_sent'])
-            : self::project_url($project_id).'&message=contract_sent');
+            ? NLS1_Photographer_Workspace::url('contracts', ['project_id'=>$project_id,'message'=>$message])
+            : self::project_url($project_id).'&message='.$message);
         exit;
     }
 
@@ -740,11 +838,11 @@ class NLS1_Fotoportal_Admin {
     public static function project_delivery_state($project_id){
         $p=self::get_project((int)$project_id); if(!$p)return ['project'=>false,'contract_registered'=>false,'contract_signed'=>false,'documents'=>false,'gallery'=>false,'paid'=>false,'portal_ready'=>false];
         $contracts=self::get_project_contracts((int)$project_id); $docs=self::get_documents((int)$project_id,true); $gals=self::get_galleries((int)$project_id,true);
-        $signed=self::has_signed_contract((int)$project_id); $paid=(($p->payment_status??'unpaid')==='paid');
+        $signed=self::has_signed_contract((int)$project_id); $contract_required=self::project_requires_contract((int)$project_id); $gallery_access=self::gallery_access_allowed((int)$project_id); $paid=(($p->payment_status??'unpaid')==='paid');
         $edit=self::project_edit_request_state((int)$project_id);
-        $base_ready=($signed && $paid && !empty($gals));
+        $base_ready=($gallery_access && $paid && !empty($gals));
         $delivery_released=!empty($p->delivery_released_at) && (($p->delivery_status??'')==='released');
-        return ['project'=>true,'contract_registered'=>!empty($contracts),'contract_signed'=>$signed,'documents'=>!empty($docs),'gallery'=>!empty($gals),'paid'=>$paid,'portal_ready'=>$base_ready,'edit_requests'=>$edit,'edits_ready'=>empty($edit['open']),'delivery_released'=>$delivery_released,'delivery_ready'=>($base_ready && empty($edit['open']))];
+        return ['project'=>true,'contract_registered'=>!empty($contracts),'contract_signed'=>$signed,'contract_required'=>$contract_required,'gallery_access'=>$gallery_access,'documents'=>!empty($docs),'gallery'=>!empty($gals),'paid'=>$paid,'portal_ready'=>$base_ready,'edit_requests'=>$edit,'edits_ready'=>empty($edit['open']),'delivery_released'=>$delivery_released,'delivery_ready'=>($base_ready && empty($edit['open']))];
     }
     public static function project_edit_request_state($project_id){
         global $wpdb; $project_id=(int)$project_id; $account_id=self::tenant_account_id();
@@ -772,9 +870,94 @@ class NLS1_Fotoportal_Admin {
         $imgs=self::project_delivery_images((int)$project_id,(int)$account_id);return ['project'=>$p,'images'=>$imgs,'zip_url'=>$p->delivery_zip_url??'','selected_zip_url'=>$p->delivery_selected_zip_url??''];
     }
 
+    public static function project_download_stats($project_id,$account_id=0){
+        global $wpdb;
+        $project_id=(int)$project_id;
+        $p=$account_id ? $wpdb->get_row($wpdb->prepare("SELECT * FROM ".self::table('projects')." WHERE id=%d AND account_id=%d",$project_id,(int)$account_id)) : self::get_project($project_id);
+        if(!$p)return ['count'=>0,'last_at'=>'','first_at'=>''];
+        $row=$wpdb->get_row($wpdb->prepare("SELECT COUNT(*) cnt, MIN(created_at) first_at, MAX(created_at) last_at FROM ".self::table('downloads')." WHERE project_id=%d AND download_type LIKE 'hq_%'",$project_id));
+        return ['count'=>(int)($row->cnt??0),'first_at'=>(string)($row->first_at??''),'last_at'=>(string)($row->last_at??'')];
+    }
+    public static function record_customer_download($project_id,$client_id,$download_type='hq_zip',$image_id=0){
+        global $wpdb;
+        $p=$wpdb->get_row($wpdb->prepare("SELECT * FROM ".self::table('projects')." WHERE id=%d AND client_id=%d",(int)$project_id,(int)$client_id));
+        if(!$p)return false;
+        $before=self::project_download_stats((int)$project_id,(int)$p->account_id);
+        $c=self::get_public_client_by_id_account((int)$client_id,(int)$p->account_id);
+        $email=$c?self::client_portal_email((int)$client_id,(int)$p->account_id):'';
+        $wpdb->insert(self::table('downloads'),[
+            'gallery_id'=>null,
+            'image_id'=>$image_id?(int)$image_id:null,
+            'project_id'=>(int)$project_id,
+            'client_id'=>(int)$client_id,
+            'download_type'=>sanitize_key($download_type),
+            'user_email'=>sanitize_email($email),
+            'ip_address'=>sanitize_text_field($_SERVER['REMOTE_ADDR']??''),
+            'is_test'=>!empty($p->is_test)?1:0,
+            'created_at'=>current_time('mysql'),
+        ]);
+        $now=current_time('mysql');
+        $wpdb->update(self::table('projects'),['status'=>'delivered','updated_at'=>$now],['id'=>(int)$project_id,'account_id'=>(int)$p->account_id]);
+        $wpdb->insert(self::table('logs'),[
+            'account_id'=>(int)$p->account_id,'client_id'=>(int)$client_id,'project_id'=>(int)$project_id,
+            'log_type'=>'customer_download','message'=>'Kunden lastet ned høyoppløselige bilder.','is_test'=>!empty($p->is_test)?1:0,'created_at'=>$now,
+        ]);
+        if(empty($before['count'])) self::notify_photographer_customer_download($p,$c,$now);
+        return true;
+    }
+    public static function notify_photographer_customer_download($project,$client,$when=''){
+        if(!$project)return false;
+        $ps=self::photographer_portal_settings((int)$project->account_id);
+        $to=sanitize_email($ps['email']??'');
+        if(!$to && class_exists('NLS1_Aurora_Account_Platform')){
+            $account=NLS1_Aurora_Account_Platform::get_account((int)$project->account_id);
+            if($account){$to=sanitize_email($account->contact_email??'');if(!$to&&!empty($account->owner_user_id)){ $u=get_user_by('id',(int)$account->owner_user_id); if($u)$to=sanitize_email($u->user_email); }}
+        }
+        if(!$to)return false;
+        $studio=$ps['studio_name']?:($ps['photographer_name']?:get_bloginfo('name'));
+        $customer=$client?($client->client_name?:'Kunden'):'Kunden';
+        $subject='Bilder lastet ned – '.$project->project_name;
+        $body="Hei,\n\n".$customer." har lastet ned de ferdige høyoppløselige bildene for prosjektet \"".$project->project_name."\".\nTidspunkt: ".wp_date('d.m.Y H:i',strtotime($when?:current_time('mysql')))."\n\nStatus i Fotoportal er oppdatert til Levert.\n\nMed vennlig hilsen\n".$studio;
+        return wp_mail($to,$subject,$body,['Content-Type: text/plain; charset=UTF-8']);
+    }
+
+    public static function customer_login_enabled($client){
+        if(!$client || empty($client->id) || empty($client->account_id)) return false;
+        $key='9ls1_fotoportal_customer_login_enabled_'.(int)$client->account_id.'_'.(int)$client->id;
+        $value=get_option($key,null);
+        return $value===null ? true : (bool)$value;
+    }
+    public static function set_customer_login_enabled($client,$enabled){
+        if(!$client || empty($client->id) || empty($client->account_id)) return false;
+        $key='9ls1_fotoportal_customer_login_enabled_'.(int)$client->account_id.'_'.(int)$client->id;
+        update_option($key,$enabled?1:0,false);
+        return true;
+    }
+    public static function photographer_customer_preview_url($client_id,$args=[]){
+        $client=self::get_client((int)$client_id);
+        if(!$client)return '';
+        $base=home_url('/aurora/kunde/forhandsvisning/');
+        $query=['client_id'=>(int)$client->id,'_wpnonce'=>wp_create_nonce('9ls1_customer_preview_'.(int)$client->id)];
+        if(!empty($args['gallery_id']))$query['gallery_id']=absint($args['gallery_id']);
+        return add_query_arg($query,$base);
+    }
     public static function client_user_authorized($client){
-        if(!$client || !is_user_logged_in())return false;
+        if(!$client || !is_user_logged_in() || !self::customer_login_enabled($client))return false;
         return self::repair_client_user_authorization($client,(int)get_current_user_id());
+    }
+    public static function find_unique_public_client_for_user($user){
+        if(!($user instanceof WP_User))return null;
+        $email=strtolower(sanitize_email((string)$user->user_email));
+        if(!$email)return null;
+        global $wpdb;
+        $clients=self::table('clients'); $contacts=self::table('contacts');
+        $rows=$wpdb->get_results($wpdb->prepare(
+            "SELECT DISTINCT c.* FROM $clients c LEFT JOIN $contacts ct ON ct.client_id=c.id AND ct.account_id=c.account_id AND ct.is_primary=1 WHERE LOWER(c.email)=%s OR LOWER(ct.email)=%s ORDER BY c.id ASC LIMIT 3",
+            $email,$email
+        ));
+        if(!is_array($rows) || count($rows)!==1)return null;
+        $client=$rows[0];
+        return self::repair_client_user_authorization($client,(int)$user->ID)?$client:null;
     }
     public static function repair_client_user_authorization($client,$user_id=0){
         if(!$client)return false;
@@ -811,23 +994,69 @@ class NLS1_Fotoportal_Admin {
         $state=self::project_delivery_state((int)$project_id); if(empty($state['portal_ready']))return false;
         if(!empty($p->portal_released_at))return true; $c=self::get_client((int)$p->client_id); if(!$c)return false; $pc=self::get_primary_contact((int)$c->id); $to=sanitize_email($pc&&$pc->email?$pc->email:$c->email); if(!$to)return false;
         self::ensure_client_portal_user((int)$c->id); $ps=self::photographer_portal_settings(); $studio=$ps['studio_name']?:($ps['photographer_name']?:get_bloginfo('name'));
-        $subject='Bildene dine er klare – '.$p->project_name; $body="Hei ".$c->client_name.",\n\nKontrakten er signert og fakturaen er registrert som betalt. Du kan nå åpne kundeportalen og se galleriene dine.\n\nLogg inn og åpne portalen her:\n".self::customer_portal_url((int)$c->id)."\n\nMed vennlig hilsen\n".$studio;
+        $subject='Bildene dine er klare – '.$p->project_name; $gate=self::project_requires_contract((int)$project_id)?'Avtalen er signert og fakturaen er registrert som betalt.':'Fakturaen er registrert som betalt.'; $body="Hei ".$c->client_name.",\n\n".$gate." Du kan nå åpne kundeportalen og se galleriene dine.\n\nLogg inn og åpne portalen her:\n".self::customer_login_url()."\n\nMed vennlig hilsen\n".$studio;
         $headers=['Content-Type: text/plain; charset=UTF-8']; if(!empty($ps['email']))$headers[]='Reply-To: '.$ps['email']; if(!wp_mail($to,$subject,$body,$headers))return false;
         global $wpdb; $wpdb->update(self::table('projects'),['portal_released_at'=>current_time('mysql'),'updated_at'=>current_time('mysql')],['id'=>(int)$project_id,'account_id'=>self::tenant_account_id()]); return true;
     }
     public static function standard_contract_text(){
-        $default="AVTALE OM FOTOGRAFERING OG BILDELEVERANSE\n\nDenne avtalen gjelder fotograferingsoppdraget mellom fotografen og kunden. Omfang, dato, sted, pris og leveranse følger prosjektets avtalte vilkår. Kunden bekrefter at opplysningene er korrekte og godtar vilkårene for oppdraget.\n\nEndringer kan avtales skriftlig mellom partene. Ved digital signering registrerer Aurora tidspunkt og signaturinformasjon.";
-        return (string)get_option('9ls1_fotoportal_standard_contract_text',$default);
+        $default="AVTALE OM FOTOGRAFERING OG BILDELEVERANSE\n\nDenne avtalen gjelder fotograferingsoppdraget mellom fotografen og kunden. Omfang, dato, sted, pris og leveranse følger prosjektets avtalte vilkår. Kunden bekrefter at opplysningene er korrekte og godtar vilkårene for oppdraget.\n\nEndringer kan avtales skriftlig mellom partene. Ved digital signering registreres tidspunkt og signaturinformasjon i fotoportalen.";
+        $text=(string)get_option('9ls1_fotoportal_standard_contract_text',$default);
+        $old='Ved digital signering registrerer Aurora tidspunkt og signaturinformasjon.';
+        $replacement='Ved digital signering registreres tidspunkt og signaturinformasjon i fotoportalen.';
+        if(strpos($text,$old)!==false){
+            $text=str_replace($old,$replacement,$text);
+            update_option('9ls1_fotoportal_standard_contract_text',$text,false);
+        }
+        return $text;
     }
-    public static function client_portal_email($client_id){
-        $c=self::get_client((int)$client_id); if(!$c)return ''; $pc=self::get_primary_contact((int)$client_id);
+    public static function notify_photographer_contract_signed($project_id,$signer_name='',$signer_email='',$signed_at=''){
+        $p=self::get_project((int)$project_id); if(!$p)return false;
+        $c=self::get_client((int)$p->client_id);
+        $ps=self::photographer_portal_settings((int)$p->account_id);
+        $to=sanitize_email($ps['email']??'');
+        if(!$to && class_exists('NLS1_Aurora_Account_Platform')){
+            $account=NLS1_Aurora_Account_Platform::get_account((int)$p->account_id);
+            if($account){
+                $to=sanitize_email($account->contact_email??'');
+                if(!$to && !empty($account->owner_user_id)){
+                    $owner=get_user_by('id',(int)$account->owner_user_id);
+                    if($owner)$to=sanitize_email($owner->user_email);
+                }
+            }
+        }
+        if(!$to)return false;
+        $when=$signed_at?:current_time('mysql');
+        $studio=$ps['studio_name']?:($ps['photographer_name']?:get_bloginfo('name'));
+        $subject='Kontrakt signert – '.$p->project_name;
+        $body="Hei,\n\nKunden har signert avtalen for prosjektet \"".$p->project_name."\".";
+        if($c)$body.="\nKunde: ".$c->client_name;
+        if($signer_name)$body.="\nSignert av: ".$signer_name;
+        if($signer_email)$body.=" (".$signer_email.")";
+        $body.="\nTidspunkt: ".wp_date('d.m.Y H:i',strtotime($when))."\n\nDu kan nå fortsette prosjektet i fotoportalen.\n\nMed vennlig hilsen\n".$studio;
+        return wp_mail($to,$subject,$body,['Content-Type: text/plain; charset=UTF-8']);
+    }
+    public static function client_portal_email($client_id,$account_id=0){
+        global $wpdb;
+        $client_id=(int)$client_id; $account_id=(int)$account_id;
+        if($account_id){
+            $c=self::get_public_client_by_id_account($client_id,$account_id);
+            if(!$c)return '';
+            $pc=$wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM ".self::table('contacts')." WHERE client_id=%d AND account_id=%d AND is_primary=1 ORDER BY id ASC LIMIT 1",
+                $client_id,$account_id
+            ));
+        }else{
+            $c=self::get_client($client_id); if(!$c)return '';
+            $pc=self::get_primary_contact($client_id);
+        }
         return sanitize_email($pc&&$pc->email?$pc->email:$c->email);
     }
-    public static function client_portal_user($client_id){$email=self::client_portal_email((int)$client_id);return $email?get_user_by('email',$email):false;}
-    public static function ensure_client_portal_user($client_id){
-        $c=self::get_client((int)$client_id); if(!$c)return 0;
+    public static function client_portal_user($client_id,$account_id=0){$email=self::client_portal_email((int)$client_id,(int)$account_id);return $email?get_user_by('email',$email):false;}
+    public static function ensure_client_portal_user($client_id,$account_id=0){
+        $client_id=(int)$client_id; $account_id=(int)$account_id;
+        $c=$account_id?self::get_public_client_by_id_account($client_id,$account_id):self::get_client($client_id); if(!$c)return 0;
         if (class_exists('NLS1_Aurora_Account_Platform') && !NLS1_Aurora_Account_Platform::is_module_enabled((int)$c->account_id, 'customer_portal')) return 0;
-        $email=self::client_portal_email((int)$client_id); if(!$email)return 0;
+        $email=self::client_portal_email($client_id,(int)$c->account_id); if(!$email)return 0;
         $u=get_user_by('email',$email); if($u){update_user_meta((int)$u->ID,'aurora_fotoportal_client_id',(int)$c->id);update_user_meta((int)$u->ID,'aurora_fotoportal_account_id',(int)$c->account_id);return (int)$u->ID;}
         $base=sanitize_user(strstr($email,'@',true)?:'kunde',true); if(!$base)$base='kunde'; $login=$base; $n=1; while(username_exists($login)){$login=$base.$n++;}
         $id=wp_create_user($login,wp_generate_password(24,true,true),$email); if(is_wp_error($id))return 0;
@@ -836,19 +1065,66 @@ class NLS1_Fotoportal_Admin {
         $key=get_password_reset_key($user);
         if(!is_wp_error($key)){
             $token=self::ensure_client_portal_token((int)$c->id); $ps=self::photographer_portal_settings((int)$c->account_id); $studio=$ps['studio_name']?:($ps['photographer_name']?:get_bloginfo('name'));
-            $reset=add_query_arg(['fotoportal_password'=>1,'mode'=>'reset','token'=>rawurlencode($token),'key'=>rawurlencode($key),'login'=>rawurlencode($user->user_login)],home_url('/'));
+            if(function_exists('aurora_auth_reset_password_url') && function_exists('aurora_auth_app') && aurora_auth_app('fotoportal')){
+                $reset=aurora_auth_reset_password_url('fotoportal','customer',[
+                    'key'=>$key,
+                    'login'=>$user->user_login,
+                ]);
+            }else{
+                $reset=add_query_arg(['fotoportal_password'=>1,'mode'=>'reset','token'=>rawurlencode($token),'key'=>rawurlencode($key),'login'=>rawurlencode($user->user_login)],home_url('/'));
+            }
             $subject='Opprett passord til bildeportalen – '.$studio; $body="Hei ".$c->client_name.",\n\nDin private bildeportal er opprettet. Opprett passord her:\n".$reset."\n\nMed vennlig hilsen\n".$studio;
             $headers=['Content-Type: text/plain; charset=UTF-8']; if(!empty($ps['email']))$headers[]='Reply-To: '.$ps['email']; wp_mail($email,$subject,$body,$headers);
         }
         return (int)$id;
     }
-    public static function photographer_portal_defaults(){return ['studio_name'=>'','photographer_name'=>'','email'=>'','phone'=>'','website'=>'','address'=>'','about'=>'','logo_url'=>'','profile_image_url'=>'','cover_image_url'=>'','watermark_url'=>'','watermark_position'=>'bottom_right','watermark_opacity'=>35,'watermark_size'=>18,'accent_color'=>'#6f4bf2','show_filenames'=>1,'delivery_terms_version'=>'1.0','delivery_terms_text'=>"Ved nedlasting bekrefter kunden at bildene brukes i samsvar med avtalen med fotografen. Opphavsretten til bildene tilhører fotografen med mindre annet er skriftlig avtalt. Kunden kan ikke videreselge, overdra eller bruke bildene utover avtalt bruksrett.",'email_subject'=>'Dine bilder er klare – {project_name}','email_body'=>"Hei {customer_name},\n\nBildene dine er nå tilgjengelige i kundeportalen.\n\nÅpne kundeportalen her:\n{customer_portal_url}\n\nMed vennlig hilsen\n{photographer_name}"];}
+    public static function photographer_portal_defaults(){return ['studio_name'=>'','photographer_name'=>'','email'=>'','phone'=>'','website'=>'','address'=>'','address_postal_code'=>'','address_city'=>'','about'=>'','logo_url'=>'','profile_image_url'=>'','cover_image_url'=>'','watermark_url'=>'','watermark_position'=>'bottom_right','watermark_opacity'=>35,'watermark_size'=>18,'accent_color'=>'#6f4bf2','show_filenames'=>1,'delivery_terms_version'=>'1.0','delivery_terms_text'=>"Ved nedlasting bekrefter kunden at bildene brukes i samsvar med avtalen med fotografen. Opphavsretten til bildene tilhører fotografen med mindre annet er skriftlig avtalt. Kunden kan ikke videreselge, overdra eller bruke bildene utover avtalt bruksrett.",'email_subject'=>'Dine bilder er klare – {project_name}','email_body'=>"Hei {customer_name},\n\nBildene dine er nå tilgjengelige i kundeportalen.\n\nÅpne kundeportalen her:\n{customer_portal_url}\n\nMed vennlig hilsen\n{photographer_name}"];}
     public static function photographer_portal_settings($account_id=0){$account_id=$account_id?:self::tenant_account_id();$x=get_option('9ls1_fotoportal_portal_settings_'.(int)$account_id,[]);return array_merge(self::photographer_portal_defaults(),is_array($x)?$x:[]);}
     public static function ensure_client_portal_token($client_id){global $wpdb;$c=self::get_client($client_id);if(!$c)return '';if($c->portal_token)return $c->portal_token;$t=wp_generate_password(40,false,false);$wpdb->update(self::table('clients'),['portal_token'=>$t],['id'=>(int)$client_id,'account_id'=>self::tenant_account_id()]);return $t;}
-    public static function customer_portal_url($client_id){$t=self::ensure_client_portal_token($client_id);return $t?add_query_arg(['fotoportal_customer'=>1,'token'=>rawurlencode($t)],home_url('/')):'';}
+    public static function customer_login_url($args=[]){
+        if(class_exists('NLS1_Aurora_Account_Platform')) return NLS1_Aurora_Account_Platform::customer_login_url($args);
+        if(function_exists('aurora_auth_login_url')) return aurora_auth_login_url('fotoportal','customer',$args);
+        return add_query_arg($args,home_url('/aurora/kunde/'));
+    }
+    public static function customer_portal_url($client_id,$account_id=0){
+        $client_id=absint($client_id); $account_id=absint($account_id);
+        if(!$client_id)return '';
+
+        // When a known public client/account pair is available (password reset,
+        // customer mail, authenticated customer workspace), never depend on the
+        // ambient tenant context. Public auth flows do not necessarily have a
+        // photographer tenant selected, and the old tenant-scoped token helper
+        // could therefore return an empty URL after a successful password reset.
+        $client=$account_id?self::get_public_client_by_id_account($client_id,$account_id):null;
+
+        if(is_user_logged_in() && function_exists('aurora_auth_workspace_url')){
+            $user_id=get_current_user_id();
+            $user_account_id=(int)get_user_meta($user_id,'aurora_fotoportal_account_id',true);
+            $mapped_client_id=(int)get_user_meta($user_id,'aurora_fotoportal_client_id',true);
+            if($user_account_id && $mapped_client_id===$client_id){
+                $auth_client=$client ?: self::get_public_client_by_id_account($client_id,$user_account_id);
+                if($auth_client && self::repair_client_user_authorization($auth_client,$user_id)){
+                    return aurora_auth_workspace_url('fotoportal','customer');
+                }
+            }
+        }
+
+        if($client){
+            $t=(string)($client->portal_token??'');
+            if(!$t){
+                global $wpdb;
+                $t=wp_generate_password(40,false,false);
+                $wpdb->update(self::table('clients'),['portal_token'=>$t],['id'=>$client_id,'account_id'=>$account_id]);
+            }
+        }else{
+            // Photographer/admin workspace calls keep using the tenant-scoped helper.
+            $t=self::ensure_client_portal_token($client_id);
+        }
+        return $t?add_query_arg(['fotoportal_customer'=>1,'token'=>rawurlencode($t)],home_url('/')):'';
+    }
     public static function get_public_client_by_token($t){global $wpdb;$t=sanitize_text_field($t);return $t?$wpdb->get_row($wpdb->prepare("SELECT * FROM ".self::table('clients')." WHERE portal_token=%s LIMIT 1",$t)):null;}
     public static function get_public_client_by_id_account($id,$account_id){global $wpdb;return $wpdb->get_row($wpdb->prepare("SELECT * FROM ".self::table('clients')." WHERE id=%d AND account_id=%d LIMIT 1",(int)$id,(int)$account_id));}
-    public static function public_project_portal_ready($project_id,$account_id){global $wpdb;$p=$wpdb->get_row($wpdb->prepare("SELECT payment_status FROM ".self::table('projects')." WHERE id=%d AND account_id=%d LIMIT 1",(int)$project_id,(int)$account_id));if(!$p||($p->payment_status??'unpaid')!=='paid')return false;$n=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM ".self::table('contracts')." WHERE project_id=%d AND account_id=%d AND status='signed'",(int)$project_id,(int)$account_id));return $n>0;}
+    public static function public_project_portal_ready($project_id,$account_id){global $wpdb;$p=$wpdb->get_var($wpdb->prepare("SELECT id FROM ".self::table('projects')." WHERE id=%d AND account_id=%d LIMIT 1",(int)$project_id,(int)$account_id));if(!$p)return false;$project=$wpdb->get_row($wpdb->prepare("SELECT contract_required FROM ".self::table('projects')." WHERE id=%d AND account_id=%d LIMIT 1",(int)$project_id,(int)$account_id)); if($project && isset($project->contract_required) && (int)$project->contract_required===0)return true; $n=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM ".self::table('contracts')." WHERE project_id=%d AND account_id=%d AND status='signed'",(int)$project_id,(int)$account_id));return $n>0;}
     public static function public_project_delivery_state($project_id,$account_id){
         global $wpdb;
         $project_id=(int)$project_id; $account_id=(int)$account_id;
@@ -870,7 +1146,7 @@ class NLS1_Fotoportal_Admin {
             (int)$c->id,(int)$c->account_id
         ));
     }
-    public static function get_public_client_projects_and_galleries($c){global $wpdb;if(!$c)return [];$p=self::table('projects');$g=self::table('galleries');$i=self::table('images');$ct=self::table('contracts');$rows=$wpdb->get_results($wpdb->prepare("SELECT p.id project_id,p.project_name,p.project_number,p.project_date,p.payment_status,g.id gallery_id,g.account_id,g.gallery_title,g.gallery_description,g.selection_status,g.selection_submitted_at,g.selection_processing_at,g.selection_ready_at,g.public_token,g.original_count FROM $p p LEFT JOIN $g g ON g.project_id=p.id AND g.account_id=p.account_id WHERE p.client_id=%d AND p.account_id=%d AND p.payment_status='paid' AND EXISTS (SELECT 1 FROM $ct c WHERE c.project_id=p.id AND c.account_id=p.account_id AND c.status='signed') ORDER BY COALESCE(p.project_date,p.created_at) DESC,g.created_at DESC",$c->id,$c->account_id));$o=[];foreach($rows as $x){$pid=(int)$x->project_id;if(!isset($o[$pid]))$o[$pid]=['project'=>$x,'galleries'=>[]];if($x->gallery_id){if(!$x->public_token){$x->public_token=wp_generate_password(32,false,false);$wpdb->update($g,['public_token'=>$x->public_token],['id'=>$x->gallery_id,'account_id'=>$c->account_id]);}$x->public_url=add_query_arg(['fotoportal_gallery'=>1,'token'=>rawurlencode($x->public_token)],home_url('/'));$x->cover_url=$wpdb->get_var($wpdb->prepare("SELECT thumbnail_url FROM $i WHERE gallery_id=%d AND account_id=%d AND thumbnail_url<>'' ORDER BY sort_order,id LIMIT 1",$x->gallery_id,$c->account_id));$o[$pid]['galleries'][]=$x;}}return array_values($o);}
+    public static function get_public_client_projects_and_galleries($c){global $wpdb;if(!$c)return [];$p=self::table('projects');$g=self::table('galleries');$i=self::table('images');$ct=self::table('contracts');$rows=$wpdb->get_results($wpdb->prepare("SELECT p.id project_id,p.project_name,p.project_number,p.project_date,p.payment_status,g.id gallery_id,g.account_id,g.gallery_title,g.gallery_description,g.selection_status,g.selection_submitted_at,g.selection_processing_at,g.selection_ready_at,g.public_token,g.original_count FROM $p p LEFT JOIN $g g ON g.project_id=p.id AND g.account_id=p.account_id WHERE p.client_id=%d AND p.account_id=%d AND (COALESCE(p.contract_required,1)=0 OR EXISTS (SELECT 1 FROM $ct c WHERE c.project_id=p.id AND c.account_id=p.account_id AND c.status='signed')) ORDER BY COALESCE(p.project_date,p.created_at) DESC,g.created_at DESC",$c->id,$c->account_id));$o=[];foreach($rows as $x){$pid=(int)$x->project_id;if(!isset($o[$pid]))$o[$pid]=['project'=>$x,'galleries'=>[]];if($x->gallery_id){if(!$x->public_token){$x->public_token=wp_generate_password(32,false,false);$wpdb->update($g,['public_token'=>$x->public_token],['id'=>$x->gallery_id,'account_id'=>$c->account_id]);}$x->public_url=add_query_arg(['fotoportal_gallery'=>1,'token'=>rawurlencode($x->public_token)],home_url('/'));$x->cover_url=$wpdb->get_var($wpdb->prepare("SELECT thumbnail_url FROM $i WHERE gallery_id=%d AND account_id=%d AND thumbnail_url<>'' ORDER BY sort_order,id LIMIT 1",$x->gallery_id,$c->account_id));$o[$pid]['galleries'][]=$x;}}return array_values($o);}
     public static function replace_mail_tokens($t,$v){foreach($v as $k=>$x)$t=str_replace('{'.$k.'}',$x,$t);return $t;}
     public static function hero_defaults(){return ['image_id'=>0,'size'=>'medium','focal_x'=>50,'focal_y'=>50,'overlay_color'=>'#000000','overlay_opacity'=>38];}
     public static function gallery_hero_settings($gallery_id){$g=self::get_gallery((int)$gallery_id);if(!$g)return self::hero_defaults();$x=get_option('9ls1_fotoportal_gallery_hero_'.(int)$g->account_id.'_'.(int)$g->id,[]);return array_merge(self::hero_defaults(),is_array($x)?$x:[]);}
@@ -1011,7 +1287,7 @@ class NLS1_Fotoportal_Admin {
         $clients = self::table('clients');
         $favorites = self::table('favorites');
         $comments = self::table('image_comments');
-        return $wpdb->get_results($wpdb->prepare("\n            SELECT i.id image_id, i.gallery_id, i.project_id, i.original_filename, i.preview_url, i.thumbnail_url, i.is_selected,\n                   g.gallery_title, g.selection_status, g.selection_submitted_at, g.selection_processing_at, g.selection_ready_at, p.project_name, c.id client_id, c.client_name,\n                   CASE WHEN EXISTS(SELECT 1 FROM $favorites f WHERE f.image_id=i.id AND f.gallery_id=i.gallery_id) THEN 1 ELSE 0 END is_favorite,\n                   (SELECT COUNT(*) FROM $comments cm WHERE cm.image_id=i.id AND cm.gallery_id=i.gallery_id AND cm.deleted_at IS NULL) comment_count,
+        return $wpdb->get_results($wpdb->prepare("\n            SELECT i.id image_id, i.gallery_id, i.project_id, i.original_filename, i.preview_url, i.thumbnail_url, i.is_selected, i.edit_status, i.edited_url, i.edited_filename, i.edited_at,\n                   g.gallery_title, g.selection_status, g.selection_submitted_at, g.selection_processing_at, g.selection_ready_at, p.project_name, c.id client_id, c.client_name,\n                   CASE WHEN EXISTS(SELECT 1 FROM $favorites f WHERE f.image_id=i.id AND f.gallery_id=i.gallery_id) THEN 1 ELSE 0 END is_favorite,\n                   (SELECT COUNT(*) FROM $comments cm WHERE cm.image_id=i.id AND cm.gallery_id=i.gallery_id AND cm.deleted_at IS NULL) comment_count,
                    (SELECT COUNT(*) FROM $comments cmr WHERE cmr.image_id=i.id AND cmr.gallery_id=i.gallery_id AND cmr.author_type='customer' AND cmr.is_edit_request=1 AND cmr.deleted_at IS NULL) edit_request_count,\n                   (SELECT cm2.comment_text FROM $comments cm2 WHERE cm2.image_id=i.id AND cm2.gallery_id=i.gallery_id AND cm2.deleted_at IS NULL ORDER BY cm2.created_at DESC, cm2.id DESC LIMIT 1) latest_comment,\n                   (SELECT cm3.created_at FROM $comments cm3 WHERE cm3.image_id=i.id AND cm3.gallery_id=i.gallery_id AND cm3.deleted_at IS NULL ORDER BY cm3.created_at DESC, cm3.id DESC LIMIT 1) latest_comment_at\n            FROM $images i\n            INNER JOIN $galleries g ON g.id=i.gallery_id AND g.account_id=i.account_id\n            INNER JOIN $projects p ON p.id=i.project_id AND p.account_id=i.account_id\n            LEFT JOIN $clients c ON c.id=g.client_id AND c.account_id=i.account_id\n            WHERE i.account_id=%d AND (i.is_selected=1 OR EXISTS(SELECT 1 FROM $favorites f2 WHERE f2.image_id=i.id AND f2.gallery_id=i.gallery_id) OR EXISTS(SELECT 1 FROM $comments cm4 WHERE cm4.image_id=i.id AND cm4.gallery_id=i.gallery_id AND cm4.deleted_at IS NULL))\n            ORDER BY COALESCE((SELECT MAX(cm5.created_at) FROM $comments cm5 WHERE cm5.image_id=i.id AND cm5.gallery_id=i.gallery_id AND cm5.deleted_at IS NULL), i.updated_at, i.created_at) DESC, i.id DESC\n        ", $account_id));
     }
 
@@ -1142,7 +1418,8 @@ class NLS1_Fotoportal_Admin {
     public static function apply_watermark(&$img, $w, $h, $settings) {
         $type = $settings['watermark_type'] ?? 'text';
         $position = $settings['watermark_position'] ?? 'bottom_right';
-        $opacity = max(5, min(95, (int)($settings['watermark_opacity'] ?? 28)));
+        $transparency = max(0, min(100, (int)($settings['watermark_opacity'] ?? 28)));
+        $opacity = 100 - $transparency; // UI value is transparency: 0=visible, 100=transparent.
         $size = max(12, min(120, (int)($settings['watermark_size'] ?? 22)));
         $text = trim((string)($settings['watermark_text'] ?? ''));
 
@@ -1640,7 +1917,9 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function handle_upload_gallery_zip() {
-        if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
+        $workspace_request=!empty($_POST['aurora_workspace']);
+        $workspace_photographer=$workspace_request&&current_user_can('aurora_fotoportal_photographer');
+        if (!current_user_can('manage_options')&&!$workspace_photographer) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_upload_gallery_zip');
         $workspace = !empty($_POST['aurora_workspace']);
 
@@ -1654,15 +1933,17 @@ class NLS1_Fotoportal_Admin {
         }
 
         // Aurora workflow gate: gallery production starts after a signed contract.
-        if (!self::has_signed_contract($project_id)) {
+        if (!self::gallery_access_allowed($project_id)) {
             wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
                 ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>$project_id,'message'=>'gallery_contract_required'])
                 : add_query_arg(['project_step'=>'gallery','message'=>'gallery_contract_required'], self::project_url($project_id)));
             exit;
         }
 
-        if (empty($_FILES['gallery_zip']['name'])) {
-            wp_safe_redirect(self::project_url($project_id) . '&message=gallery_zip_missing');
+        $has_zip = !empty($_FILES['gallery_zip']['name']);
+        $has_images = !empty($_FILES['gallery_images']['name']) && is_array($_FILES['gallery_images']['name']) && count(array_filter($_FILES['gallery_images']['name']));
+        if (!$has_zip && !$has_images) {
+            wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace')) ? NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'new_gallery'=>1,'message'=>'gallery_images_missing']) : self::project_url($project_id).'&message=gallery_images_missing');
             exit;
         }
 
@@ -1677,98 +1958,48 @@ class NLS1_Fotoportal_Admin {
             $gallery_title = 'Galleri ' . current_time('Y-m-d H:i');
         }
 
-        $file = $_FILES['gallery_zip'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if ($ext !== 'zip') {
-            wp_safe_redirect(self::project_url($project_id) . '&message=gallery_not_zip');
-            exit;
-        }
-
         $roots = self::gallery_upload_root();
         $project_folder = self::safe_project_folder($project->project_number);
         $gallery_number = self::next_gallery_number($project_id);
 
         $base_dir = trailingslashit($roots['basedir']) . $project_folder . '/galleries/' . $gallery_number . '/';
         $base_url = trailingslashit($roots['baseurl']) . $project_folder . '/galleries/' . $gallery_number . '/';
+        $dirs = [$base_dir,$base_dir.'zip/',$base_dir.'original/',$base_dir.'preview/',$base_dir.'thumbnails/',$base_dir.'export/'];
+        foreach ($dirs as $dir) { if (!wp_mkdir_p($dir)) { wp_safe_redirect(self::project_url($project_id).'&message=gallery_dir_failed'); exit; } }
 
-        $dirs = [
-            $base_dir,
-            $base_dir . 'zip/',
-            $base_dir . 'original/',
-            $base_dir . 'preview/',
-            $base_dir . 'thumbnails/',
-            $base_dir . 'export/',
-        ];
+        $registered=[]; $zip_filename='';
+        $unique_target=static function($filename) use($base_dir){
+            $basename=sanitize_file_name(basename((string)$filename)); if(!$basename)return [null,null];
+            $name=pathinfo($basename,PATHINFO_FILENAME);$ext=pathinfo($basename,PATHINFO_EXTENSION);$candidate=$basename;$counter=1;
+            while(file_exists($base_dir.'original/'.$candidate)){$candidate=sanitize_file_name($name.'-'.$counter.($ext?'.'.$ext:''));$counter++;}
+            return [$candidate,$base_dir.'original/'.$candidate];
+        };
 
-        foreach ($dirs as $dir) {
-            if (!wp_mkdir_p($dir)) {
-                wp_safe_redirect(self::project_url($project_id) . '&message=gallery_dir_failed');
-                exit;
-            }
-        }
-
-        $zip_filename = sanitize_file_name($file['name']);
-        $zip_path = $base_dir . 'zip/' . $zip_filename;
-
-        if (!move_uploaded_file($file['tmp_name'], $zip_path)) {
-            wp_safe_redirect(self::project_url($project_id) . '&message=gallery_upload_failed');
-            exit;
-        }
-
-        $original_count = 0;
-        $registered = [];
-
-        if (class_exists('ZipArchive')) {
-            $zip = new ZipArchive();
-            if ($zip->open($zip_path) === true) {
-                for ($i = 0; $i < $zip->numFiles; $i++) {
-                    $entry = $zip->getNameIndex($i);
-                    if (!$entry || substr($entry, -1) === '/') continue;
-
-                    $entry_norm = str_replace('\\', '/', strtolower($entry));
-                    if (strpos($entry_norm, 'preview/') !== false || strpos($entry_norm, 'thumbnails/') !== false || strpos($entry_norm, 'export/') !== false || strpos($entry_norm, '__macosx/') !== false) {
-                        continue;
-                    }
-
-                    if (!self::is_allowed_image_file($entry)) continue;
-
-                    $basename = sanitize_file_name(basename($entry));
-                    if (!$basename) continue;
-
-                    $target = $base_dir . 'original/' . $basename;
-                    $counter = 1;
-                    while (file_exists($target)) {
-                        $name = pathinfo($basename, PATHINFO_FILENAME);
-                        $extension = pathinfo($basename, PATHINFO_EXTENSION);
-                        $basename = sanitize_file_name($name . '-' . $counter . '.' . $extension);
-                        $target = $base_dir . 'original/' . $basename;
-                        $counter++;
-                    }
-                    $stream = $zip->getStream($entry);
-                    if (!$stream) continue;
-
-                    $out = fopen($target, 'w');
-                    if (!$out) continue;
-                    while (!feof($stream)) {
-                        fwrite($out, fread($stream, 8192));
-                    }
-                    fclose($out);
-                    fclose($stream);
-
-                    if (file_exists($target)) {
-                        $registered[] = [
-                            'filename' => $basename,
-                            'path' => $target,
-                            'url' => $base_url . 'original/' . rawurlencode($basename),
-                            'ext' => strtolower(pathinfo($basename, PATHINFO_EXTENSION)),
-                            'size' => filesize($target),
-                        ];
-                        $original_count++;
-                    }
+        if($has_zip){
+            $file=$_FILES['gallery_zip']; $ext=strtolower(pathinfo($file['name'],PATHINFO_EXTENSION));
+            if($ext!=='zip'){wp_safe_redirect(($workspace&&class_exists('NLS1_Photographer_Workspace'))?NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'new_gallery'=>1,'message'=>'gallery_not_zip']):self::project_url($project_id).'&message=gallery_not_zip');exit;}
+            $zip_filename=sanitize_file_name($file['name']);$zip_path=$base_dir.'zip/'.$zip_filename;
+            if(move_uploaded_file($file['tmp_name'],$zip_path)&&class_exists('ZipArchive')){
+                $zip=new ZipArchive(); if($zip->open($zip_path)===true){
+                    for($i=0;$i<$zip->numFiles;$i++){
+                        $entry=$zip->getNameIndex($i); if(!$entry||substr($entry,-1)==='/'||!self::is_allowed_image_file($entry))continue;
+                        $norm=str_replace('\\','/',strtolower($entry)); if(strpos($norm,'__macosx/')!==false||strpos($norm,'preview/')!==false||strpos($norm,'thumbnails/')!==false||strpos($norm,'export/')!==false)continue;
+                        [$filename,$target]=$unique_target($entry);if(!$target)continue;$stream=$zip->getStream($entry);if(!$stream)continue;$out=fopen($target,'w');if(!$out){fclose($stream);continue;}
+                        while(!feof($stream))fwrite($out,fread($stream,8192));fclose($out);fclose($stream);
+                        if(file_exists($target))$registered[]=['filename'=>$filename,'path'=>$target,'url'=>$base_url.'original/'.rawurlencode($filename),'ext'=>strtolower(pathinfo($filename,PATHINFO_EXTENSION)),'size'=>filesize($target)];
+                    } $zip->close();
                 }
-                $zip->close();
             }
         }
+        if($has_images){
+            foreach($_FILES['gallery_images']['name'] as $i=>$original_name){
+                if(!$original_name||!self::is_allowed_image_file($original_name))continue;$tmp=$_FILES['gallery_images']['tmp_name'][$i]??'';$error=(int)($_FILES['gallery_images']['error'][$i]??UPLOAD_ERR_NO_FILE);
+                if($error!==UPLOAD_ERR_OK||!$tmp||!is_uploaded_file($tmp))continue;[$filename,$target]=$unique_target($original_name);if(!$target||!move_uploaded_file($tmp,$target))continue;
+                $registered[]=['filename'=>$filename,'path'=>$target,'url'=>$base_url.'original/'.rawurlencode($filename),'ext'=>strtolower(pathinfo($filename,PATHINFO_EXTENSION)),'size'=>filesize($target)];
+            }
+        }
+        $original_count=count($registered);
+        if(!$original_count){wp_safe_redirect(($workspace&&class_exists('NLS1_Photographer_Workspace'))?NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'new_gallery'=>1,'message'=>'gallery_images_missing']):self::project_url($project_id).'&message=gallery_images_missing');exit;}
 
         $wpdb->insert(self::table('galleries'), [
             'account_id' => self::tenant_account_id(),
@@ -1818,6 +2049,11 @@ class NLS1_Fotoportal_Admin {
 
         $this->log((int)$project->client_id, $project_id, 'gallery', 'Galleri lastet opp: ' . $gallery_title . ' (' . $original_count . ' bilder). Preview: ' . $derivatives['preview'] . ', thumbnails: ' . $derivatives['thumbs'] . '.', (int)$project->is_test);
         self::maybe_release_customer_portal($project_id);
+        if(!empty($_POST['aurora_demo_journey']) && class_exists('NLS1_Aurora_Demo_Journey')){
+            NLS1_Aurora_Demo_Journey::mark_gallery_created(self::tenant_account_id(),$gallery_id);
+            wp_safe_redirect(NLS1_Photographer_Workspace::url('dashboard',['demo_journey'=>1,'demo_step'=>'gallery_mail']));
+            exit;
+        }
         wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
             ? NLS1_Photographer_Workspace::url('galleries', ['project_id'=>$project_id,'message'=>'gallery_uploaded'])
             : self::project_url($project_id) . '&message=gallery_uploaded');
@@ -1826,9 +2062,10 @@ class NLS1_Fotoportal_Admin {
 
 
     public function handle_add_gallery_images() {
-        if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
+        $workspace=!empty($_POST['aurora_workspace']);
+        $workspace_photographer=$workspace && current_user_can('aurora_fotoportal_photographer');
+        if (!current_user_can('manage_options') && !$workspace_photographer) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_add_gallery_images');
-        $workspace = !empty($_POST['aurora_workspace']);
         global $wpdb;
 
         $gallery_id = (int)($_POST['gallery_id'] ?? 0);
@@ -1837,7 +2074,7 @@ class NLS1_Fotoportal_Admin {
 
         $project_id = (int)$gallery->project_id;
         $project = self::get_project($project_id);
-        if (!$project || !self::has_signed_contract($project_id)) {
+        if (!$project || !self::gallery_access_allowed($project_id)) {
             wp_safe_redirect(($workspace && class_exists('NLS1_Photographer_Workspace'))
                 ? NLS1_Photographer_Workspace::url('galleries',['project_id'=>$project_id,'message'=>'gallery_contract_required'])
                 : self::project_url($project_id).'&message=gallery_contract_required');
@@ -2155,10 +2392,11 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function handle_update_client() {
-        if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
+        $workspace = !empty($_POST['aurora_workspace']);
+        $workspace_photographer = $workspace && current_user_can('aurora_fotoportal_photographer');
+        if (!current_user_can('manage_options') && !$workspace_photographer) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_update_client');
         global $wpdb;
-        $workspace = !empty($_POST['aurora_workspace']);
         $client_id = (int)($_POST['client_id'] ?? 0);
         $client = self::get_client($client_id);
         if (!$client) {
@@ -2251,6 +2489,61 @@ class NLS1_Fotoportal_Admin {
         exit;
     }
 
+    public function handle_save_project_contract_gate(){
+        $workspace=!empty($_POST['aurora_workspace']);
+        $workspace_photographer=$workspace && current_user_can('aurora_fotoportal_photographer');
+        if(!current_user_can('manage_options') && !$workspace_photographer) wp_die('Mangler tilgang.');
+        check_admin_referer('9ls1_fotoportal_save_project_contract_gate');
+        $project_id=(int)($_POST['project_id']??0);
+        $project=self::get_project($project_id); if(!$project)wp_die('Prosjektet finnes ikke.');
+        $required=!empty($_POST['contract_required'])?1:0;
+        global $wpdb;
+        $wpdb->update(self::table('projects'),['contract_required'=>$required,'updated_at'=>current_time('mysql')],['id'=>$project_id,'account_id'=>self::tenant_account_id()]);
+        $this->log((int)$project->client_id,$project_id,'project',$required?'Galleri krever signert avtale.':'Galleri åpnet uten krav om signert avtale.',(int)$project->is_test);
+        wp_safe_redirect($workspace && class_exists('NLS1_Photographer_Workspace')?NLS1_Photographer_Workspace::url('projects',['project_id'=>$project_id,'message'=>'contract_gate_saved']):self::project_url($project_id).'&message=contract_gate_saved');
+        exit;
+    }
+
+    public static function delete_project_completely($project_id,$delete_files=true){
+        global $wpdb;
+        $project=self::get_project((int)$project_id); if(!$project)return false;
+        $aid=(int)$project->account_id;
+        $galleries=$wpdb->get_results($wpdb->prepare("SELECT * FROM ".self::table('galleries')." WHERE project_id=%d AND account_id=%d",(int)$project_id,$aid));
+        if($delete_files){
+            foreach($galleries as $g)if(!empty($g->base_dir)&&is_dir($g->base_dir))self::delete_dir_recursive($g->base_dir);
+            foreach(['delivery_zip_url','delivery_selected_zip_url'] as $field){
+                $url=(string)($project->$field??''); if(!$url)continue;
+                $uploads=wp_get_upload_dir();
+                if(!empty($uploads['baseurl'])&&strpos($url,$uploads['baseurl'])===0){
+                    $path=$uploads['basedir'].substr($url,strlen($uploads['baseurl']));
+                    if(is_file($path))@unlink($path);
+                }
+            }
+        }
+        $attachment_ids=[];
+        foreach(['contracts','documents'] as $table){
+            $rows=$wpdb->get_results($wpdb->prepare("SELECT attachment_id FROM ".self::table($table)." WHERE project_id=%d AND account_id=%d",(int)$project_id,$aid));
+            foreach($rows as $r)if(!empty($r->attachment_id))$attachment_ids[]=(int)$r->attachment_id;
+        }
+        foreach(['image_comments','favorites','downloads','images','galleries','documents','signatures','access_tokens','contracts','logs'] as $table){
+            $wpdb->delete(self::table($table),['project_id'=>(int)$project_id,'account_id'=>$aid]);
+        }
+        $wpdb->delete(self::table('projects'),['id'=>(int)$project_id,'account_id'=>$aid]);
+        if($delete_files)foreach(array_unique($attachment_ids) as $att)wp_delete_attachment($att,true);
+        return true;
+    }
+    public function handle_delete_project_permanently(){
+        if(!current_user_can('manage_options')&&!current_user_can('aurora_fotoportal_photographer'))wp_die('Mangler tilgang.');
+        check_admin_referer('9ls1_fotoportal_delete_project_permanently');
+        $pid=absint($_POST['project_id']??0);$project=self::get_project($pid);if(!$project)wp_die('Prosjekt mangler.');
+        $confirm=trim((string)($_POST['confirm_project_name']??''));
+        if($confirm!==trim((string)$project->project_name))wp_die('Prosjektnavnet stemmer ikke. Sletting ble avbrutt.');
+        $client_id=(int)$project->client_id;
+        if(!self::delete_project_completely($pid,true))wp_die('Prosjektet kunne ikke slettes.');
+        if(class_exists('NLS1_Aurora_Demo_Journey'))NLS1_Aurora_Demo_Journey::note_project_deleted($pid);
+        wp_safe_redirect(NLS1_Photographer_Workspace::url('projects',['message'=>'project_deleted','customer_id'=>$client_id]));exit;
+    }
+
     public function handle_delete_test_item() {
         if (!current_user_can('manage_options')) wp_die('Mangler tilgang.');
         check_admin_referer('9ls1_fotoportal_delete_test_item');
@@ -2340,14 +2633,16 @@ class NLS1_Fotoportal_Admin {
         global $wpdb;$rights=sanitize_key($_POST['usage_rights']??'free_terms');if(!in_array($rights,['free_terms','licensed'],true))$rights='free_terms';$data=['delivery_mode'=>$mode,'usage_rights'=>$rights,'usage_rights_note'=>sanitize_textarea_field($_POST['usage_rights_note']??''),'updated_at'=>current_time('mysql')];
         if($release){$state=self::project_delivery_state($pid);if(empty($state['delivery_ready']))wp_die('Leveransen kan ikke frigis før alle obligatoriske steg er grønne og alle redigeringsønsker er ferdige.');if($mode==='selected'&&!self::project_delivery_images($pid))wp_die('Ingen valgte bilder finnes i leveransesettet.');$ps=self::photographer_portal_settings((int)$p->account_id);$data['delivery_status']='released';$data['delivery_released_at']=current_time('mysql');$data['delivery_terms_version']=sanitize_text_field($ps['delivery_terms_version']??'1.0');$data['delivery_terms_accepted_at']=null;$data['delivery_terms_accepted_user']=0;$data['delivery_terms_accepted_ip']='';$wpdb->update(self::table('projects'),$data,['id'=>$pid,'account_id'=>self::tenant_account_id()]);$zip=self::build_delivery_zip($pid);$selected_zip=self::build_delivery_zip($pid,true);$zipdata=[];if($zip)$zipdata['delivery_zip_url']=$zip;if($selected_zip)$zipdata['delivery_selected_zip_url']=$selected_zip;if($zipdata)$wpdb->update(self::table('projects'),$zipdata,['id'=>$pid,'account_id'=>self::tenant_account_id()]);}
         else {$data['delivery_status']='draft';$wpdb->update(self::table('projects'),$data,['id'=>$pid,'account_id'=>self::tenant_account_id()]);}
+        if(class_exists('NLS1_Aurora_Demo_Journey'))NLS1_Aurora_Demo_Journey::note_delivery_saved($pid);
         wp_safe_redirect(NLS1_Photographer_Workspace::url('hq_delivery',['project_id'=>$pid,'message'=>$release?'delivery_released':'delivery_saved']));exit;
     }
 
     public function handle_update_payment_status(){
-        if(!current_user_can('manage_options'))wp_die('Mangler tilgang.'); check_admin_referer('9ls1_fotoportal_update_payment_status');
+        if(!current_user_can('manage_options')&&!current_user_can('aurora_fotoportal_photographer'))wp_die('Mangler tilgang.'); check_admin_referer('9ls1_fotoportal_update_payment_status');
         $pid=absint($_POST['project_id']??0); $p=self::get_project($pid); if(!$p)wp_die('Prosjekt mangler.'); if(class_exists('NLS1_Aurora_Account_Platform'))NLS1_Aurora_Account_Platform::require_module((int)$p->account_id,'hq_delivery'); $status=sanitize_key($_POST['payment_status']??'unpaid'); if(!in_array($status,['unpaid','paid'],true))$status='unpaid';
         global $wpdb; $now=current_time('mysql'); $data=['payment_status'=>$status,'payment_marked_at'=>$status==='paid'?$now:null,'updated_at'=>$now]; if($status==='unpaid')$data['portal_released_at']=null; $wpdb->update(self::table('projects'),$data,['id'=>$pid,'account_id'=>self::tenant_account_id()]);
         if($status==='paid')self::maybe_release_customer_portal($pid);
+        if(class_exists('NLS1_Aurora_Demo_Journey'))NLS1_Aurora_Demo_Journey::note_payment_status($pid,$status);
         wp_safe_redirect(NLS1_Photographer_Workspace::url('hq_delivery',['project_id'=>$pid,'message'=>'payment_updated']));exit;
     }
 
@@ -2390,14 +2685,16 @@ class NLS1_Fotoportal_Admin {
             'email'=>sanitize_email($_POST['portal_email']??$c['email']),
             'phone'=>sanitize_text_field($_POST['portal_phone']??$c['phone']),
             'website'=>esc_url_raw((function($u){$u=trim((string)$u);if($u!==''&&!preg_match('~^https?://~i',$u))$u='https://'.$u;return $u;})($_POST['portal_website']??$c['website'])),
-            'address'=>sanitize_textarea_field($_POST['portal_address']??$c['address']),
+            'address'=>sanitize_text_field($_POST['portal_address']??$c['address']),
+            'address_postal_code'=>sanitize_text_field($_POST['portal_postal_code']??($c['address_postal_code']??'')),
+            'address_city'=>sanitize_text_field($_POST['portal_city']??($c['address_city']??'')),
             'about'=>sanitize_textarea_field($_POST['portal_about']??$c['about']),
             'logo_url'=>$up('portal_logo',$c['logo_url']),
             'profile_image_url'=>$up('portal_profile_image',$c['profile_image_url']),
             'cover_image_url'=>$up('portal_cover_image',$c['cover_image_url']),
             'watermark_url'=>$up('portal_watermark',$c['watermark_url']),
             'watermark_position'=>$pos,
-            'watermark_opacity'=>max(5,min(95,(int)($_POST['watermark_opacity']??$c['watermark_opacity']))),
+            'watermark_opacity'=>max(0,min(100,(int)($_POST['watermark_opacity']??$c['watermark_opacity']))),
             'watermark_size'=>max(5,min(70,(int)($_POST['watermark_size']??$c['watermark_size']))),
             'accent_color'=>sanitize_hex_color($_POST['accent_color']??$c['accent_color'])?:'#6f4bf2',
             'show_filenames'=>isset($_POST['show_filenames'])?1:(isset($_POST['settings_context'])&&$_POST['settings_context']==='delivery'?0:(int)$c['show_filenames']),
@@ -2472,23 +2769,58 @@ class NLS1_Fotoportal_Admin {
     }
 
     public function handle_update_gallery_details(){
-        if(!current_user_can('manage_options'))wp_die('Mangler tilgang.'); check_admin_referer('9ls1_fotoportal_update_gallery_details');
+        $workspace=!empty($_POST['aurora_workspace']) && current_user_can('aurora_fotoportal_photographer');
+        if(!current_user_can('manage_options')&&!$workspace)wp_die('Mangler tilgang.'); check_admin_referer('9ls1_fotoportal_update_gallery_details');
         $gid=absint($_POST['gallery_id']??0); $g=self::get_gallery($gid); if(!$g)wp_die('Galleri mangler.');
         $title=sanitize_text_field($_POST['gallery_title']??''); if($title==='')$title=$g->gallery_title; $description=sanitize_textarea_field($_POST['gallery_description']??'');
-        global $wpdb; $wpdb->update(self::table('galleries'),['gallery_title'=>$title,'gallery_description'=>$description,'updated_at'=>current_time('mysql')],['id'=>$gid,'account_id'=>$g->account_id],['%s','%s','%s'],['%d','%d']);
+        $downloadable_until=sanitize_text_field($_POST['downloadable_until']??($g->downloadable_until??''));
+        $auto_delete_at=sanitize_text_field($_POST['auto_delete_at']??($g->auto_delete_at??''));
+        global $wpdb; $wpdb->update(self::table('galleries'),['gallery_title'=>$title,'gallery_description'=>$description,'downloadable_until'=>$downloadable_until?:null,'auto_delete_at'=>$auto_delete_at?:null,'updated_at'=>current_time('mysql')],['id'=>$gid,'account_id'=>$g->account_id]);
         wp_safe_redirect(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$g->project_id,'gallery_id'=>$gid,'message'=>'gallery_updated'])); exit;
     }
-    public function handle_save_gallery_hero(){if(!current_user_can('manage_options'))wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_save_gallery_hero');$g=self::get_gallery(absint($_POST['gallery_id']??0));if(!$g)wp_die('Galleri mangler.');$x=$this->clean_hero_post();if($x['image_id']){global $wpdb;$ok=$wpdb->get_var($wpdb->prepare("SELECT id FROM ".self::table('images')." WHERE id=%d AND gallery_id=%d AND account_id=%d",$x['image_id'],$g->id,$g->account_id));if(!$ok)$x['image_id']=0;}update_option('9ls1_fotoportal_gallery_hero_'.(int)$g->account_id.'_'.(int)$g->id,$x,false);wp_safe_redirect(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$g->project_id,'gallery_id'=>$g->id,'message'=>'hero_saved']));exit;}
+    public function handle_save_gallery_hero(){$workspace=!empty($_POST['aurora_workspace'])&&current_user_can('aurora_fotoportal_photographer');if(!current_user_can('manage_options')&&!$workspace)wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_save_gallery_hero');$g=self::get_gallery(absint($_POST['gallery_id']??0));if(!$g)wp_die('Galleri mangler.');$x=$this->clean_hero_post();if($x['image_id']){global $wpdb;$ok=$wpdb->get_var($wpdb->prepare("SELECT id FROM ".self::table('images')." WHERE id=%d AND gallery_id=%d AND account_id=%d",$x['image_id'],$g->id,$g->account_id));if(!$ok)$x['image_id']=0;}update_option('9ls1_fotoportal_gallery_hero_'.(int)$g->account_id.'_'.(int)$g->id,$x,false);wp_safe_redirect(NLS1_Photographer_Workspace::url('galleries',['project_id'=>$g->project_id,'gallery_id'=>$g->id,'message'=>'hero_saved']));exit;}
+
+    public function handle_toggle_customer_login(){
+        $workspace=!empty($_POST['aurora_workspace'])&&current_user_can('aurora_fotoportal_photographer');
+        if(!current_user_can('manage_options')&&!$workspace)wp_die('Mangler tilgang.');
+        check_admin_referer('9ls1_fotoportal_toggle_customer_login');
+        $c=self::get_client(absint($_POST['client_id']??0));
+        if(!$c)wp_die('Kunde mangler.');
+        $enabled=!empty($_POST['enabled']);
+        self::set_customer_login_enabled($c,$enabled);
+        $u=self::client_portal_user((int)$c->id,(int)$c->account_id);$uid=$u?(int)$u->ID:0;
+        if(!$enabled && $uid && class_exists('WP_Session_Tokens')){
+            WP_Session_Tokens::get_instance((int)$uid)->destroy_all();
+        }
+        global $wpdb;
+        $wpdb->insert(self::table('logs'),[
+            'account_id'=>(int)$c->account_id,
+            'client_id'=>(int)$c->id,
+            'project_id'=>null,
+            'log_type'=>'customer_login',
+            'message'=>$enabled?'Kundeinnlogging aktivert av fotograf.':'Kundeinnlogging deaktivert av fotograf.',
+            'is_test'=>!empty($c->is_test)?1:0,
+            'created_at'=>current_time('mysql'),
+        ]);
+        wp_safe_redirect(NLS1_Photographer_Workspace::url('customers',['customer_id'=>(int)$c->id,'login_status_updated'=>1]));
+        exit;
+    }
 
     public function handle_ensure_customer_login(){
-        if(!current_user_can('manage_options'))wp_die('Mangler tilgang.'); check_admin_referer('9ls1_fotoportal_ensure_customer_login');
+        // Customer login creation is part of the photographer workspace customer flow.
+        // Photographers intentionally do not have manage_options, so allow the
+        // dedicated workspace form while keeping all legacy/admin calls restricted.
+        $workspace_request = !empty($_POST['aurora_workspace']);
+        $workspace_photographer = $workspace_request && current_user_can('aurora_fotoportal_photographer');
+        if(!current_user_can('manage_options') && !$workspace_photographer) wp_die('Mangler tilgang.');
+        check_admin_referer('9ls1_fotoportal_ensure_customer_login');
         $client_id=absint($_POST['client_id']??0); $c=self::get_client($client_id); if(!$c)wp_die('Kunde mangler.');
         if(class_exists('NLS1_Aurora_Account_Platform'))NLS1_Aurora_Account_Platform::require_module((int)$c->account_id,'customer_portal');
         $uid=self::ensure_client_portal_user($client_id); $args=['customer_id'=>$client_id,'login_status'=>$uid?'ready':'failed'];
         wp_safe_redirect(NLS1_Photographer_Workspace::url('customers',$args)); exit;
     }
-    public function handle_save_customer_hero(){if(!current_user_can('manage_options'))wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_save_customer_hero');$c=self::get_client(absint($_POST['client_id']??0));if(!$c)wp_die('Kunde mangler.');$x=$this->clean_hero_post();if($x['image_id']){global $wpdb;$ok=$wpdb->get_var($wpdb->prepare("SELECT i.id FROM ".self::table('images')." i INNER JOIN ".self::table('galleries')." g ON g.id=i.gallery_id AND g.account_id=i.account_id WHERE i.id=%d AND g.client_id=%d AND i.account_id=%d",$x['image_id'],$c->id,$c->account_id));if(!$ok)$x['image_id']=0;}update_option('9ls1_fotoportal_customer_hero_'.(int)$c->account_id.'_'.(int)$c->id,$x,false);wp_safe_redirect(NLS1_Photographer_Workspace::url('customers',['customer_id'=>$c->id,'hero_saved'=>1]));exit;}
-    public function handle_send_customer_portal(){if(!current_user_can('manage_options'))wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_send_customer_portal');$g=self::get_gallery((int)($_POST['gallery_id']??0));if(!$g)wp_die('Galleri mangler.');if(class_exists('NLS1_Aurora_Account_Platform'))NLS1_Aurora_Account_Platform::require_module((int)$g->account_id,'customer_portal');$c=self::get_client($g->client_id);$pc=self::get_primary_contact($c->id);$to=sanitize_email($pc&&$pc->email?$pc->email:$c->email);if(!$to)wp_die('Kunden mangler e-post.');$s=self::photographer_portal_settings();$v=['customer_name'=>$c->client_name,'project_name'=>$g->project_name?:'','gallery_name'=>$g->gallery_title,'customer_portal_url'=>self::customer_portal_url($c->id),'gallery_url'=>self::gallery_public_url($g),'photographer_name'=>$s['photographer_name']?:($s['studio_name']?:get_bloginfo('name')),'studio_name'=>$s['studio_name']];$h=['Content-Type: text/plain; charset=UTF-8'];$reply_to=$s['email'];
+    public function handle_save_customer_hero(){$workspace=!empty($_POST['aurora_workspace'])&&current_user_can('aurora_fotoportal_photographer');if(!current_user_can('manage_options')&&!$workspace)wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_save_customer_hero');$c=self::get_client(absint($_POST['client_id']??0));if(!$c)wp_die('Kunde mangler.');$x=$this->clean_hero_post();if($x['image_id']){global $wpdb;$ok=$wpdb->get_var($wpdb->prepare("SELECT i.id FROM ".self::table('images')." i INNER JOIN ".self::table('galleries')." g ON g.id=i.gallery_id AND g.account_id=i.account_id WHERE i.id=%d AND g.client_id=%d AND i.account_id=%d",$x['image_id'],$c->id,$c->account_id));if(!$ok)$x['image_id']=0;}update_option('9ls1_fotoportal_customer_hero_'.(int)$c->account_id.'_'.(int)$c->id,$x,false);wp_safe_redirect(NLS1_Photographer_Workspace::url('customers',['customer_id'=>$c->id,'hero_saved'=>1]));exit;}
+    public function handle_send_customer_portal(){$workspace=!empty($_POST['aurora_workspace'])&&current_user_can('aurora_fotoportal_photographer');if(!current_user_can('manage_options')&&!$workspace)wp_die('Mangler tilgang.');check_admin_referer('9ls1_fotoportal_send_customer_portal');$g=self::get_gallery((int)($_POST['gallery_id']??0));if(!$g)wp_die('Galleri mangler.');if(class_exists('NLS1_Aurora_Account_Platform'))NLS1_Aurora_Account_Platform::require_module((int)$g->account_id,'customer_portal');$c=self::get_client($g->client_id);$pc=self::get_primary_contact($c->id);$to=sanitize_email($pc&&$pc->email?$pc->email:$c->email);if(!$to)wp_die('Kunden mangler e-post.');$s=self::photographer_portal_settings();$v=['customer_name'=>$c->client_name,'project_name'=>$g->project_name?:'','gallery_name'=>$g->gallery_title,'customer_portal_url'=>self::customer_login_url(),'gallery_url'=>self::gallery_public_url($g),'photographer_name'=>$s['photographer_name']?:($s['studio_name']?:get_bloginfo('name')),'studio_name'=>$s['studio_name']];$h=['Content-Type: text/plain; charset=UTF-8'];$reply_to=$s['email'];
         if(!$reply_to && class_exists('NLS1_Aurora_Account_Platform')){
             $account=NLS1_Aurora_Account_Platform::get_account((int)$g->account_id);
             if($account) $reply_to=sanitize_email($account->contact_email);
@@ -2520,7 +2852,7 @@ class NLS1_Fotoportal_Admin {
             'watermark_logo_id' => (int)($_POST['watermark_logo_id'] ?? 0),
             'watermark_logo_url' => esc_url_raw($_POST['watermark_logo_url'] ?? ''),
             'watermark_position' => sanitize_key($_POST['watermark_position'] ?? 'bottom_right'),
-            'watermark_opacity' => max(5, min(95, (int)($_POST['watermark_opacity'] ?? 42))),
+            'watermark_opacity' => max(0, min(100, (int)($_POST['watermark_opacity'] ?? 42))),
             'watermark_size' => max(5, min(90, (int)($_POST['watermark_size'] ?? 38))),
             'preview_long_edge' => max(800, min(4000, (int)($_POST['preview_long_edge'] ?? 2000))),
             'thumbnail_size' => max(150, min(800, (int)($_POST['thumbnail_size'] ?? 400))),

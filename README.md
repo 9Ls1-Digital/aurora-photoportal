@@ -44,3 +44,10 @@ Fotoportal now enables controlled Aurora Auth route takeover for `/fotograf/` an
 
 ## 0.7.1-dev.32-auth-context2
 Context-specific branding and logout integration for Aurora Auth. Photographer and customer public login entries retain separate background configuration, and logout returns to the matching canonical Aurora login route.
+
+### DEMO phase 1 (dev.37)
+Platform admin can create a Trial photographer, send a branded activation email, continue directly from password activation into the existing six-step photographer onboarding, and permanently remove non-primary test/demo photographer accounts with account-scoped database and uploads cleanup. Future generated demo content must be marked `is_test=1` for safe phase-2 retention/removal.
+
+
+### DEMO onboarding polish (dev.38)
+Live-test refinements: split address fields, account phone prefill, image size guidance, Aurora glass onboarding background, photographer logo in Workspace and explicit current-image display in profile settings.

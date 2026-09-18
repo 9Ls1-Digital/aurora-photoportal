@@ -1,0 +1,73 @@
+AURORA FOTOportal – KONTINUITET / OVERLEVERING
+Oppdatert 14.09.2026 – Fotoportal dev.67
+
+SISTE STATUS
+- Aurora Auth/Access dev.18 er installasjonsgrunnlaget for felles login og obligatorisk App Selector.
+- Fotoportal dev.66 innførte felles fotograf-/kundeadresser.
+- Fotoportal dev.67 legger til to manglende funksjoner uten å endre den fungerende ordinære innloggingen:
+  1) Fotograf kan åpne kundeportalen direkte som forhåndsvisning uten kundens passord.
+  2) Fotograf kan aktivere/deaktivere kundeinnlogging per kunde.
+
+FAST LOGIN-ARKITEKTUR
+Fotograf: /aurora/login/ -> ALLTID /aurora/apps/ -> valgt Aurora-app. App Selector vises også med bare én app fordi den brukes som Aurora-markedsføring/discovery.
+Kunde: /aurora/kunde/ -> automatisk riktig Fotoportal-kunde/tenant -> /aurora/kunde/portal/.
+Ingen fotograf- eller kundespesifikke permanente login-URL-er skal presenteres.
+
+FOTOGRAFENS KUNDEPREVIEW
+- Fotografknappen heter Åpne som kunde.
+- Fotograf skal ikke logges inn som kunden og skal aldri trenge kundens passord.
+- Preview-ruten er /aurora/kunde/forhandsvisning/ og krever innlogget fotograf/admin + tenant-scope + nonce.
+- Fotoportal oppretter en kortlivet signert preview-kontekst (30 minutter).
+- Fotografens ordinære session beholdes.
+- Kundeportal og kundegalleri kan inspiseres i preview.
+- Preview skal fungere selv når kundens egen login er deaktivert.
+- Kundehandlinger som krever reell kundeidentitet skal fortsatt bruke ordinær kundeautorisasjon.
+
+KUNDEINNLOGG AKTIV/INAKTIV
+- På kundekortet vises Kundeinnlogging: Aktiv/Inaktiv.
+- Fotograf kan deaktivere og aktivere.
+- Deaktivering sletter ikke bruker, passord, kunde, prosjekt eller galleri.
+- Eksisterende WordPress-sessioner for kunden termineres ved deaktivering.
+- Aurora Auth-adapteren avviser innlogging mens kunden er deaktivert.
+- Reaktivering bruker samme kundeidentitet/passord videre.
+
+KRITISK PAKKEREGEL
+Alle Fotoportal update-ZIP-er må ha eksakt toppmappe: aurora-fotoportal-v0.7.1-dev.2/
+Auth beholder plugin-folder aurora-auth/.
+
+DOKUMENTASJON
+Blueprint, changelog og ADR skal oppdateres ved release. Ny ADR i dev.67: ADR-080.
+
+NESTE TEST
+1. Åpne en eksisterende kunde fra fotografportalen og klikk Åpne som kunde. Det skal ikke vises kundelogin.
+2. Gå videre inn i kundens galleri i preview. Det skal fortsatt ikke kreve kundepassord.
+3. Tilbake i fotografportalen: Deaktiver kundeinnlogging.
+4. Test /aurora/kunde/ med kundens brukernavn/passord: tilgang skal avvises med tydelig beskjed.
+5. Fotografens Åpne som kunde skal fortsatt fungere.
+6. Aktiver kundeinnlogging igjen og bekreft normal login.
+
+Etter funksjonell stabilisering: GitHub, deretter egen UX/UI-fase for fotografportalen.
+
+=== DEV.68 ===
+- Registrering av faktisk HQ-nedlasting, prosjektstatus Levert og e-post til fotograf.
+- Autoritativ galleri åpen/låst-status på prosjektets undersider.
+
+=== DEV.69 – 14.09.2026 ===
+Bruker testet kundens portal og fotografens Bildevalg og ba om:
+1. Fjern «Send valg til fotograf» og antall valgt-panelet i kundegalleriet fordi valg/kommentarer lagres automatisk.
+2. Vis tydelig status på gallerikortet på kundens forside, bl.a. om leveransen er klar for nedlasting.
+3. Gjør kundens «Status»-side friskere og mer intuitiv.
+4. Fotografens Bildevalg må vise ALLE kommentarer på bildet, ikke bare siste kommentar.
+5. Redigeringsønsker skal kunne fullføres i Bildevalg med opplasting av ferdig redigert bilde, og ferdig tilstand skal vises eksplisitt.
+
+Implementert i dev.69:
+- Manuelt «Send valg til fotograf»-panel fjernet fra kundegalleriet.
+- Gallerikort viser leveransestatus: Galleri tilgjengelig / Leveranse klar – godkjenn vilkår / Klar for nedlasting.
+- Status-siden er nå en visuell 4-stegsreise: Kontrakt → Betaling → Galleri → Leveranse, med fremdrift og nedlastingsinformasjon.
+- Bildevalg viser komplett kronologisk kommentartråd per bilde.
+- Bildevalg har direkte opplasting av ferdig redigert bilde for bilder med redigeringsønske.
+- Etter opplasting vises avkrysset «Redigeringsønske utført · redigert bilde lastet opp».
+- ADR-082, CHANGELOG-dev og Blueprint oppdatert.
+- PHP lint OK.
+- Blueprint rendret og kontrollert.
+- Kritisk ZIP-invariant beholdt: toppmappe aurora-fotoportal-v0.7.1-dev.2/

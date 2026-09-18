@@ -1,0 +1,637 @@
+Aurora Fotoportal – Chat-/prosjektoverlevering
+
+Oppdatert: 14.09.2026 Prosjekt: 9Ls1-Fotoportal / Aurora Fotoportal
+
+VIKTIG Dette dokumentet er laget som en kontinuitets-/overleveringsfil
+for en ny ChatGPT-chat. Det samler den tilgjengelige konteksten,
+beslutningene, feilene, testresultatene, arkitekturen og
+versjonshistorikken fra den lange utviklingschatten. Det er ment å kunne
+lastes opp i en ny chat slik at utviklingen kan fortsette uten å starte
+på nytt.
+
+====================================================================== 1.
+HOVEDMÅL
+======================================================================
+
+Aurora Fotoportal er en fotoportal for fotografer og deres kunder.
+Løsningen skal støtte: - Fotografkontoer/studioer. - Kunde- og
+prosjektregister. - Kontrakter og digital signering (Aurora Digital
+Signering / ADS). - Dokumenter. - Galleri og bildebehandling. -
+Preview-bilder med vannmerke. - HQ-originaler uten vannmerke. -
+Favoritter, bildevalg, kommentarer og redigeringsønsker. - Digital
+levering. - Leveringsbetingelser og betalingsstatus. - Kundeportal. -
+Fotografportal. - Demo Journey/opplæring. - Trial/lisensmodell og senere
+Aurora Capsules. - Sentral Aurora-plattformarkitektur.
+
+Hovedkategorier er ikke bare bryllup: Scene/artist, Familie,
+Konfirmasjon, Bryllup og annet.
+
+======================================================================
+2. KRITISKE PAKKEREGLER
+======================================================================
+
+Fotoportal: Alle fremtidige Fotoportal UPDATE-ZIP-filer MÅ ha eksakt
+toppmappe: aurora-fotoportal-v0.7.1-dev.2/
+
+Dette er kritisk. Hvis toppmappen endres, oppfatter WordPress pakken som
+en ny plugin i stedet for “Oppdater eksisterende plugin”.
+
+Aurora Auth: Teknisk repo/plugin-folder: aurora-auth/
+
+Admin-/produktnavn: Aurora Access
+
+Canonical Aurora product ID: auth
+
+======================================================================
+3. VERIFISERTE RUTER
+======================================================================
+
+Fotograf: - Login: /fotograf/ - Workspace: /fotograf/portal/
+
+Kunde: - Login: /fotograf/kunde/ - Portal: /fotograf/kunde/portal/
+
+Disse rutene skal ikke endres tilfeldig.
+
+Aurora Access/App Selector: - /aurora/apps/ - /aurora/login/
+
+======================================================================
+4. AURORA AUTH / AURORA ACCESS
+======================================================================
+
+Aurora Auth ble senere identifisert som en viktig årsak til
+kundeinnloggingsproblemene.
+
+Teknisk identitet: - repo/plugin: aurora-auth - produkt-ID: auth -
+adminnavn: Aurora Access
+
+Aurora Auth har takeover_routes=true for Fotoportal og eier i praksis: -
+/fotograf/kunde/ - /fotograf/kunde/glemt-passord/ -
+/fotograf/kunde/nytt-passord/ - /fotograf/kunde/portal/
+
+Dette betyr at Fotoportal IKKE skal ha en konkurrerende autoritativ
+autentiseringsmotor når Auth/Access er aktiv.
+
+Arkitekturvedtak: Aurora Access/Auth = autentisering, passord, sessions
+og routing. Aurora Fotoportal = kunder, prosjekter, kontrakter, galleri
+og arbeidsflyt.
+
+Tidligere Auth-funksjoner: - Aurora-native glemt/reset passord. -
+Frontend workspace routing. - Session timeout. - Wrong-context
+protection. - Sentral logout. - Audit logging. - App Selector. - Nøytral
+Aurora login. - Promotions. - Admin registered-app dropdown. - wp-admin
+guard for Aurora frontend users.
+
+Branch feature/auth-account-flow ble tidligere merget til develop via PR
+#2.
+
+Siste koordinerte Auth-versjon i denne chatten:
+aurora-auth-v0.1.8-dev.17-customer-reset-continuation-UPDATE.zip
+
+dev.17 hensikt: - Auth skal være autoritativ for kundeinnlogging. -
+Etter vellykket passordreset skal kunden kunne autentiseres og gå
+direkte til kundeportal, i stedet for å bli sendt til en ny
+loginrunde. - Samspille med Fotoportal dev.65.
+
+INSTALLASJONSREKKEFØLGE FOR SISTE KOORDINERTE FIX: 1. Aurora Auth dev.17
+2. Aurora Fotoportal dev.65
+
+======================================================================
+5. FOTOportal – SISTE KOORDINERTE AUTH-FIX
+======================================================================
+
+Siste versjon i chatten:
+aurora-fotoportal-v0.7.1-dev.65-auth-capsule-customer-flow-UPDATE.zip
+
+dev.65: - Fotoportal bruker Aurora Auth til nye kunde-passordlenker når
+Auth er installert. - Etter reset kan Auth validere bruker, validere
+kundetilknytning, opprette WordPress-session, opprette Aurora-session og
+sende direkte til kundeportal. - Eldre WP-kundebrukere med korrekt
+e-post, men manglende: aurora_fotoportal_client_id
+aurora_fotoportal_account_id kan repareres automatisk når det finnes én
+entydig kunde med eksakt samme e-post. - Ved tvetydighet skal systemet
+IKKE gjette.
+
+Test som skal kjøres etter dev.17 + dev.65: A) Kunde -> Glemt passord ->
+e-post -> nytt passord -> Lagre -> direkte kundeportal. B) Logg ut ->
+/fotograf/kunde/ -> e-post/passord -> kundeportal.
+
+Ikke fortsett med større designarbeid før kundeautentisering er
+bekreftet ende-til-ende.
+
+======================================================================
+6. FOTOportal – ONBOARDING
+======================================================================
+
+Fotografens onboarding skal fortsatt være seks steg: 1. Studio 2.
+Kontakt 3. Branding 4. Vannmerke 5. Kundeportal 6. Ferdig
+
+Onboardingdata omfatter blant annet: - studio_name - photographer_name -
+adresse - postnummer - sted - login e-post - kunde-e-post - telefon -
+website - om-tekst - logo - profilbilde - hero - accent color -
+watermark - portal-/e-postinnstillinger
+
+Viktig: Onboarding skal ikke ødelegges av Demo Journey. Etter ferdig
+onboarding skal fotografen komme til riktig fotografkonto/workspace.
+
+Det ble laget ønske om en fast “Test-Fotograf”-konto som kan nullstilles
+og brukes på nytt, med ferdig utfylte data, hero, vannmerke osv., slik
+at hele onboarding/testløpet går raskere.
+
+Ved sletting av fotografkonto skal tilhørende WordPress-bruker også
+håndteres korrekt. Det ble oppdaget rester av gamle WP-brukere som
+blokkerte gjenbruk av login/e-post.
+
+======================================================================
+7. DEMO JOURNEY – PRODUKTVISJON
+======================================================================
+
+Demo Journey skal lære fotografen Fotoportal ved å gjennomføre et
+realistisk demooppdrag.
+
+Brukeren ønsker at alt i demoen skal være ferdig utfylt. Fotografen skal
+primært utføre handlingene som må læres.
+
+Ønsket flyt: 1. Last ned Demo-kit. 2. Registrer DEMO-kunde (ferdig
+utfylt). 3. Opprett DEMO-prosjekt (ferdig utfylt). 4. Last opp/bruk
+DEMO-avtale. 5. Send kontrakt. 6. Simuler at kunde mottar e-post og
+signerer. 7. Fotograf mottar e-post om at kunde har signert. 8.
+Mellomslide: “Nå later vi som om du har vært på fotooppdrag”. 9. Last
+opp bilder. 10. Galleri. 11. Vis hvilken e-post kunden mottar om
+kundegalleriet. 12. Simuler at kunden velger bilder / sender
+redigeringsønsker. 13. Fotograf håndterer bildevalg/redigering. 14.
+Bruksrett / leveringsbetingelser. 15. Marker faktura som betalt. 16.
+Kunden får e-post om at galleri/HQ-leveranse er klar. 17. Ferdig.
+
+Dashboard skal ha: - Fortsett demo. - Start på nytt. - Lenke til
+fotografens DEMO-kundeportal. - Tydelig status for hvilket steg man er
+på.
+
+Demo Journey skal kunne slås av/på ved opprettelse av ny fotografkonto.
+Brukeren ønsket senere å pause videre arbeid med Journey og gjøre den
+valgfri, fordi resten av Fotoportal måtte stabiliseres først.
+
+Viktig Demo-problem: Systemet opprettet tidligere to demo-kunder og to
+demo-gallerier. Dette må unngås. Sentral preseedet demo/reference
+content må ikke telles som fotografens faktiske treningsprogresjon.
+
+======================================================================
+8. DEMO-KIT
+======================================================================
+
+Demo-kit skal lastes ned som ZIP.
+
+Instruksjon til fotograf: - Pakk ut hoved-ZIP-en. - Galleri-ZIP-en inni
+hovedpakken skal IKKE pakkes ut. - Galleri-ZIP bør hete:
+[filnavn]_IKKE_PAKK_UT_DENNE.zip
+
+Poenget er at fotografen senere skal laste opp denne ZIP-en til galleri
+for å lære den ekte uploadflyten.
+
+Det må stå tydelig at fotografen skal laste opp High
+Quality-bilder/originaler. Aurora skal: - beholde HQ-originalene. -
+generere preview. - generere thumbnails. - bruke vannmerke kun på
+preview. - levere HQ til kunden uten vannmerke.
+
+======================================================================
+9. DEMO JOURNEY – TIDLIGERE FEIL OG FIXER
+======================================================================
+
+Tidligere feil: - Alle steg ble grønne for tidlig. - Preseedet
+demo-galleri gjorde at Galleri så ferdig ut før fotografen hadde lastet
+opp bilder. - Start på nytt hoppet direkte til steg 2. - Demo-kit var
+grønt selv om det ikke var lastet ned. - Test-Fotograf kom inn i vanlig
+portal uten Journey. - Onboarding kunne ende i 9Ls1 sin Fotoportal i
+stedet for testfotografens demo. - Demo la inn to kunder og to
+gallerier. - “Gå til kontrakt” fra galleri kunne vise kontraktside uten
+forventet avtale. - Prosjektflyt nederst fulgte ikke alltid status. -
+Diverse handlinger ga “Mangler tilgang”.
+
+dev.52 introduserte autoritativ training state: - Sentral seeded
+demo/reference content skal IKKE telle som training completion. -
+Faktisk treningskunde/prosjekt opprettet etter første kit-download
+brukes som progresjon. - CTA endres dynamisk etter reell progresjon. -
+Re-download av Demo-kit skal ikke resette opprinnelig training start.
+
+======================================================================
+10. DEMO CONTENT MANAGER
+======================================================================
+
+Sentral Demo Content Manager ble bygget.
+
+Kategorier: - Gallery - Documents - Contracts
+
+Master storage for demo gallery ble lagt under:
+uploads/9ls1-fotoportal/demo-content/gallery/
+
+med: - original - preview - thumbnails - zip - export
+
+Demo Content Pack kan distribueres til Trial-kontoer. Aurora Admin skal
+kunne: - pushe aktuell pakke til én eller flere Trial-kontoer. -
+gjenopprette slettet demo-innhold. - administrere demo-ressurser.
+
+Fremtidig fase: Ved konvertering/slutt av Trial: - Keep demo content
+eller - Remove demo content
+
+Kun demo/test-innhold skal kunne fjernes automatisk. Fotografens egne
+produksjonsdata må aldri slettes som del av demo cleanup.
+
+======================================================================
+11. KONTRAKTER / ADS
+======================================================================
+
+Aurora Digital Signering (ADS) brukes for kontrakter.
+
+Tekst som ble ønsket endret: Gammel: “Endringer kan avtales skriftlig
+mellom partene. Ved digital signering registrerer Aurora tidspunkt og
+signaturinformasjon.”
+
+Ny ønsket formulering: “Endringer kan avtales skriftlig mellom partene.
+Ved digital signering registreres tidspunkt og signaturinformasjon i
+fotoportalen.”
+
+Når kunde signerer: - kontrakten skal registreres som signert. -
+fotografen skal parallelt få e-post om at kunden har signert.
+
+Det ble også rapportert: - e-post ved sending av kontrakt kom ikke. -
+historikk for sendt e-post manglet. - flere e-postadresser ble testet
+uten levering. Dette må fortsatt verifiseres etter siste versjoner.
+
+Det bør finnes tydelig e-posthistorikk/audit: - hva som ble sendt. -
+mottaker. - tidspunkt. - type e-post. - sendestatus/feil hvis mulig.
+
+======================================================================
+12. GALLERI OG AVTALEKRAV
+======================================================================
+
+Brukeren ønsket at galleri ikke alltid må være låst til signert avtale.
+
+Det skal være mulig per prosjekt å velge: “Krev signert avtale før
+kundevisning av galleri”
+
+Dette må kunne lagres tydelig. Tidligere manglet/var uklar lagring etter
+at haken ble tatt bort.
+
+Viktig separasjon: - Kontraktkrav for kundevisning av galleri. -
+Betalingskrav. - HQ-levering. Disse skal styres separat.
+
+Prosjekt kan dermed i noen tilfeller ha galleri tilgjengelig selv uten
+signert kontrakt, dersom fotografen eksplisitt velger det.
+
+======================================================================
+13. LEVERING / BETALING
+======================================================================
+
+Leveringsdelen skal lære fotografen: - Bruksrett. - Leveringsvalg. -
+Marker faktura som betalt. - Når HQ kan frigis.
+
+Det ble tidligere rapportert “Mangler tilgang” ved “Marker faktura som
+betalt”. Dette måtte korrigeres for fotograf-workspace.
+
+Fakturaknapp må være på plass.
+
+Leveringsbetingelser skal ryddes visuelt og være intuitive.
+
+Kunden skal få HQ-originaler uten vannmerke når vilkårene for levering
+er oppfylt.
+
+======================================================================
+14. SIKKER SLETTING
+======================================================================
+
+Det må være mulig å slette et prosjekt permanent.
+
+Sikker sletting skal kunne fjerne: - prosjekt. - kontrakter. -
+dokumenter. - gallerier. - bilder. - kommentarer. - favoritter. - logger
+som hører til prosjektet der det er riktig. - genererte leveransefiler.
+
+Kunden skal normalt beholdes når kun prosjektet slettes.
+
+Sletting må være eksplisitt og vanskelig å gjøre ved et uhell.
+
+For fotografkontoer: - tenant-scoped data cleanup. - uploads cleanup. -
+tilknyttet WP-bruker må håndteres riktig. - primary/default account skal
+være beskyttet. - ikke slett WP-identitet dersom den brukes av andre
+Aurora-roller/admin-sammenhenger.
+
+======================================================================
+15. KUNDEINNLOGGING – OBSERVASJONER
+======================================================================
+
+Det ble observert: - Fotografportalen viste “Kundeinnlogging Aktiv”. -
+“Åpne Kundeportal” kunne likevel gi: “Det finnes ingen kundeinnlogging
+knyttet til denne portalen ennå.” - Etter nytt passord kunne kunden bli
+sendt til en utgått resetlenke. - Direkte login via kunde-URL kunne bare
+gi nytt loginvindu igjen.
+
+Dette førte til sammenligning av Aurora Auth og Fotoportal ZIP.
+
+Konklusjon: Aurora Auth takeover_routes gjorde at flere tidligere
+Fotoportal-fixer ikke traff den aktive innloggingsflyten.
+
+Derfor dev.17 + dev.65 skal testes samlet.
+
+======================================================================
+16. KUNDEINVITASJON / E-POST
+======================================================================
+
+Tidligere kundeinvitasjon var for enkel: “Hej … Din private bildeportal
+er opprettet. Opprett passord her: https://…” med rå URL.
+
+Ønsket: - branded e-post. - tydelig CTA-knapp. - bedre layout. - ingen
+stygg rå URL som hovedhandling. - korrekt fotograf/studio-branding.
+
+Knappen “Aktiver kundelogg”/kundeinnlogging skal også følge Aurora
+Style.
+
+======================================================================
+17. VANNMERKE
+======================================================================
+
+Vannmerke skal ligge under fotografens Profil/Branding.
+
+Ønske: - “Rediger vannmerke” i profilområdet. - alle “Rediger
+vannmerke”-knapper skal peke til samme riktige editor. -
+Dashboard/Galleri-lenker skal gå direkte dit.
+
+Siste vannmerke-routingversjon før Auth-arbeidet: dev.64 – Watermark
+Profile Routing.
+
+Vannmerkeprinsipp: - kun preview-bilder. - aldri HQ-originaler. -
+fotograf kan velge posisjon, størrelse og transparens. - vannmerke kan
+være PNG/WebP med transparent bakgrunn.
+
+======================================================================
+18. FOTOgrafPORTAL DESIGN
+======================================================================
+
+Brukeren ønsker at fotografportalen skal bli: - freshere. - mer
+intuitiv. - tydeligere. - mer premium. - mer konsekvent Aurora-design.
+
+Men dette skal tas ETTER at funksjonalitet og auth er stabil.
+
+Brukeren sa eksplisitt at når funksjonene er i orden, skal versjonen til
+GitHub, og deretter kan designarbeidet starte.
+
+Designarbeidet bør derfor ikke blandes inn i kritisk auth/debugging.
+
+======================================================================
+19. AURORA DESIGN / BRAND
+======================================================================
+
+Aurora = Intelligent Business Platform by 9Ls1 Digital.
+
+Visuelt: - nordlys. - grønn/turkis Aurora-tone. - mørke premium flater
+ved login. - A-formet Aurora-logo. - Nordic feel. - moderne, ren,
+premium. - konsistent spacing, radius, shadows, states og
+micro-interactions.
+
+Planlagt: Aurora Design System v1 AEE – Aurora Experience Engine
+
+AEE skal senere kunne omfatte: - transitions. - loading. - glow. -
+micro-interactions. - animation rules.
+
+======================================================================
+20. LAGRING – FREMTIDIG CAPSULE
+======================================================================
+
+Brukeren kom med idé om ekstern bildelagring for å unngå at alle
+HQ-bilder ligger på eget webhotell.
+
+Forslag: - Google Drive-integrasjon. - Dropbox-integrasjon. - senere
+egen Aurora Storage Capsule.
+
+Mål: Fotografen kan koble sin egen skylagring. Fordeler: - mindre
+lagringskostnad på Aurora-server. - kunden/fotografen eier lagringen. -
+bedre separasjon av data. - potensielt bedre sikkerhets-/tilgangsmodell.
+
+Dette skal tas senere, ikke blandes inn i dagens stabiliseringsarbeid.
+
+======================================================================
+21. VIKTIGE HISTORISKE FOTOportal-VERSJONER
+======================================================================
+
+dev.37: DEMO lifecycle, branded photographer activation,
+auto-login/onboarding, permanent account deletion.
+
+dev.38: Onboarding polish, adresse/post/sted, admin phone/website seed,
+image dimensions, glass UI.
+
+dev.39: Onboarding/admin UX, configured login background, profile CTA,
+account deep links.
+
+dev.40: Fullscreen onboarding fix.
+
+dev.41: Demo Content Manager.
+
+dev.42: Demo Content route fix.
+
+dev.43: Trial demo distribution.
+
+dev.44: Real demo gallery distribution/master storage.
+
+dev.45: Demo experience polish, contracts/docs, demo customer login,
+guide.
+
+dev.46: Project flow UX.
+
+dev.47: Guided project journey: Project -> Contract registered ->
+Contract signed -> Gallery -> Documents -> Delivery.
+
+dev.48: Photographer customer/project create access fix.
+
+dev.49: Customer login creation access fix.
+
+dev.50: Guided demo training + Demo-kit.
+
+dev.51: Demo download continuation.
+
+dev.52: Authoritative guided-demo training state. Seeded demo content
+excluded from progression.
+
+dev.54+: Further Journey/access/delivery work. User later requested
+pausing Journey and making it optional.
+
+dev.64: Watermark Profile Routing.
+
+dev.65: Auth Capsule Customer Flow, coordinated with Aurora Auth dev.17.
+
+======================================================================
+22. “MANGLER TILGANG” – HISTORIKK
+======================================================================
+
+Dette har vært en gjentakende feil ved frontend photographer workspace
+fordi handlers opprinnelig forventet WP-admin capability/context.
+
+Tidligere korrigerte områder: - Ny kunde/prosjekt. - Opprett
+kundeinnlogging. - Leverings-/fakturahandlinger. -
+Galleri/Hero-innstillinger. - Kontrakt/sending.
+
+Mønster: Frontend fotograf skal tillates når: - bruker har
+aurora_fotoportal_photographer. - request eksplisitt kommer fra Aurora
+workspace/context. - nonce er gyldig. - account/tenant scope er korrekt.
+
+IKKE løs dette ved å gjøre handlers åpne generelt. Behold nonce,
+capability og tenant-scope.
+
+======================================================================
+23. DOKUMENTASJON
+======================================================================
+
+For hver relevant Fotoportal-release skal dokumentasjon følge med i ZIP.
+
+Brukeren ønsker: - Blueprint. - Changelog/release documentation. -
+ADR-er for arkitekturvedtak.
+
+Blueprint ligger under docs/Documents / tilsvarende docs-struktur og
+skal oppdateres.
+
+Ved DOCX-arbeid: - bruk python-docx. - render dokumentet. - visuelt
+inspiser resultatet før levering.
+
+Eksempler på ADR-er fra utviklingen: ADR-051 Demo lifecycle ADR-052
+Onboarding polish ADR-053 Onboarding/admin UX ADR-054 Fullscreen
+onboarding ADR-055 Demo route ADR-056 Trial distribution ADR-057 Demo
+gallery distribution ADR-058 Demo experience ADR-059 Project flow
+ADR-060 Guided project journey ADR-061 Customer create access ADR-062
+Customer login access ADR-063 Guided demo training ADR-064 Demo download
+continuation ADR-065 Guided demo authoritative training state senere
+ADR-er videre gjennom dev.64/65.
+
+======================================================================
+24. GIT / RELEASEARBEID
+======================================================================
+
+Brukeren ønsker inkrementell Git-arbeidsflyt.
+
+Auth: feature/auth-account-flow ble merget til develop.
+
+Publishing Engine har tidligere branch: feature/aurora-publishing-engine
+
+Når Fotoportal-versjonen er testet og godkjent: - push til GitHub. -
+behold develop som integrasjonsgren. - bruk feature branch ved større ny
+funksjonalitet. - inkluder summary/description i PR/commit-workflow.
+
+Ikke push en release som “stabil” før brukeren faktisk har testet den.
+
+======================================================================
+25. ARBEIDSREGLER FOR NESTE CHAT
+======================================================================
+
+1.  Svar på norsk.
+2.  Ikke be brukeren gjenta kontekst som står i dette dokumentet.
+3.  Gjør konkrete endringer og lever testbar ZIP når det er avtalt.
+4.  Ikke si at noe er stabilt før brukeren har testet det.
+5.  Ikke endre fungerende routing uten eksplisitt grunn.
+6.  Fotoportal ZIP må ALLTID ha toppmappe:
+    aurora-fotoportal-v0.7.1-dev.2/
+7.  Auth ZIP skal beholde aurora-auth/ som plugin-folder.
+8.  Aurora Auth/Access er autoritativ auth/session-eier.
+9.  Fotoportal skal ikke bygge en parallell loginmotor når Access er
+    aktiv.
+10. Behold tenant isolation, nonce og capabilities.
+11. Oppdater Blueprint/changelog/ADR ved releases.
+12. Etter funksjonell stabilitet: GitHub først, deretter
+    designforbedring av fotografportalen.
+13. Demo Journey er foreløpig sekundært/valgfritt og kan videreutvikles
+    senere.
+14. Ikke bland fremtidig Storage Capsule inn i auth-stabilisering.
+15. Husk Aurora-muligheter og gjenbrukbare Capsules/components.
+
+======================================================================
+26. NY FAST RUTINE FOR HVER NY ZIP
+======================================================================
+
+Brukeren ønsker fra nå av: HVER GANG en ny ZIP-pakke lages for Aurora
+Fotoportal/Aurora-relatert utvikling, skal det også lages en oppdatert
+TXT-overleveringsfil.
+
+TXT-filen skal: - oppdatere versjonsnummer og dato. - beskrive hva som
+ble endret i den nye ZIP-en. - ta med siste testresultater. - ta med
+åpne feil. - ta med arkitekturvedtak. - ta med installasjonsrekkefølge
+dersom flere Capsules må oppdateres. - bevare kritiske regler, spesielt
+plugin-folder/ZIP-top-folder. - være egnet til å lastes opp i en helt ny
+ChatGPT-chat for å fortsette arbeidet.
+
+Hvis full ordrett samtaletranskripsjon ikke er tilgjengelig for
+modellen, skal TXT-filen i stedet være en komplett
+kontinuitets-/overleveringslogg med all tilgjengelig relevant
+prosjektkontekst. Den skal IKKE late som den inneholder meldinger som
+ikke faktisk er tilgjengelige.
+
+======================================================================
+27. STATUS AKKURAT NÅ – 14.09.2026
+======================================================================
+
+Siste planlagte installasjon: 1. Aurora Auth dev.17 2. Aurora Fotoportal
+dev.65
+
+Brukeren spurte hvilken som skal installeres først og fikk bekreftet
+denne rekkefølgen.
+
+Neste test: - Glemt passord. - Motta resetmail. - Sett nytt passord. -
+Etter lagring: direkte inn i kundeportal. - Logg ut. - Gå til
+/fotograf/kunde/. - Logg inn med e-post/passord. - Bekreft at
+kundeportal åpnes uten loop eller utgått resetlenke.
+
+Når dette er bekreftet: - verifiser kontraktmail. - verifiser
+signeringsmail til fotograf. - verifiser e-posthistorikk. - verifiser
+galleri/avtalekrav. - verifiser faktura/levering. - deretter GitHub. -
+deretter designarbeid på fotografportalen.
+
+======================================================================
+SLUTT
+======================================================================
+
+
+======================================================================
+28. OPPDATERING – DEV.18 / DEV.66 – FELLES INNLOGG
+======================================================================
+
+Teststatus før denne pakken:
+- Brukeren bekreftet at kundeinnloggingen fungerte etter koordinert Aurora Auth dev.17 + Fotoportal dev.65.
+- Hele Fotoportal-løpet fra opprettelse til leveranse ble testet og rapportert som fungerende; e-poster kom inn og det meste var verifisert.
+- Videre funksjonell polish som nedlastingsstatus/-varsling og aktiv/inaktiv kundeinnlogging er fortsatt ønsket, men denne releasen fokuserer på å låse den felles autentiseringsarkitekturen.
+
+Nytt fast arkitekturvedtak:
+- Alle fotografer bruker nøyaktig samme adresse: /aurora/login/
+- Etter fotografinnlogging vises Mine apper / App Selector ALLTID, også når fotografen bare har én aktiv app. Dette er både launcher og markedsføringsflate for andre Aurora-apper.
+- Alle Fotoportal-kunder bruker nøyaktig samme adresse: /aurora/kunde/
+- Etter kundeinnlogging finner Aurora Access riktig fotografkonto og kundepost automatisk fra brukeridentiteten.
+- Autentisert kundeportal har canonical route /aurora/kunde/portal/.
+- Gamle /fotograf/ og /fotograf/kunde/ auth-ruter beholdes kun som kompatibilitetsredirect til de nye adressene.
+- Fotograf-/adminflater og kunde-e-poster skal ikke lenger vise lange ?fotoportal_customer=...&token=... som normal innloggingsadresse.
+
+Aurora Auth dev.18:
+- Fjerner single-app shortcut fra neutral wp-admin guard fallback.
+- Mine apper er permanent standarddestinasjon etter plattforminnlogging.
+- ADR-024 dokumenterer beslutningen.
+
+Aurora Fotoportal dev.66:
+- Registrerer /aurora/login/ som fotografens auth entry og /aurora/kunde/ som kundens auth entry.
+- Kundens workspace registreres som /aurora/kunde/portal/.
+- Fotograf post-login går til /aurora/apps/ i stedet for direkte til Fotoportal.
+- Faste login-URL-er i Aurora Admin viser de nye canonical adressene uten account_id eller kundetoken.
+- Kunde-e-poster bruker felles kundeinnlogging.
+- Fotoportal UI som tidligere viste/kopierte tokenisert hovedportal viser felles kundeinnlogging.
+- Legacy auth-ruter redirectes til canonical Aurora-ruter.
+- ADR-079 dokumenterer beslutningen.
+
+INSTALLASJONSREKKEFØLGE:
+1. Aurora Auth dev.18
+2. Aurora Fotoportal dev.66
+
+TEST ETTER INSTALLASJON:
+1. Gå til /aurora/login/ som fotograf.
+2. Logg inn og bekreft at /aurora/apps/ alltid vises selv med bare Fotoportal aktiv.
+3. Åpne Fotoportal fra Mine apper og bekreft korrekt fotografkonto.
+4. Gå til /aurora/kunde/ som kunde.
+5. Logg inn og bekreft automatisk routing til korrekt /aurora/kunde/portal/.
+6. Kontroller at kundekortet ikke lenger viser tokenisert ?fotoportal_customer=...-URL som normal innlogging.
+7. Kontroller at gamle /fotograf/ og /fotograf/kunde/ sender videre til de nye canonical adressene.
+
+ÅPNE PUNKTER ETTER DEV.66:
+- Fotograf skal kunne bruke en egen sikker «Se som kunde»-forhåndsvisning uten å kjenne kundens passord og uten å signere/godkjenne juridiske handlinger som kunden.
+- Leveranseoversikt bør vise reell status: Ikke frigitt / Klar for nedlasting / Lastet ned, ikke bare teknisk download_enabled.
+- Når kunden laster ned HQ bør tidspunkt/teller logges, fotograf få e-post, og prosjektstatus vise at kunden har lastet ned.
+- Fotograf skal kunne deaktivere/reaktivere kundens egen innlogging uten å slette kunden/passordet.
+- Deretter GitHub-frysing og egen UX/UI-designfase for fotografportalen.

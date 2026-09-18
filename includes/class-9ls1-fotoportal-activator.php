@@ -99,6 +99,7 @@ class NLS1_Fotoportal_Activator {
             location VARCHAR(190) DEFAULT '',
             description LONGTEXT NULL,
             status VARCHAR(80) DEFAULT 'created',
+            contract_required TINYINT(1) DEFAULT 1,
             payment_status VARCHAR(30) DEFAULT 'unpaid',
             payment_marked_at DATETIME NULL,
             portal_released_at DATETIME NULL,

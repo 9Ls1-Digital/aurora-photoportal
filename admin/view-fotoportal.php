@@ -274,7 +274,7 @@ body[class*="nls1-fotoportal"] .notice:not(.aurora-own-notice),
         if(!$project){echo '<div class="notice notice-error"><p>Prosjekt ikke funnet.</p></div>'; return;}
         $logs=NLS1_Fotoportal_Admin::get_logs(0,$project->id);
         $project_contracts = NLS1_Fotoportal_Admin::get_project_contracts($project->id);
-        $gallery_unlocked = NLS1_Fotoportal_Admin::has_signed_contract($project->id);
+        $gallery_unlocked = NLS1_Fotoportal_Admin::gallery_access_allowed($project->id);
 
         $project_step = sanitize_key($_GET['project_step'] ?? 'overview');
         $project_steps = ['overview','contracts','documents','gallery','delivery'];

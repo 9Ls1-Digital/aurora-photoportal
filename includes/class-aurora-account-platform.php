@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) exit;
  */
 class NLS1_Aurora_Account_Platform {
     const MENU_SLUG = 'nls1-plugin-center';
-    const SCHEMA_VERSION = '0.8.0';
+    const SCHEMA_VERSION = '0.8.2';
 
     private static $module_catalog = [
         // [Name, description, type, trial_default]
@@ -45,6 +45,7 @@ class NLS1_Aurora_Account_Platform {
         add_action('admin_post_aurora_extend_trial', [$this, 'handle_extend_trial']);
         add_action('admin_post_aurora_expire_trial', [$this, 'handle_expire_trial']);
         add_action('admin_post_aurora_resend_photographer_invitation', [$this, 'handle_resend_photographer_invitation']);
+        add_action('admin_post_aurora_delete_photographer_account', [$this, 'handle_delete_photographer_account']);
         add_action('admin_post_aurora_start_support_session', [$this, 'handle_start_support_session']);
         add_action('admin_post_aurora_end_support_session', [$this, 'handle_end_support_session']);
         add_action('admin_post_aurora_revoke_support_access', [$this, 'handle_revoke_support_access']);
@@ -118,6 +119,7 @@ class NLS1_Aurora_Account_Platform {
             owner_user_id BIGINT UNSIGNED DEFAULT 0,
             onboarding_step TINYINT UNSIGNED DEFAULT 1,
             onboarding_completed_at DATETIME NULL,
+            is_test_account TINYINT(1) DEFAULT 0,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NULL,
             PRIMARY KEY (id),
@@ -232,6 +234,14 @@ class NLS1_Aurora_Account_Platform {
             }
         }
 
+        // dev.59 migration: remove only the legacy materialized Demo Content Pack
+        // entities. Guided Journey entities are stored under separate IDs/state.
+        if (class_exists('NLS1_Aurora_Demo_Content')) {
+            foreach ($existing_accounts as $existing_account) {
+                NLS1_Aurora_Demo_Content::remove_legacy_materialized_pack((int)$existing_account->id);
+            }
+        }
+
         update_option('9ls1_aurora_account_schema_version', self::SCHEMA_VERSION, false);
 
         if (class_exists('NLS1_Aurora_Tenant_Context')) {
@@ -244,6 +254,7 @@ class NLS1_Aurora_Account_Platform {
         if (defined('AURORA_CORE_VERSION') || class_exists('Aurora_Core_Registry')) {
             add_submenu_page(null, 'Aurora Fotoportal Admin', 'Fotoportal', 'manage_options', self::MENU_SLUG . '-fotoportal', [$this, 'render_page']);
             add_submenu_page(null, 'Fotografkontoer', 'Fotografkontoer', 'manage_options', self::MENU_SLUG . '-accounts', [$this, 'render_page']);
+            add_submenu_page(null, 'Demo-innhold', 'Demo-innhold', 'manage_options', self::MENU_SLUG . '-demo', [$this, 'render_page']);
             add_submenu_page(null, 'Moduler', 'Moduler', 'manage_options', self::MENU_SLUG . '-modules', [$this, 'render_page']);
             add_submenu_page(null, 'Branding', 'Branding', 'manage_options', self::MENU_SLUG . '-branding', [$this, 'render_page']);
             add_submenu_page(null, 'System', 'System', 'manage_options', self::MENU_SLUG . '-system', [$this, 'render_page']);
@@ -255,6 +266,7 @@ class NLS1_Aurora_Account_Platform {
         add_submenu_page(self::MENU_SLUG,'Aurora Control Center','Dashboard','manage_options',self::MENU_SLUG,[$this,'render_page']);
         add_submenu_page(self::MENU_SLUG,'Aurora Fotoportal Admin','Fotoportal','manage_options',self::MENU_SLUG . '-fotoportal',[$this,'render_page']);
         add_submenu_page(null,'Fotografkontoer','Fotografkontoer','manage_options',self::MENU_SLUG . '-accounts',[$this,'render_page']);
+        add_submenu_page(null,'Demo-innhold','Demo-innhold','manage_options',self::MENU_SLUG . '-demo',[$this,'render_page']);
         add_submenu_page(null,'Moduler','Moduler','manage_options',self::MENU_SLUG . '-modules',[$this,'render_page']);
         add_submenu_page(null,'Branding','Branding','manage_options',self::MENU_SLUG . '-branding',[$this,'render_page']);
         add_submenu_page(null,'System','System','manage_options',self::MENU_SLUG . '-system',[$this,'render_page']);
@@ -300,6 +312,7 @@ class NLS1_Aurora_Account_Platform {
         $section = 'dashboard';
         if ($page === self::MENU_SLUG . '-fotoportal') $section = 'fotoportal';
         if ($page === self::MENU_SLUG . '-accounts') $section = 'accounts';
+        if ($page === self::MENU_SLUG . '-demo') $section = 'demo';
         if ($page === self::MENU_SLUG . '-licenses') $section = 'licenses';
         if ($page === self::MENU_SLUG . '-modules') $section = 'modules';
         if ($page === self::MENU_SLUG . '-branding') $section = 'branding';
@@ -317,21 +330,15 @@ class NLS1_Aurora_Account_Platform {
     }
 
     public static function photographer_login_url($account_or_id = 0, $args = []) {
-        $account_id = is_object($account_or_id) ? (int)($account_or_id->id ?? 0) : (int)$account_or_id;
-        $base = [];
-        if ($account_id > 0) $base['account_id'] = $account_id;
-        $args = array_merge($base, $args);
-        if (function_exists('aurora_auth_app') && aurora_auth_app('fotoportal') && function_exists('aurora_auth_login_url')) {
-            return aurora_auth_login_url('fotoportal', 'photographer', $args);
-        }
-        return add_query_arg($args, home_url('/fotograf/'));
+        // One permanent login address for every photographer. Aurora Access
+        // identifies the user and always continues through Mine apper.
+        return home_url('/aurora/login/');
     }
 
     public static function customer_login_url($args = []) {
-        if (function_exists('aurora_auth_app') && aurora_auth_app('fotoportal') && function_exists('aurora_auth_login_url')) {
-            return aurora_auth_login_url('fotoportal', 'customer', $args);
-        }
-        return add_query_arg($args, home_url('/fotograf/kunde/'));
+        // One permanent login address for every Fotoportal customer. Aurora
+        // resolves the customer/account mapping from the authenticated user.
+        return add_query_arg($args, home_url('/aurora/kunde/'));
     }
 
     public static function get_accounts($filters = []) {
@@ -605,6 +612,14 @@ class NLS1_Aurora_Account_Platform {
         ];
     }
 
+    public static function demo_journey_enabled($account_id) {
+        return (bool)get_option('aurora_fotoportal_demo_journey_enabled_' . (int)$account_id, false);
+    }
+
+    public static function set_demo_journey_enabled($account_id, $enabled) {
+        update_option('aurora_fotoportal_demo_journey_enabled_' . (int)$account_id, $enabled ? 1 : 0, false);
+    }
+
     public static function trial_days() {
         $days = absint(get_option('9ls1_aurora_fotoportal_trial_days', 30));
         return max(1, min(365, $days ?: 30));
@@ -704,12 +719,10 @@ class NLS1_Aurora_Account_Platform {
             return ['sent'=>false,'user_id'=>$user_id,'error'=>$key->get_error_message()];
         }
 
-        $workspace = NLS1_Photographer_Workspace::url('dashboard');
         $photographer_login = self::photographer_login_url((int)$account_id, ['login'=>$email]);
 
-        // Photographer invitations use Aurora's own authentication surface.
-        // WordPress still validates the reset key and owns the password hash,
-        // but wp-login.php is deliberately not part of this user journey.
+        // Photographer invitations use Aurora's own activation surface.
+        // The secure key stays in the URL, but the email presents one clear CTA.
         $reset = add_query_arg([
             'aurora_photographer_password' => 1,
             'account_id' => (int)$account_id,
@@ -717,20 +730,32 @@ class NLS1_Aurora_Account_Platform {
             'login' => rawurlencode($user->user_login),
         ], home_url('/'));
         $trial_end = self::trial_end_label($account);
+        $branding = self::platform_branding();
+        $platform_name = $branding['platform_name'] ?: 'Aurora';
+        $company_name = $branding['company_name'] ?: '9Ls1 Digital';
+        $logo = !empty($branding['logo_url'])
+            ? '<img src="'.esc_url($branding['logo_url']).'" alt="Aurora" style="display:block;max-width:170px;max-height:70px;margin:0 auto 20px">'
+            : '<div style="font-size:28px;font-weight:800;letter-spacing:.08em;color:#ffffff;text-align:center;margin-bottom:18px">AURORA</div>';
 
-        $subject = 'Velkommen til Aurora Fotoportal – opprett passord';
-        $body = "Hei " . ($account->contact_name ?: $account->account_name) . ",\n\n";
-        $body .= "Velkommen til Aurora Fotoportal.\n\n";
-        $body .= "Demoperioden din er aktiv til " . $trial_end . ".\n\n";
-        $body .= "Opprett passord og aktiver innloggingen din her:\n" . $reset . "\n\n";
-        $body .= "Når du logger inn første gang, guider Aurora deg gjennom oppsett av studio, kontaktinformasjon, branding, vannmerke og kundeportal.\n\n";
-        $body .= "Logg inn i Aurora Fotoportal her:\n" . $photographer_login . "\n\n";
-        $body .= "Denne innloggingslenken bruker Aurora sin egen fotografinnlogging. Du skal ikke bruke WordPress sin wp-admin/wp-login-side.\n\n";
-        $body .= "Med vennlig hilsen\nAurora / 9Ls1 Digital";
+        $subject = 'Velkommen til Aurora Fotoportal – aktiver kontoen din';
+        $body = '<!doctype html><html><body style="margin:0;background:#eef1f4;font-family:Arial,Helvetica,sans-serif;color:#25272b">';
+        $body .= '<div style="max-width:620px;margin:0 auto;padding:34px 16px">';
+        $body .= '<div style="background:#111820;border-radius:20px;padding:32px 30px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,.12)">'.$logo;
+        $body .= '<div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#53e2c6;margin-bottom:8px">Aurora Fotoportal</div>';
+        $body .= '<h1 style="margin:0 0 14px;color:#fff;font-size:28px">Velkommen, '.esc_html($account->contact_name ?: $account->account_name).'</h1>';
+        $body .= '<p style="margin:0;color:#d7e0e5;line-height:1.6">Fotografkontoen din er opprettet og demoperioden er aktiv til <strong style="color:#fff">'.esc_html($trial_end).'</strong>.</p>';
+        $body .= '<p style="margin:26px 0"><a href="'.esc_url($reset).'" style="display:inline-block;background:#39d9bd;color:#09211d;text-decoration:none;font-weight:800;padding:14px 24px;border-radius:10px">Aktiver Aurora Fotoportal</a></p>';
+        $body .= '<p style="margin:0;color:#afbdc5;font-size:13px;line-height:1.55">Du velger først passord. Deretter logger Aurora deg inn og tar deg direkte til førstegangsoppsettet steg for steg.</p>';
+        $body .= '</div>';
+        $body .= '<div style="padding:22px 12px 0;color:#59636a;font-size:13px;line-height:1.55">';
+        $body .= '<p><strong>Fast innlogging etter aktivering:</strong><br><a href="'.esc_url($photographer_login).'">'.esc_html($photographer_login).'</a></p>';
+        $body .= '<p style="font-size:12px;color:#7d878d">Hvis aktiveringsknappen ikke virker, kopier denne adressen inn i nettleseren:<br><span style="word-break:break-all">'.esc_html($reset).'</span></p>';
+        $body .= '<p>Med vennlig hilsen<br><strong>'.esc_html($platform_name).' / '.esc_html($company_name).'</strong></p>';
+        $body .= '</div></div></body></html>';
 
         self::$last_invitation_mail_error = '';
         add_action('wp_mail_failed', [__CLASS__, 'capture_invitation_mail_failure']);
-        $sent = wp_mail($email, $subject, $body, ['Content-Type: text/plain; charset=UTF-8']);
+        $sent = wp_mail($email, $subject, $body, ['Content-Type: text/html; charset=UTF-8']);
         remove_action('wp_mail_failed', [__CLASS__, 'capture_invitation_mail_failure']);
 
         if (!$sent) {
@@ -752,6 +777,12 @@ class NLS1_Aurora_Account_Platform {
         check_admin_referer('aurora_resend_photographer_invitation');
 
         $account_id = absint($_POST['account_id'] ?? 0);
+        $account = self::get_account($account_id);
+        if ($account && !empty($account->is_test_account) && class_exists('NLS1_Aurora_Test_Photographer')) {
+            // The permanent Test-fotograf must behave like a brand-new photographer
+            // whenever a fresh invitation is sent: clean data + onboarding step 1.
+            NLS1_Aurora_Test_Photographer::prepare_invitation($account_id);
+        }
         $result = self::send_photographer_invitation($account_id);
 
         $args = [
@@ -781,6 +812,7 @@ class NLS1_Aurora_Account_Platform {
         $billing_city = sanitize_text_field($_POST['billing_city'] ?? '');
         $billing_country = sanitize_text_field($_POST['billing_country'] ?? 'Norge');
         $billing_email = sanitize_email($_POST['billing_email'] ?? '');
+        $include_demo_journey = !empty($_POST['include_demo_journey']);
         if (!$name || !$email) {
             wp_safe_redirect(add_query_arg('message', 'account_missing', self::url('accounts')));
             exit;
@@ -818,6 +850,16 @@ class NLS1_Aurora_Account_Platform {
         ]);
         $account_id = (int)$wpdb->insert_id;
 
+        // Seed photographer portal profile from Aurora Admin so onboarding starts with known account data.
+        if ($account_id && class_exists('NLS1_Fotoportal_Admin')) {
+            $seed = NLS1_Fotoportal_Admin::photographer_portal_defaults();
+            $seed['studio_name'] = $name;
+            $seed['photographer_name'] = $contact;
+            $seed['phone'] = $phone;
+            $seed['website'] = $website;
+            update_option('9ls1_fotoportal_portal_settings_' . $account_id, $seed, false);
+        }
+
         foreach (self::$module_catalog as $key => $meta) {
             $wpdb->insert(self::table('account_modules'), [
                 'account_id' => $account_id,
@@ -838,6 +880,13 @@ class NLS1_Aurora_Account_Platform {
             'created_at' => current_time('mysql'),
         ]);
 
+        self::set_demo_journey_enabled($account_id, $include_demo_journey);
+        // Demo Content Pack is resource-only from dev.59. It must never create a
+        // second demo customer/project/gallery beside the optional guided Journey.
+        if ($include_demo_journey && class_exists('NLS1_Aurora_Demo_Content')) {
+            NLS1_Aurora_Demo_Content::assign_to_account($account_id);
+        }
+
         $invite = self::send_photographer_invitation($account_id);
         $args = [
             'account_id' => $account_id,
@@ -848,6 +897,264 @@ class NLS1_Aurora_Account_Platform {
         }
 
         wp_safe_redirect(add_query_arg($args, self::url('accounts')));
+        exit;
+    }
+
+
+    private static function upload_url_to_path($url) {
+        $url = esc_url_raw((string)$url);
+        if (!$url) return '';
+        $upload = wp_upload_dir();
+        $baseurl = trailingslashit((string)$upload['baseurl']);
+        $basedir = trailingslashit((string)$upload['basedir']);
+        if (strpos($url, $baseurl) !== 0) return '';
+        $rel = ltrim(rawurldecode(substr($url, strlen($baseurl))), '/');
+        $path = wp_normalize_path($basedir . $rel);
+        $root = wp_normalize_path($basedir);
+        return strpos($path, $root) === 0 ? $path : '';
+    }
+
+    private static function safe_delete_upload_file($path) {
+        $path = wp_normalize_path((string)$path);
+        if (!$path) return false;
+        $upload = wp_upload_dir();
+        $root = wp_normalize_path(trailingslashit((string)$upload['basedir']));
+        if (strpos($path, $root) !== 0 || !is_file($path)) return false;
+        return (bool)@unlink($path);
+    }
+
+    private static function safe_delete_upload_tree($dir) {
+        $dir = untrailingslashit(wp_normalize_path((string)$dir));
+        if (!$dir || !is_dir($dir)) return 0;
+        $upload = wp_upload_dir();
+        $root = untrailingslashit(wp_normalize_path((string)$upload['basedir']));
+        if (strpos($dir, $root . '/') !== 0 || $dir === $root) return 0;
+        $count = 0;
+        $items = @scandir($dir);
+        if (!is_array($items)) return 0;
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') continue;
+            $path = $dir . '/' . $item;
+            if (is_dir($path) && !is_link($path)) $count += self::safe_delete_upload_tree($path);
+            elseif (is_file($path) && @unlink($path)) $count++;
+        }
+        @rmdir($dir);
+        return $count;
+    }
+
+    private static function owner_has_other_aurora_identity($user_id) {
+        global $wpdb;
+        $keys = $wpdb->get_col($wpdb->prepare(
+            "SELECT meta_key FROM {$wpdb->usermeta} WHERE user_id=%d AND meta_key LIKE %s",
+            (int)$user_id,
+            'aurora\\_%'
+        ));
+        $fotoportal_keys = [
+            'aurora_fotoportal_account_id','aurora_fotoportal_role','aurora_fotoportal_invitation_sent_at',
+            'aurora_fotoportal_invitation_email','aurora_fotoportal_password_activated_at','aurora_fotoportal_client_id'
+        ];
+        foreach ((array)$keys as $key) {
+            if (in_array($key, $fotoportal_keys, true)) continue;
+            if (strpos($key, 'aurora_support_') === 0) continue;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove WordPress identities that belong only to one Fotoportal account.
+     * Administrators and users with another Aurora identity are always preserved.
+     * Returns a report so account deletion/reset can show/audit what happened.
+     */
+    public static function cleanup_account_wordpress_users($account_id, $owner_user_id = 0, $delete_owner = true) {
+        global $wpdb;
+        $account_id = (int)$account_id;
+        $owner_user_id = (int)$owner_user_id;
+        $report = ['customer_deleted'=>0,'customer_preserved'=>0,'owner_deleted'=>false,'owner_preserved_reason'=>''];
+        if (!$account_id) return $report;
+
+        $user_ids = $wpdb->get_col($wpdb->prepare(
+            "SELECT DISTINCT user_id FROM {$wpdb->usermeta} WHERE meta_key=%s AND meta_value=%s",
+            'aurora_fotoportal_account_id', (string)$account_id
+        ));
+        if ($owner_user_id && !in_array($owner_user_id, array_map('intval',(array)$user_ids), true)) $user_ids[] = $owner_user_id;
+
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        foreach (array_unique(array_map('intval',(array)$user_ids)) as $user_id) {
+            if (!$user_id) continue;
+            $user = get_user_by('id',$user_id);
+            if (!$user) continue;
+            $is_owner = $owner_user_id && $user_id === $owner_user_id;
+
+            // Never delete platform/site administrators or WooCommerce managers.
+            if ($user->has_cap('manage_options') || $user->has_cap('manage_woocommerce')) {
+                if ($is_owner) $report['owner_preserved_reason']='admin'; else $report['customer_preserved']++;
+                continue;
+            }
+
+            // Another Aurora identity means this WP identity is shared and must survive.
+            if (self::owner_has_other_aurora_identity($user_id)) {
+                if ($is_owner) $report['owner_preserved_reason']='other_aurora'; else $report['customer_preserved']++;
+                continue;
+            }
+
+            if ($is_owner && !$delete_owner) continue;
+
+            // Only delete users that are actually mapped to this Fotoportal account.
+            $mapped_account=(int)get_user_meta($user_id,'aurora_fotoportal_account_id',true);
+            if ($mapped_account !== $account_id) {
+                if ($is_owner) $report['owner_preserved_reason']='mapping_mismatch'; else $report['customer_preserved']++;
+                continue;
+            }
+
+            if (wp_delete_user($user_id)) {
+                if ($is_owner) $report['owner_deleted']=true; else $report['customer_deleted']++;
+            } else {
+                if ($is_owner) $report['owner_preserved_reason']='delete_failed'; else $report['customer_preserved']++;
+            }
+        }
+        return $report;
+    }
+
+    public function handle_delete_photographer_account() {
+        if (!current_user_can('manage_options')) wp_die('Ingen tilgang.');
+        check_admin_referer('aurora_delete_photographer_account');
+
+        $account_id = absint($_POST['account_id'] ?? 0);
+        $account = self::get_account($account_id);
+        if (!$account) wp_die('Fotografkonto finnes ikke.');
+        if (!empty($account->is_test_account)) wp_die('Test-fotograf skal nullstilles fra Test-fotograf-panelet og kan ikke slettes som en vanlig konto.');
+
+        $default = self::default_account();
+        if ($default && (int)$default->id === $account_id) {
+            wp_safe_redirect(add_query_arg(['message'=>'account_delete_protected'], self::url('accounts')));
+            exit;
+        }
+
+        global $wpdb;
+        $deleted_files = 0;
+        $skipped_shared_dirs = 0;
+
+        // 1) Delete gallery trees only when the physical folder is not referenced by another tenant.
+        $galleries_table = NLS1_Fotoportal_Admin::table('galleries');
+        $gallery_rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT id,base_dir FROM $galleries_table WHERE account_id=%d",
+            $account_id
+        ));
+        foreach ((array)$gallery_rows as $gallery) {
+            $base_dir = wp_normalize_path((string)$gallery->base_dir);
+            if (!$base_dir) continue;
+            $other_refs = (int)$wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $galleries_table WHERE account_id<>%d AND base_dir=%s",
+                $account_id, $gallery->base_dir
+            ));
+            if ($other_refs === 0) $deleted_files += self::safe_delete_upload_tree($base_dir);
+            else $skipped_shared_dirs++;
+        }
+
+        // 2) Delete individually registered image/edited files as a second safety net.
+        $images_table = NLS1_Fotoportal_Admin::table('images');
+        $image_rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT original_path,preview_path,thumbnail_path,edited_path FROM $images_table WHERE account_id=%d",
+            $account_id
+        ), ARRAY_A);
+        foreach ((array)$image_rows as $row) {
+            foreach (['original_path','preview_path','thumbnail_path','edited_path'] as $key) {
+                if (!empty($row[$key]) && self::safe_delete_upload_file($row[$key])) $deleted_files++;
+            }
+        }
+
+        // 3) Delete account-owned branding files uploaded during onboarding.
+        $portal_option = '9ls1_fotoportal_portal_settings_' . $account_id;
+        $portal_settings = get_option($portal_option, []);
+        foreach (['logo_url','profile_image_url','cover_image_url','watermark_url'] as $key) {
+            $path = self::upload_url_to_path(is_array($portal_settings) ? ($portal_settings[$key] ?? '') : '');
+            if ($path && self::safe_delete_upload_file($path)) $deleted_files++;
+        }
+
+        // 4) Remove account-owned WordPress media attachments and generated delivery files.
+        $attachment_ids = [];
+        $clients_table = NLS1_Fotoportal_Admin::table('clients');
+        $documents_table = NLS1_Fotoportal_Admin::table('documents');
+        $contracts_table = NLS1_Fotoportal_Admin::table('contracts');
+        $projects_table = NLS1_Fotoportal_Admin::table('projects');
+        $attachment_ids = array_merge($attachment_ids, (array)$wpdb->get_col($wpdb->prepare("SELECT profile_image_id FROM $clients_table WHERE account_id=%d AND profile_image_id IS NOT NULL AND profile_image_id>0", $account_id)));
+        $attachment_ids = array_merge($attachment_ids, (array)$wpdb->get_col($wpdb->prepare("SELECT attachment_id FROM $documents_table WHERE account_id=%d AND attachment_id IS NOT NULL AND attachment_id>0", $account_id)));
+        $attachment_ids = array_merge($attachment_ids, (array)$wpdb->get_col($wpdb->prepare("SELECT attachment_id FROM $contracts_table WHERE account_id=%d AND attachment_id IS NOT NULL AND attachment_id>0", $account_id)));
+        $attachment_ids = array_unique(array_map('intval', $attachment_ids));
+        foreach ($attachment_ids as $attachment_id) {
+            if (!$attachment_id) continue;
+            $other_refs = 0;
+            $other_refs += (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $clients_table WHERE account_id<>%d AND profile_image_id=%d", $account_id, $attachment_id));
+            $other_refs += (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $documents_table WHERE account_id<>%d AND attachment_id=%d", $account_id, $attachment_id));
+            $other_refs += (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $contracts_table WHERE account_id<>%d AND attachment_id=%d", $account_id, $attachment_id));
+            if ($other_refs === 0) {
+                $attached_file = get_attached_file($attachment_id);
+                if ($attached_file && file_exists($attached_file)) $deleted_files++;
+                wp_delete_attachment($attachment_id, true);
+            }
+        }
+        $delivery_urls = $wpdb->get_results($wpdb->prepare("SELECT delivery_zip_url,delivery_selected_zip_url FROM $projects_table WHERE account_id=%d", $account_id), ARRAY_A);
+        foreach ((array)$delivery_urls as $row) {
+            foreach (['delivery_zip_url','delivery_selected_zip_url'] as $key) {
+                $path = self::upload_url_to_path($row[$key] ?? '');
+                if ($path && self::safe_delete_upload_file($path)) $deleted_files++;
+            }
+        }
+
+        // 5) Remove dedicated WordPress identities while the account mapping still exists.
+        // Customer users are always cleaned up when they belong only to this Fotoportal account.
+        // The photographer owner is also removed automatically unless it has admin/other Aurora access.
+        $owner_user_id = (int)$account->owner_user_id;
+        $wp_user_report = self::cleanup_account_wordpress_users($account_id, $owner_user_id, true);
+
+        // 6) Remove all tenant-scoped Fotoportal rows. The tenant migration guarantees account_id.
+        $deleted_rows = 0;
+        if (class_exists('NLS1_Aurora_Tenant_Context')) {
+            foreach (NLS1_Aurora_Tenant_Context::domain_tables() as $table_key) {
+                $table = NLS1_Aurora_Tenant_Context::table($table_key);
+                if (!NLS1_Aurora_Tenant_Context::table_exists($table) || !NLS1_Aurora_Tenant_Context::table_has_account_id($table)) continue;
+                $result = $wpdb->delete($table, ['account_id'=>$account_id], ['%d']);
+                if (is_int($result)) $deleted_rows += $result;
+            }
+        }
+
+        // 7) Remove account-specific options and platform rows.
+        delete_option($portal_option);
+        delete_option('aurora_fotoportal_demo_journey_enabled_' . $account_id);
+        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like('9ls1_fotoportal_gallery_hero_'.$account_id.'_') . '%'));
+        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like('9ls1_fotoportal_customer_hero_'.$account_id.'_') . '%'));
+        $wpdb->delete(self::table('account_modules'), ['account_id'=>$account_id], ['%d']);
+        $wpdb->delete(self::table('licenses'), ['account_id'=>$account_id], ['%d']);
+        $wpdb->delete(self::table('support_logs'), ['account_id'=>$account_id], ['%d']);
+
+        $owner_deleted = !empty($wp_user_report['owner_deleted']);
+        $owner_preserved_reason = (string)($wp_user_report['owner_preserved_reason'] ?? '');
+
+        $wpdb->delete(self::table('accounts'), ['id'=>$account_id], ['%d']);
+
+        do_action('aurora_fotoportal_account_deleted', [
+            'account_id'=>$account_id,
+            'account_name'=>$account->account_name,
+            'deleted_rows'=>$deleted_rows,
+            'deleted_files'=>$deleted_files,
+            'owner_user_id'=>$owner_user_id,
+            'owner_deleted'=>$owner_deleted,
+            'customer_users_deleted'=>(int)($wp_user_report['customer_deleted'] ?? 0),
+            'customer_users_preserved'=>(int)($wp_user_report['customer_preserved'] ?? 0),
+        ]);
+
+        set_transient('aurora_fotoportal_delete_report_' . get_current_user_id(), [
+            'account_name'=>$account->account_name,
+            'rows'=>$deleted_rows,
+            'files'=>$deleted_files,
+            'shared_dirs'=>$skipped_shared_dirs,
+            'owner_deleted'=>$owner_deleted,
+            'owner_preserved_reason'=>$owner_preserved_reason,
+            'customer_users_deleted'=>(int)($wp_user_report['customer_deleted'] ?? 0),
+            'customer_users_preserved'=>(int)($wp_user_report['customer_preserved'] ?? 0),
+        ], 120);
+        wp_safe_redirect(add_query_arg(['message'=>'account_deleted'], self::url('accounts')));
         exit;
     }
 
@@ -864,6 +1171,7 @@ class NLS1_Aurora_Account_Platform {
         if ($name === '' || $email === '') wp_die('Studionavn og konto-/login-e-post må fylles ut.');
 
         $status = sanitize_key($_POST['status'] ?? $account->status);
+        $include_demo_journey = !empty($_POST['include_demo_journey']);
         if (!in_array($status, ['trial','active','expired','suspended','cancelled','invalid'], true)) $status = $account->status;
 
         if (!empty($account->owner_user_id)) {
@@ -895,6 +1203,11 @@ class NLS1_Aurora_Account_Platform {
             'status' => $status,
             'updated_at' => current_time('mysql'),
         ], ['id' => $account_id]);
+
+        self::set_demo_journey_enabled($account_id, $include_demo_journey);
+        if (!$include_demo_journey && class_exists('NLS1_Aurora_Demo_Content')) {
+            NLS1_Aurora_Demo_Content::remove_legacy_materialized_pack($account_id);
+        }
 
         // Keep the photographer owner user's email synchronized when the platform owner changes the canonical login email.
         if (!empty($account->owner_user_id)) {
